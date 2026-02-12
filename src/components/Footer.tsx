@@ -1,0 +1,63 @@
+import { Waves } from "lucide-react";
+
+export default function Footer() {
+  return (
+    <footer className="bg-dark text-white">
+      <div className="container py-16">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
+          {/* Logo & Tagline */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Waves className="h-6 w-6 text-turquoise" />
+              <span className="logo text-xl">
+                <span className="logo-turquoise">Liquid</span>
+                <span className="logo-gold">Now</span>
+              </span>
+            </div>
+            <p className="footer-text leading-relaxed">
+              Der schnellste Weg zu mehr Liquidität für E-Commerce & Handel.
+            </p>
+          </div>
+
+          {/* Links */}
+          <div>
+            <h4 className="footer-heading">Rechtliches</h4>
+            <ul className="space-y-3">
+              <li><a href="/impressum" className="footer-link">Impressum</a></li>
+              <li><a href="/datenschutz" className="footer-link">Datenschutz</a></li>
+              <li><a href="#" className="footer-link">AGB</a></li>
+            </ul>
+          </div>
+
+          {/* Kontakt */}
+          <div>
+            <h4 className="footer-heading">Kontakt</h4>
+            <ul className="space-y-3">
+              <li>
+                <a href="mailto:info@liquidnow.de" className="footer-link">
+                  info@liquidnow.de
+                </a>
+              </li>
+              <li>
+                <span className="footer-text">Mo–Fr: 9:00–18:00 Uhr</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="mt-12 border-t border-white/10 pt-8">
+          <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
+            <p className="text-xs text-white/40">
+              &copy; {new Date().getFullYear()} LiquidNow. Alle Rechte vorbehalten.
+            </p>
+            <p className="text-xs text-white/30 text-center md:text-right max-w-md">
+              LiquidNow ist ein Tippgeber-Service und bietet keine Finanzberatung
+              oder Kreditvermittlung im Sinne des §34c GewO an.
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
