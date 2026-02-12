@@ -35,8 +35,11 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SCALEWAY_SECRET_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.SCALEWAY_REGION }}
         run: |
+          # Use standard endpoint without bucket name in hostname (path-style)
+          ENDPOINT_URL="https://s3.${{ secrets.SCALEWAY_REGION }}.scw.cloud"
+
           aws s3 sync out/ s3://${{ secrets.SCALEWAY_BUCKET_ID }}/ \
-            --endpoint-url ${{ secrets.SCALEWAY_BUCKET_ENDPOINT }} \
+            --endpoint-url $ENDPOINT_URL \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "*.html" \
@@ -44,7 +47,7 @@ jobs:
 
           # Set shorter cache for HTML and JSON files
           aws s3 sync out/ s3://${{ secrets.SCALEWAY_BUCKET_ID }}/ \
-            --endpoint-url ${{ secrets.SCALEWAY_BUCKET_ENDPOINT }} \
+            --endpoint-url $ENDPOINT_URL \
             --exclude "*" \
             --include "*.html" \
             --include "*.json" \
