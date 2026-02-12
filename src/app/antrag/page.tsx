@@ -37,7 +37,12 @@ export default function AntragPage() {
     setCompanyData(null);
 
     try {
-      const response = await fetch("/api/company-search", {
+      // Use Supabase Edge Function
+      const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/company-search`
+        : "/api/company-search"; // Fallback to local API for development
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
