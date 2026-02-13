@@ -65,49 +65,66 @@ export default function Home() {
           </div>
 
           <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8 w-full">
-            <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1.5fr_1fr]">
+            <div className="relative grid grid-cols-1 items-center gap-6 lg:grid-cols-[1.5fr_1fr]">
+              {/* Hero Image - centered in left column area */}
+              <div
+                className="absolute left-[calc(25%+10px)] top-[45%] -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none hidden lg:block"
+                style={{ maskImage: 'linear-gradient(to bottom, black 50%, transparent 90%)', WebkitMaskImage: 'linear-gradient(to bottom, black 50%, transparent 90%)' }}
+              >
+                <Image
+                  src="/hero-unternehmerin.png"
+                  alt=""
+                  width={600}
+                  height={780}
+                  className="h-144 w-auto object-contain"
+                  priority
+                  aria-hidden="true"
+                />
+              </div>
               {/* Left: Text */}
-              <div className="text-center lg:text-left">
-                <AnimateOnScroll>
-                  <span className="badge badge-gold mb-8">
-                    <Zap className="h-4 w-4" />
-                    48h Auszahlung
-                  </span>
-                </AnimateOnScroll>
+              <div className="text-center lg:text-left self-end">
+                <div className="relative z-10">
+                  <AnimateOnScroll>
+                    <span className="badge badge-gold mb-8">
+                      <Zap className="h-4 w-4" />
+                      48h Auszahlung
+                    </span>
+                  </AnimateOnScroll>
 
-                <AnimateOnScroll delay={0.1}>
-                  <h1 className="heading-hero">
-                    Intelligent vergleichen.
-                    <br />
-                    <span className="text-turquoise">
-                      Schneller finanzieren.
-                    </span>
-                  </h1>
-                </AnimateOnScroll>
+                  <AnimateOnScroll delay={0.1}>
+                    <h1 className="heading-hero">
+                      Intelligent vergleichen.
+                      <br />
+                      <span className="text-turquoise">
+                        Schneller finanzieren.
+                      </span>
+                    </h1>
+                  </AnimateOnScroll>
 
-                <AnimateOnScroll delay={0.15}>
-                  <p className="text-sub mt-6 max-w-2xl">
-                    Betriebsmittelkredite von führenden Banken und Fintechs –
-                    kostenlos verglichen, für Unternehmer mit Köpfchen.
-                  </p>
-                </AnimateOnScroll>
+                  <AnimateOnScroll delay={0.15}>
+                    <p className="text-sub mt-6 max-w-2xl">
+                      Betriebsmittelkredite von führenden Banken und Fintechs –
+                      kostenlos verglichen, für Unternehmer mit Köpfchen.
+                    </p>
+                  </AnimateOnScroll>
 
-                <AnimateOnScroll delay={0.3}>
-                  <div className="trust-markers mt-8 lg:justify-start">
-                    <span className="trust-item">
-                      <Check className="h-4 w-4 text-turquoise" />
-                      Keine zusätzlichen Gebühren
-                    </span>
-                    <span className="trust-item">
-                      <Check className="h-4 w-4 text-turquoise" />
-                      In 3 Minuten zum Angebot
-                    </span>
-                    <span className="trust-item">
-                      <Check className="h-4 w-4 text-turquoise" />
-                      DSGVO-konform
-                    </span>
-                  </div>
-                </AnimateOnScroll>
+                  <AnimateOnScroll delay={0.3}>
+                    <div className="trust-markers mt-8 lg:justify-start">
+                      <span className="trust-item">
+                        <Check className="h-4 w-4 text-turquoise" />
+                        Keine zusätzlichen Gebühren
+                      </span>
+                      <span className="trust-item">
+                        <Check className="h-4 w-4 text-turquoise" />
+                        In 3 Minuten zum Angebot
+                      </span>
+                      <span className="trust-item">
+                        <Check className="h-4 w-4 text-turquoise" />
+                        DSGVO-konform
+                      </span>
+                    </div>
+                  </AnimateOnScroll>
+                </div>
               </div>
 
               {/* Right: Funnel Widget */}

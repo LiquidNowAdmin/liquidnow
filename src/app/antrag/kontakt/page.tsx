@@ -48,11 +48,10 @@ export default function KontaktPage() {
         email,
       });
 
-      // Simulate API call
+      // Simulate API call, then redirect to platform
       await new Promise(resolve => setTimeout(resolve, 4000));
 
-      setIsSubmitting(false);
-      setIsSubmitted(true);
+      router.push("/plattform");
     }
   };
 
