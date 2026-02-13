@@ -77,18 +77,18 @@ export default function Home() {
 
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Betriebsmittelkredit in Minuten
+                    Ein Antrag – viele Anbieter
                     <br />
                     <span className="text-turquoise">
-                      kostenlos, transparent, automatisch
+                      Das beste Angebot in Minuten
                     </span>
                   </h1>
                 </AnimateOnScroll>
 
                 <AnimateOnScroll delay={0.15}>
                   <p className="text-sub mt-6 max-w-2xl">
-                    Keine Beratungsgebühren. Keine Wartezeiten. Keine versteckten Konditionen.<br />
-                    Vergleiche Angebote von führenden Finanzierungspartnern – in Echtzeit und komplett digital.
+                    Vergleiche Betriebsmittelkredite von führenden Banken und Fintech-Anbietern.<br />
+                    Kostenlos, transparent und komplett automatisiert – ohne Beratungsgebühren.
                   </p>
                 </AnimateOnScroll>
 
