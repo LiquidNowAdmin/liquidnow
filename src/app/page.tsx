@@ -77,10 +77,10 @@ export default function Home() {
 
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Ein Antrag – viele Anbieter
+                    Schnelle Liquidität für dein Business
                     <br />
                     <span className="text-turquoise">
-                      Das beste Angebot in Minuten
+                      Vergleiche kostenlos, transparent, automatisch
                     </span>
                   </h1>
                 </AnimateOnScroll>
