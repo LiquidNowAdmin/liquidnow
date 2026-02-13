@@ -44,6 +44,16 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+}
+
+/* Automatische Silbentrennung für alle Textelemente */
+p, span, li, td, th, label {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -1189,3 +1199,42 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: flex-end;
   }
 }
+
+/* ============================================================
+   TEXT OVERFLOW & ELLIPSIS UTILITIES
+============================================================ */
+
+/* Automatisches Abschneiden mit Ellipsis für Buttons und Labels */
+button, .btn, label, .badge, .trust-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Utility-Klasse für Ellipsis */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mehrz eiliges Ellipsis (2 Zeilen) */
+.text-ellipsis-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mehrzeiliges Ellipsis (3 Zeilen) */
+.text-ellipsis-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover zeigt vollen Text via title-Attribut (automatisch durch Browser) */
+/* Für manuelle Tooltips kann später eine Komponente hinzugefügt werden */
