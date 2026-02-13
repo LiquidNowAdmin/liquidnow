@@ -84,7 +84,7 @@ export default function AntragPage() {
               <span className="text-sm font-medium">Zurück</span>
             </Link>
             <div className="logo text-xl">
-              <span className="logo-turquoise">Liquid</span>
+              <span className="logo-turquoise">Liqi</span>
               <span className="logo-gold">Now</span>
             </div>
             <div className="w-20" /> {/* Spacer for centering */}

@@ -50,7 +50,7 @@ export default function FunnelWidget() {
         <div className="flex items-center gap-2">
           <Waves className="h-5 w-5 text-turquoise" />
           <span className="logo text-lg">
-            <span className="logo-turquoise">Liquid</span>
+            <span className="logo-turquoise">Liqi</span>
             <span className="logo-gold">Now</span>
           </span>
         </div>

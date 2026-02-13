@@ -39,7 +39,7 @@ export default function Navigation() {
         <a href="#" className="flex items-center gap-2">
           <Waves className="h-7 w-7 text-turquoise" />
           <span className="logo text-2xl">
-            <span className="logo-turquoise">Liquid</span>
+            <span className="logo-turquoise">Liqi</span>
             <span className="logo-gold">Now</span>
           </span>
         </a>

@@ -3,46 +3,53 @@ export const howItWorksSteps = [
     step: 1,
     icon: "Zap" as const,
     iconColor: "gold" as const,
-    headline: "60 Sekunden Antrag",
-    body: "Fülle unseren kurzen Fragebogen aus – direkt vom Smartphone oder Desktop. Keine komplizierten Formulare.",
+    headline: "Website eingeben",
+    body: "Gib deine Firmen-Website ein. Unsere KI extrahiert automatisch alle relevanten Unternehmensdaten aus dem Impressum.",
   },
   {
     step: 2,
     icon: "Waves" as const,
     iconColor: "turquoise" as const,
-    headline: "24 Stunden Angebote",
-    body: "LiquidNow vergleicht automatisch 4+ Banken und sendet dir die besten Angebote per E-Mail.",
+    headline: "Angebote vergleichen",
+    body: "Erhalte in Echtzeit passende Finanzierungsangebote von geprüften Partnern – mit allen Konditionen transparent dargestellt.",
   },
   {
     step: 3,
     icon: "Banknote" as const,
     iconColor: "turquoise" as const,
-    headline: "48 Stunden Auszahlung",
-    body: "Wähle dein Angebot, lade Unterlagen hoch, und erhalte dein Geld innerhalb von 2 Tagen.",
+    headline: "Direkt abschließen",
+    body: "Wähle das beste Angebot und schließe direkt mit der Bank ab. Wir vermitteln nur – du behältst die volle Kontrolle.",
   },
 ];
 
 export const valueProps = [
   {
-    icon: "Zap" as const,
+    icon: "Banknote" as const,
     iconColor: "gold" as const,
-    headline: "Der schnellste Weg",
-    body: "60-Sekunden-Antrag statt wochenlange Banktermine. Auszahlung in 48 Stunden – nicht 48 Tagen.",
+    headline: "Keine Zusatzkosten",
+    body: "Während klassische Vermittler 2-3% Beratungsprovision berechnen, zahlst du bei LiquiNow exakt die gleichen Konditionen wie bei Direktabschluss. Bei 50.000€ sparst du bis zu 1.500€.",
     hoverBorder: "turquoise" as const,
   },
   {
-    icon: "Smartphone" as const,
+    icon: "Zap" as const,
     iconColor: "turquoise" as const,
-    headline: "Alles online",
-    body: "Kein Papierkram, keine Bankfiliale. Vom Antrag bis zur Auszahlung – komplett digital und mobil.",
+    headline: "Maschinelle Prüfung",
+    body: "KI-gestützte Risikoprüfung in Echtzeit, ohne menschliche Zwischenschritte. Keine händische Prüfung. Keine Wartezeiten. Alles in unter 5 Minuten.",
     hoverBorder: "gold" as const,
   },
   {
     icon: "ShieldCheck" as const,
     iconColor: "turquoise" as const,
     headline: "Volle Transparenz",
-    body: "Keine versteckten Gebühren, keine Überraschungen. SCHUFA-neutrale Erstanfrage. 100% kostenlos.",
+    body: "Alle Konditionen, Zinssätze und Anbieter sofort sichtbar. Kein Gatekeeping. Kein \"erst Termin vereinbaren\". Du siehst alle Optionen und entscheidest selbst.",
     hoverBorder: "gradient" as const,
+  },
+  {
+    icon: "Smartphone" as const,
+    iconColor: "gold" as const,
+    headline: "Von überall beantragen",
+    body: "Beantrage deinen Kredit von überall: vom Smartphone, Tablet oder Laptop. Keine Bürozeiten. Keine Terminabsprachen. Wann und wo du willst.",
+    hoverBorder: "turquoise" as const,
   },
 ];
 
@@ -58,57 +65,47 @@ export const targetAudienceItems = [
 export const testimonials = [
   {
     quote:
-      "Dank LiquidNow konnten wir unseren Saisonbestand rechtzeitig finanzieren. In nur 2 Tagen hatten wir das Geld auf dem Konto!",
-    author: "Maria S.",
-    company: "Online-Shop Inhaberin",
-    stars: 5,
-  },
-  {
-    quote:
-      "Endlich ein Kreditvergleich, der wirklich schnell geht. Keine Banktermine, kein Papierkram – einfach online.",
-    author: "Thomas K.",
-    company: "Einzelhändler",
-    stars: 5,
-  },
-  {
-    quote:
-      "Als Amazon Seller brauche ich schnelle Liquidität für Wareneinkauf. LiquidNow hat das in 48h möglich gemacht.",
+      "Endlich keine versteckten Gebühren mehr! In 4 Minuten hatte ich 3 Angebote auf dem Tisch – ohne Anruf.",
     author: "Sarah M.",
-    company: "Amazon Sellerin",
+    company: "E-Commerce",
+    stars: 5,
+  },
+  {
+    quote:
+      "Transparent, schnell, von überall nutzbar. Genau so sollte Unternehmensfinanzierung heute funktionieren.",
+    author: "Tim R.",
+    company: "Einzelhandel",
+    stars: 5,
+  },
+  {
+    quote:
+      "Kein Vertrieb, keine Papierstapel. Einfach online vergleichen und selbst entscheiden.",
+    author: "Michael K.",
+    company: "Handwerk",
     stars: 5,
   },
 ];
 
 export const faqItems = [
   {
-    question: "Was kostet die Nutzung von LiquidNow?",
+    question: "Warum ist LiquiNow günstiger als klassische Vermittler?",
     answer:
-      "Für Sie als Kreditnehmer ist die Nutzung von LiquidNow 100% kostenlos und unverbindlich. Wir erhalten eine Provision von den Partnerbanken – Sie zahlen keinen Cent extra.",
+      "Wir sind kein §34c-Vermittler und erheben keine Beratungsprovision. Die Bankprovisionen sind bereits in den Konditionen enthalten – du zahlst nichts extra.",
   },
   {
-    question: "Wie schnell erhalte ich ein Angebot?",
+    question: "Wie funktioniert die automatische Datenprüfung?",
     answer:
-      "Innerhalb von 24 Stunden erhalten Sie Angebote von mindestens 4 Banken per E-Mail. Die Auszahlung erfolgt in der Regel innerhalb von 48 Stunden nach Annahme eines Angebots.",
+      "Unsere KI analysiert deine Website und extrahiert Firmendaten aus dem Impressum – vollautomatisch, ohne Personalkosten und ohne manuelle Zwischenschritte.",
   },
   {
-    question: "Wirkt sich die Anfrage auf meine SCHUFA aus?",
+    question: "Welche Finanzierungspartner sind dabei?",
     answer:
-      "Nein. Die initiale Anfrage über LiquidNow ist SCHUFA-neutral. Erst wenn Sie sich für ein konkretes Angebot entscheiden und den Kreditvertrag unterschreiben, wird eine reguläre SCHUFA-Anfrage gestellt.",
+      "Wir arbeiten mit führenden Banken und Fintech-Anbietern zusammen, die auf KMU-Finanzierung spezialisiert sind.",
   },
   {
-    question: "Welche Unterlagen brauche ich?",
+    question: "Ist das wirklich unverbindlich?",
     answer:
-      "Für den Erstantrag benötigen Sie lediglich grundlegende Unternehmensdaten (Umsatz, Branche, Rechtsform). Erst bei Annahme eines Angebots werden weitere Unterlagen wie BWA oder Kontoauszüge benötigt.",
-  },
-  {
-    question: "Für welche Branchen ist LiquidNow geeignet?",
-    answer:
-      "LiquidNow ist spezialisiert auf E-Commerce und Handel – dazu zählen Online-Shops, Einzelhändler, Großhändler, Amazon/eBay Seller und alle Unternehmen im Handelsbereich.",
-  },
-  {
-    question: "Wie hoch kann der Kreditbetrag sein?",
-    answer:
-      "Wir vermitteln Betriebsmittelkredite von €10.000 bis €500.000. Der genaue Betrag richtet sich nach Ihrem Umsatz und Ihrer Bonität.",
+      "Ja. Du vergleichst kostenlos und entscheidest selbst, ob du ein Angebot annimmst. Kein Vertrieb, kein Druck.",
   },
 ];
 

@@ -77,25 +77,18 @@ export default function Home() {
 
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Liquidität in 48 Stunden
+                    Betriebsmittelkredit in Minuten
                     <br />
                     <span className="text-turquoise">
-                      für E-Commerce & Handel
+                      kostenlos, transparent, automatisch
                     </span>
                   </h1>
                 </AnimateOnScroll>
 
                 <AnimateOnScroll delay={0.15}>
                   <p className="text-sub mt-6 max-w-2xl">
-                    Ihre unabhängige Vergleichsplattform für Betriebsmittelfinanzierung.
-                    Seit über 10 Jahren helfen wir mittelständischen Unternehmen,
-                    die beste Finanzierung für ihr Wachstum zu finden.
-                  </p>
-                </AnimateOnScroll>
-
-                <AnimateOnScroll delay={0.2}>
-                  <p className="text-sub mt-4 max-w-2xl">
-                    €10.000 bis €500.000 · Antrag in 60 Sekunden · Keine SCHUFA-Auswirkung
+                    Keine Beratungsgebühren. Keine Wartezeiten. Keine versteckten Konditionen.<br />
+                    Vergleiche Angebote von führenden Finanzierungspartnern – in Echtzeit und komplett digital.
                   </p>
                 </AnimateOnScroll>
 
@@ -103,15 +96,15 @@ export default function Home() {
                   <div className="trust-markers mt-8 lg:justify-start">
                     <span className="trust-item">
                       <Check className="h-4 w-4 text-turquoise" />
-                      100% kostenlos
+                      Keine zusätzlichen Gebühren
                     </span>
                     <span className="trust-item">
                       <Check className="h-4 w-4 text-turquoise" />
-                      Unverbindlich
+                      In 3 Minuten zum Angebot
                     </span>
                     <span className="trust-item">
                       <Check className="h-4 w-4 text-turquoise" />
-                      4+ Banken vergleichen
+                      DSGVO-konform
                     </span>
                   </div>
                 </AnimateOnScroll>
@@ -188,8 +181,8 @@ export default function Home() {
               <div>
                 <AnimateOnScroll>
                   <div className="mb-12">
-                    <h2 className="text-3xl font-bold text-dark mb-3 md:text-4xl">Warum LiquidNow?</h2>
-                    <p className="text-lg text-subtle">Unabhängig, transparent, auf Ihrer Seite</p>
+                    <h2 className="text-3xl font-bold text-dark mb-3 md:text-4xl">Warum „Vergleichsportale" in Wirklichkeit Strukturvertriebe sind</h2>
+                    <p className="text-lg text-subtle">Viele sogenannte Kreditplattformen positionieren sich als neutrale Vergleichsportale – dabei arbeiten sie mit eigenen Vertriebsteams, die hohe Provisionen kassieren und Konditionen intransparent halten. <strong>LiquiNow ist anders: keine Vertriebsmannschaft, keine Beratungsprovision, keine Gatekeeping-Mechanismen.</strong></p>
                   </div>
                 </AnimateOnScroll>
 
@@ -318,11 +311,11 @@ export default function Home() {
             <AnimateOnScroll>
               <div className="section-header">
                 <h2>Ihre Vorteile</h2>
-                <p>Warum E-Commerce-Unternehmer LiquidNow wählen</p>
+                <p>Warum Unternehmer LiquiNow wählen</p>
               </div>
             </AnimateOnScroll>
 
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
               {valueProps.map((prop, index) => {
                 const Icon = iconMap[prop.icon];
                 return (
@@ -360,7 +353,7 @@ export default function Home() {
               <AnimateOnScroll>
                 <div>
                   <h2 className="heading-hero !text-3xl md:!text-4xl">
-                    Für wen ist LiquidNow?
+                    Für wen ist LiqiNow?
                   </h2>
                   <p className="text-sub mt-4">
                     Speziell entwickelt für E-Commerce & Handel

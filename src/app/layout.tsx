@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LiquidNow | Liquidität in 48 Stunden für E-Commerce & Handel",
+  title: "LiqiNow | Liquidität in 48 Stunden für E-Commerce & Handel",
   description:
     "Betriebsmittelkredit von €10.000 bis €500.000. Antrag in 60 Sekunden, Auszahlung in 48 Stunden. 4+ Banken vergleichen. 100% kostenlos & unverbindlich.",
   keywords:
@@ -28,11 +28,11 @@ export const metadata: Metadata = {
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "LiquidNow – Liquidität in 48 Stunden",
+    title: "LiqiNow – Liquidität in 48 Stunden",
     description:
       "Der schnellste Weg zu Ihrem Firmenkredit. 60-Sekunden-Antrag, 4+ Banken, 48h Auszahlung.",
-    url: "https://liquidnow.de",
-    siteName: "LiquidNow",
+    url: "https://liqinow.de",
+    siteName: "LiqiNow",
     locale: "de_DE",
     type: "website",
   },

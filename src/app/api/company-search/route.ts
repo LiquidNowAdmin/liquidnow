@@ -86,7 +86,7 @@ async function extractCompanyDataFromWebsite(
     try {
       websiteResponse = await fetch(normalizedUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; LiquidNow-Bot/1.0)',
+          'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
         },
         signal: controller.signal,
       });
@@ -109,7 +109,7 @@ async function extractCompanyDataFromWebsite(
       try {
         const impressumResponse = await fetch(impressumUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LiquidNow-Bot/1.0)',
+            'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
           },
         });
 

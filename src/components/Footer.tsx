@@ -10,7 +10,7 @@ export default function Footer() {
             <div className="flex items-center gap-2 mb-4">
               <Waves className="h-6 w-6 text-turquoise" />
               <span className="logo text-xl">
-                <span className="logo-turquoise">Liquid</span>
+                <span className="logo-turquoise">Liqi</span>
                 <span className="logo-gold">Now</span>
               </span>
             </div>
@@ -34,8 +34,8 @@ export default function Footer() {
             <h4 className="footer-heading">Kontakt</h4>
             <ul className="space-y-3">
               <li>
-                <a href="mailto:info@liquidnow.de" className="footer-link">
-                  info@liquidnow.de
+                <a href="mailto:info@liqinow.de" className="footer-link">
+                  info@liqinow.de
                 </a>
               </li>
               <li>
@@ -49,10 +49,10 @@ export default function Footer() {
         <div className="mt-12 border-t border-white/10 pt-8">
           <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
             <p className="text-xs text-white/40">
-              &copy; {new Date().getFullYear()} LiquidNow. Alle Rechte vorbehalten.
+              &copy; {new Date().getFullYear()} LiqiNow. Alle Rechte vorbehalten.
             </p>
             <p className="text-xs text-white/30 text-center md:text-right max-w-md">
-              LiquidNow ist ein Tippgeber-Service und bietet keine Finanzberatung
+              LiqiNow ist ein Tippgeber-Service und bietet keine Finanzberatung
               oder Kreditvermittlung im Sinne des §34c GewO an.
             </p>
           </div>

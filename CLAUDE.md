@@ -1,4 +1,4 @@
-# LiquidNow - Development Guidelines
+# LiqiNow - Development Guidelines
 
 ## UI/UX Preferences
 

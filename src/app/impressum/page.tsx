@@ -14,7 +14,7 @@ export default function ImpressumPage() {
               <span className="text-sm font-medium">Zurück</span>
             </Link>
             <div className="logo text-xl">
-              <span className="logo-turquoise">Liquid</span>
+              <span className="logo-turquoise">Liqi</span>
               <span className="logo-gold">Now</span>
             </div>
             <div className="w-20" />
@@ -78,7 +78,7 @@ export default function ImpressumPage() {
                 <div className="pt-6 border-t border-gray-200">
                   <h2 className="text-xl font-semibold mb-3">Hinweis</h2>
                   <p className="leading-relaxed text-subtle">
-                    LiquidNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.
+                    LiqiNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.
                     Wir bieten keine Finanzberatung oder Kreditvermittlung im Sinne des §34c GewO an.
                   </p>
                 </div>

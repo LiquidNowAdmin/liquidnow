@@ -25,9 +25,9 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:3001',
-  'https://liquidnow.de',
-  'https://www.liquidnow.de',
-  'https://liquidnow.de.s3-website.nl-ams.scw.cloud',
+  'https://liqinow.de',
+  'https://www.liqinow.de',
+  'https://liqinow.de.s3-website.nl-ams.scw.cloud',
 ];
 
 const corsHeaders = (origin: string | null) => {
@@ -117,7 +117,7 @@ async function extractCompanyDataFromWebsite(
     try {
       websiteResponse = await fetch(normalizedUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; LiquidNow-Bot/1.0)',
+          'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
         },
         signal: controller.signal,
       });
@@ -140,7 +140,7 @@ async function extractCompanyDataFromWebsite(
       try {
         const impressumResponse = await fetch(impressumUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LiquidNow-Bot/1.0)',
+            'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
           },
         });
 
