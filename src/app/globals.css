@@ -527,6 +527,28 @@ h1, h2, h3, h4, h5, h6 {
   color: #00CED1;
 }
 
+.logo-wave {
+  display: inline-block;
+  color: #00CED1;
+  animation: logo-glow 3s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.logo-wave-1 {
+  animation-delay: 0s;
+  padding: 0 0.04em;
+}
+
+.logo-wave-2 {
+  animation-delay: 0.15s;
+}
+
+@keyframes logo-glow {
+  0%, 100% { transform: scale(1); text-shadow: none; }
+  15% { transform: scale(1.25); text-shadow: 0 0 8px rgba(0, 206, 209, 0.6); }
+  30% { transform: scale(1); text-shadow: none; }
+}
+
 .logo-gold {
   color: #FFD700;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Waves, Building2, TrendingUp } from "lucide-react";
+import { Building2, TrendingUp } from "lucide-react";
+import Logo from "@/components/Logo";
 import Link from "next/link";
 
 const bankResults = [
@@ -47,13 +48,7 @@ export default function FunnelWidget() {
     <div className="funnel-widget">
       {/* Header */}
       <div className="funnel-header">
-        <div className="flex items-center gap-2">
-          <Waves className="h-5 w-5 text-turquoise" />
-          <span className="logo text-lg">
-            <span className="logo-turquoise">Liqi</span>
-            <span className="logo-gold">Now</span>
-          </span>
-        </div>
+        <Logo size="sm" />
         <span className="funnel-badge funnel-badge-gold">48h</span>
       </div>
 

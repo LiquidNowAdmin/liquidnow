@@ -65,7 +65,7 @@ export default function Home() {
           </div>
 
           <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8 w-full">
-            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1.5fr_1fr]">
               {/* Left: Text */}
               <div className="text-center lg:text-left">
                 <AnimateOnScroll>
@@ -77,18 +77,18 @@ export default function Home() {
 
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Schnelle Liquidität für dein Business
+                    Intelligent vergleichen.
                     <br />
                     <span className="text-turquoise">
-                      Vergleiche kostenlos, transparent, automatisch
+                      Schneller finanzieren.
                     </span>
                   </h1>
                 </AnimateOnScroll>
 
                 <AnimateOnScroll delay={0.15}>
                   <p className="text-sub mt-6 max-w-2xl">
-                    Vergleiche Betriebsmittelkredite von führenden Banken und Fintech-Anbietern.<br />
-                    Kostenlos, transparent und komplett automatisiert – ohne Beratungsgebühren.
+                    Betriebsmittelkredite von führenden Banken und Fintechs –
+                    kostenlos verglichen, für Unternehmer mit Köpfchen.
                   </p>
                 </AnimateOnScroll>
 
@@ -112,8 +112,10 @@ export default function Home() {
 
               {/* Right: Funnel Widget */}
               <AnimateOnScroll delay={0.3}>
-                <div className="flex justify-center lg:justify-end">
-                  <FunnelWidget />
+                <div className="flex justify-center lg:justify-end w-full">
+                  <div className="w-full max-w-104">
+                    <FunnelWidget />
+                  </div>
                 </div>
               </AnimateOnScroll>
             </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, Loader2, AlertCircle, Building2, MapPin, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 
@@ -83,10 +84,7 @@ export default function AntragPage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <div className="logo text-xl">
-              <span className="logo-turquoise">Liqi</span>
-              <span className="logo-gold">Now</span>
-            </div>
+            <Logo size="md" />
             <div className="w-20" /> {/* Spacer for centering */}
           </div>
         </div>

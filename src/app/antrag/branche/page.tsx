@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, Briefcase, Check } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 
@@ -43,10 +44,7 @@ export default function BranchePage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <div className="logo text-xl">
-              <span className="logo-turquoise">Liqi</span>
-              <span className="logo-gold">Now</span>
-            </div>
+            <Logo size="md" />
             <div className="w-20" />
           </div>
         </div>

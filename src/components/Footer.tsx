@@ -1,4 +1,4 @@
-import { Waves } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function Footer() {
   return (
@@ -7,12 +7,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           {/* Logo & Tagline */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Waves className="h-6 w-6 text-turquoise" />
-              <span className="logo text-xl">
-                <span className="logo-turquoise">Liqi</span>
-                <span className="logo-gold">Now</span>
-              </span>
+            <div className="mb-4">
+              <Logo size="md" />
             </div>
             <p className="footer-text leading-relaxed">
               Der schnellste Weg zu mehr Liquidität für E-Commerce & Handel.

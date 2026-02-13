@@ -20,6 +20,7 @@ interface SearchResponse {
 }
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const BROWSERLESS_URL = 'https://chrome.browserless.io/content';
 
 // CORS allowed origins
 const ALLOWED_ORIGINS = [
@@ -96,6 +97,94 @@ serve(async (req) => {
   }
 });
 
+/**
+ * Fetch rendered HTML from Browserless (headless Chrome)
+ * Used as fallback for JS-rendered SPAs (React, Vue, etc.)
+ */
+async function fetchWithBrowserless(url: string): Promise<string | null> {
+  const browserlessApiKey = Deno.env.get('BROWSERLESS_API_KEY');
+  if (!browserlessApiKey) {
+    console.log('[Company Search] BROWSERLESS_API_KEY not set, skipping headless rendering');
+    return null;
+  }
+
+  console.log(`[Company Search] Fetching with Browserless: ${url}`);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${BROWSERLESS_URL}?token=${browserlessApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        gotoOptions: {
+          waitUntil: 'networkidle2',
+          timeout: 20000,
+        },
+        waitForSelector: {
+          selector: 'body',
+          timeout: 10000,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Company Search] Browserless error: ${response.status}`, errorText);
+      return null;
+    }
+
+    const html = await response.text();
+    console.log(`[Company Search] Browserless returned ${html.length} chars`);
+    return html;
+  } catch (error) {
+    console.error('[Company Search] Browserless fetch error:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if HTML content looks like a JS-rendered SPA (minimal content)
+ */
+function isLikelySPA(html: string): boolean {
+  const cleanText = extractRelevantText(html);
+
+  // If extracted text is very short, likely a SPA with no server-rendered content
+  if (cleanText.length < 150) {
+    console.log(`[Company Search] Content too short (${cleanText.length} chars), likely SPA`);
+    return true;
+  }
+
+  // Check for common SPA indicators
+  const spaIndicators = [
+    '<div id="root"></div>',
+    '<div id="root">',
+    '<div id="app"></div>',
+    '<div id="app">',
+    '<div id="__next"></div>',
+    'window.__INITIAL_STATE__',
+    'window.__NUXT__',
+  ];
+
+  const lowerHtml = html.toLowerCase();
+  for (const indicator of spaIndicators) {
+    if (lowerHtml.includes(indicator.toLowerCase())) {
+      // Only flag as SPA if content is actually thin
+      if (cleanText.length < 500) {
+        console.log(`[Company Search] SPA indicator found: ${indicator}, content thin (${cleanText.length} chars)`);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 async function extractCompanyDataFromWebsite(
   website: string,
   apiKey: string
@@ -109,47 +198,49 @@ async function extractCompanyDataFromWebsite(
 
     console.log(`[Company Search] Fetching ${normalizedUrl}...`);
 
-    // Fetch website with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    // Step 1: Try normal fetch first
+    let html = await fetchWithSimpleRequest(normalizedUrl);
 
-    let websiteResponse: Response;
-    try {
-      websiteResponse = await fetch(normalizedUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
-        },
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
+    // Step 2: Check if we need Browserless (SPA/React site)
+    if (html && isLikelySPA(html)) {
+      console.log('[Company Search] Detected SPA, trying Browserless...');
+      const renderedHtml = await fetchWithBrowserless(normalizedUrl);
+      if (renderedHtml) {
+        html = renderedHtml;
+      }
     }
 
-    if (!websiteResponse.ok) {
-      console.error(`[Company Search] Failed to fetch: ${websiteResponse.status}`);
+    if (!html) {
+      // Last resort: try Browserless directly
+      console.log('[Company Search] Normal fetch failed, trying Browserless directly...');
+      html = await fetchWithBrowserless(normalizedUrl);
+    }
+
+    if (!html) {
+      console.error('[Company Search] Could not fetch website content');
       return null;
     }
-
-    let html = await websiteResponse.text();
-    console.log(`[Company Search] Fetched ${html.length} chars`);
 
     // Try to find and fetch Impressum page
     const impressumUrl = findImpressumUrl(html, normalizedUrl);
     if (impressumUrl) {
       console.log(`[Company Search] Found Impressum: ${impressumUrl}`);
-      try {
-        const impressumResponse = await fetch(impressumUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
-          },
-        });
 
-        if (impressumResponse.ok) {
-          html = await impressumResponse.text();
-          console.log(`[Company Search] Fetched Impressum: ${html.length} chars`);
+      // Try simple fetch first for Impressum
+      let impressumHtml = await fetchWithSimpleRequest(impressumUrl);
+
+      // If Impressum also looks like SPA, use Browserless
+      if (impressumHtml && isLikelySPA(impressumHtml)) {
+        console.log('[Company Search] Impressum also SPA, using Browserless...');
+        const renderedImpressum = await fetchWithBrowserless(impressumUrl);
+        if (renderedImpressum) {
+          impressumHtml = renderedImpressum;
         }
-      } catch (error) {
-        console.log('[Company Search] Failed to fetch Impressum, using main page');
+      }
+
+      if (impressumHtml) {
+        html = impressumHtml;
+        console.log(`[Company Search] Using Impressum content: ${html.length} chars`);
       }
     }
 
@@ -230,9 +321,38 @@ async function extractCompanyDataFromWebsite(
   }
 }
 
-function findImpressumUrl(html: string, baseUrl: string): string | null {
-  const lowerHtml = html.toLowerCase();
+/**
+ * Simple HTTP fetch (for server-rendered sites)
+ */
+async function fetchWithSimpleRequest(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.error(`[Company Search] Simple fetch failed: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    console.log(`[Company Search] Simple fetch returned ${html.length} chars`);
+    return html;
+  } catch (error) {
+    console.error('[Company Search] Simple fetch error:', error);
+    return null;
+  }
+}
+
+function findImpressumUrl(html: string, baseUrl: string): string | null {
   const patterns = [
     /<a[^>]*href=["']([^"']*impressum[^"']*)["'][^>]*>/gi,
     /<a[^>]*href=["']([^"']*imprint[^"']*)["'][^>]*>/gi,
@@ -240,7 +360,7 @@ function findImpressumUrl(html: string, baseUrl: string): string | null {
   ];
 
   for (const pattern of patterns) {
-    const match = pattern.exec(lowerHtml);
+    const match = pattern.exec(html);
     if (match && match[1]) {
       let url = match[1];
 

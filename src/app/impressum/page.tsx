@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
+import Logo from "@/components/Logo";
 
 export default function ImpressumPage() {
   return (
@@ -13,10 +14,7 @@ export default function ImpressumPage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <div className="logo text-xl">
-              <span className="logo-turquoise">Liqi</span>
-              <span className="logo-gold">Now</span>
-            </div>
+            <Logo size="md" />
             <div className="w-20" />
           </div>
         </div>

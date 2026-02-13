@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X, Waves } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const navLinks = [
   { href: "#so-funktionierts", label: "So funktioniert's" },
@@ -36,12 +37,8 @@ export default function Navigation() {
       }`}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
-        <a href="#" className="flex items-center gap-2">
-          <Waves className="h-7 w-7 text-turquoise" />
-          <span className="logo text-2xl">
-            <span className="logo-turquoise">Liqi</span>
-            <span className="logo-gold">Now</span>
-          </span>
+        <a href="#">
+          <Logo size="lg" />
         </a>
 
         <div className="hidden items-center gap-8 md:flex">

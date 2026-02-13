@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, Building2, User, Users, Check } from "lucide-react";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 
@@ -44,10 +45,7 @@ export default function RechtsformPage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <div className="logo text-xl">
-              <span className="logo-turquoise">Liqi</span>
-              <span className="logo-gold">Now</span>
-            </div>
+            <Logo size="md" />
             <div className="w-20" /> {/* Spacer for centering */}
           </div>
         </div>
