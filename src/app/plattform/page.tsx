@@ -90,7 +90,7 @@ export default function PlattformPage() {
   const [loading, setLoading] = useState(true);
   const [termRange, setTermRange] = useState<[number, number]>([1, 60]);
   const [rateRange, setRateRange] = useState<[number, number]>([0, 25]);
-  const [sortBy, setSortBy] = useState<SortKey>("rate");
+  const [sortBy, setSortBy] = useState<SortKey>("speed");
 
   const fetchOffers = useCallback(async () => {
     setLoading(true);
@@ -125,9 +125,9 @@ export default function PlattformPage() {
   const rateMax = offers.length ? Math.max(...offers.map(o => o.interest_rate_to)) : 0;
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: "#f4f4f4" }}>
+    <div className="flex flex-col min-h-screen relative" style={{ background: "linear-gradient(180deg, rgba(255,215,0,0.06) 0%, rgba(0,206,209,0.08) 40%, #ffffff 70%)" }}>
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
+      <header className="relative z-10 border-b border-gray-200 bg-white">
         <div className="mx-auto px-[5%] xl:px-[10%] py-2.5">
           <div className="flex items-center justify-between">
             <Logo size="md" />
@@ -139,13 +139,41 @@ export default function PlattformPage() {
         </div>
       </header>
 
+      {/* Wave Background – bottom of viewport */}
+      <div className="fixed top-0 left-0 w-full h-screen overflow-hidden pointer-events-none z-0">
+        <div className="absolute bottom-0 left-0 w-full opacity-70">
+          <div className="hero-wave">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 320" preserveAspectRatio="none" className="w-full h-full">
+              <path
+                fill="#00CED1"
+                fillOpacity="0.15"
+                d="M0,200C240,150,480,150,720,200C960,250,1200,250,1440,200C1680,150,1920,150,2160,200C2400,250,2640,250,2880,200L2880,320L0,320Z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
       {/* Main */}
-      <main className="flex-1 py-4">
+      <main className="relative z-10 flex-1 py-4">
         <div className="mx-auto px-[5%] xl:px-[10%]">
           <div className="platform-layout">
 
             {/* Filter Sidebar */}
             <aside className="filter-sidebar">
+              {/* KI Assistant */}
+              <div className="text-center pb-4 mb-4 border-b border-gray-200">
+                <img
+                  src="/ki-assistant.png"
+                  alt="KI-Assistentin"
+                  className="w-14 h-14 rounded-full object-cover mx-auto mb-2 border-2 border-turquoise"
+                />
+                <p className="text-sm font-semibold text-dark mb-0.5">Deine KI-Assistentin</p>
+                <p className="text-xs text-subtle">
+                  Ich helfe dir persoenlich bei der Antragstellung — schnell und unkompliziert.
+                </p>
+              </div>
+
               <div className="filter-sidebar-title">Filter</div>
 
               <div className="filter-group">
@@ -194,6 +222,7 @@ export default function PlattformPage() {
                   Zuruecksetzen
                 </button>
               )}
+
             </aside>
 
             {/* Results */}
@@ -247,11 +276,6 @@ export default function PlattformPage() {
                             </span>
                           )}
                           {highlight && <span className="offer-highlight-label">{highlight}</span>}
-                          {trustpilot && (
-                            <span className="offer-topbar-right">
-                              <TrustpilotStars rating={trustpilot} />
-                            </span>
-                          )}
                         </div>
 
                         {/* Body */}
@@ -266,9 +290,12 @@ export default function PlattformPage() {
                             <div className="offer-provider-info">
                               <div className="offer-provider-name">{offer.provider_name}</div>
                               <div className="offer-product-name">{offer.product_name}</div>
-                              <span className={`offer-provider-type-badge ${offer.provider_type === "fintech" ? "offer-provider-type-badge-fintech" : ""}`}>
-                                {offer.provider_type === "bank" ? "Bank" : "Fintech"}
-                              </span>
+                              <div className="flex flex-col items-center gap-1 mt-1">
+                                {trustpilot && <TrustpilotStars rating={trustpilot} />}
+                                <span className={`offer-provider-type-badge ${offer.provider_type === "fintech" ? "offer-provider-type-badge-fintech" : ""}`}>
+                                  {offer.provider_type === "bank" ? "Bank" : "Fintech"}
+                                </span>
+                              </div>
                             </div>
                           </div>
 

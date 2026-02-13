@@ -47,6 +47,7 @@
 - ONE global set of UI components defined as CSS classes in `globals.css`
 - NEVER use inline CSS (except dynamic values like slider progress)
 - ONE radio button component, ONE input field, ONE select — no variants
+- **NEVER nest boxes inside boxes** (no card inside card, no bordered container inside bordered container) — use dividers/spacing instead
 - Every funnel step explains itself: headline = what to do, subtext = why, CTA = what happens next
 
 ### Funnel Design
