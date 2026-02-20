@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { ArrowLeft, TrendingUp, Check } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -26,6 +27,8 @@ function formatNumber(value: number): string {
 export default function UmsatzPage() {
   const router = useRouter();
   const [revenue, setRevenue] = useState(250000);
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "umsatz" }); }, [trackEvent]);
 
   const min = 50000;
   const max = 5000000;
@@ -44,8 +47,7 @@ export default function UmsatzPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Save revenue data
-    console.log("Revenue:", revenue);
+    trackEvent("funnel_data", { step: "umsatz", revenue });
     router.push("/antrag/branche");
   };
 

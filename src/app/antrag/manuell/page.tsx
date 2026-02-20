@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { ArrowLeft, Building2, Waves } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -19,6 +20,8 @@ interface CompanyFormData {
 
 export default function ManuelleEingabePage() {
   const router = useRouter();
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "manuell" }); }, [trackEvent]);
   const [formData, setFormData] = useState<CompanyFormData>({
     name: "",
     street: "",
@@ -65,8 +68,16 @@ export default function ManuelleEingabePage() {
     e.preventDefault();
 
     if (validateForm()) {
-      // TODO: Save data to state management/context
-      console.log("Form submitted:", formData);
+      trackEvent("funnel_data", {
+        step: "manuell",
+        company_name: formData.name,
+        company_street: formData.street,
+        company_zip: formData.zip,
+        company_city: formData.city,
+        company_country: formData.country,
+        company_ust_id: formData.ustId,
+        company_hrb: formData.hrb,
+      });
       router.push("/antrag/zweck");
     }
   };

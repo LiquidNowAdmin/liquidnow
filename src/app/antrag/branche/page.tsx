@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { ArrowLeft, Briefcase, Check } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -18,11 +19,12 @@ const industries = [
 export default function BranchePage() {
   const router = useRouter();
   const [selectedIndustry, setSelectedIndustry] = useState("");
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "branche" }); }, [trackEvent]);
 
   const handleSelect = (value: string) => {
     setSelectedIndustry(value);
-    // TODO: Save industry data
-    console.log("Industry:", value);
+    trackEvent("funnel_data", { step: "branche", industry: value });
 
     // Navigate after short delay for visual feedback
     setTimeout(() => {

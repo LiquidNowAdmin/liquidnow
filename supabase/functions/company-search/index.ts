@@ -149,6 +149,91 @@ async function fetchWithBrowserless(url: string): Promise<string | null> {
 }
 
 /**
+ * Fallback for SPAs without Browserless: fetch JS bundles and extract text content
+ * from JSX children patterns (e.g. children:"Impressum text...")
+ */
+async function extractTextFromSPABundles(html: string, baseUrl: string): Promise<string | null> {
+  const scriptPattern = /<script[^>]*src=["']([^"']+\.js)["'][^>]*>/gi;
+  const bundleUrls: string[] = [];
+  let match;
+
+  while ((match = scriptPattern.exec(html)) !== null) {
+    let scriptUrl = match[1];
+    if (scriptUrl.startsWith('/')) {
+      const urlObj = new URL(baseUrl);
+      scriptUrl = `${urlObj.protocol}//${urlObj.host}${scriptUrl}`;
+    } else if (!scriptUrl.startsWith('http')) {
+      const urlObj = new URL(baseUrl);
+      scriptUrl = `${urlObj.protocol}//${urlObj.host}/${scriptUrl}`;
+    }
+    bundleUrls.push(scriptUrl);
+  }
+
+  if (bundleUrls.length === 0) {
+    console.log('[Company Search] No JS bundles found in HTML');
+    return null;
+  }
+
+  console.log(`[Company Search] Found ${bundleUrls.length} JS bundle(s), extracting text...`);
+
+  const impressumMarkers = ['angaben gemäß', '§ 5 tmg', '§ 5 ddg'];
+
+  for (const bundleUrl of bundleUrls) {
+    try {
+      const bundleResponse = await fetch(bundleUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)' },
+      });
+
+      if (!bundleResponse.ok) continue;
+
+      const bundleText = await bundleResponse.text();
+      console.log(`[Company Search] Fetched bundle: ${bundleUrl} (${bundleText.length} chars)`);
+
+      const lowerBundle = bundleText.toLowerCase();
+      if (!impressumMarkers.some(m => lowerBundle.includes(m))) continue;
+
+      console.log('[Company Search] Bundle contains Impressum content, extracting JSX text...');
+
+      // Extract text content from JSX children:"..." patterns
+      const childrenPattern = /children:\s*["']([^"']{2,500})["']/g;
+      let strMatch;
+      const textContent: { text: string; index: number }[] = [];
+
+      while ((strMatch = childrenPattern.exec(bundleText)) !== null) {
+        const str = strMatch[1];
+        if (str.includes('m.jsx') || str.includes('m.jsxs')) continue;
+        if (str.startsWith(',') || str.startsWith('{')) continue;
+        textContent.push({ text: str, index: strMatch.index });
+      }
+
+      if (textContent.length === 0) continue;
+
+      // Find the Impressum section marker
+      let impressumIdx = -1;
+      for (let i = 0; i < textContent.length; i++) {
+        const lower = textContent[i].text.toLowerCase();
+        if (impressumMarkers.some(m => lower.includes(m))) {
+          impressumIdx = i;
+          break;
+        }
+      }
+
+      if (impressumIdx === -1) continue;
+
+      // Take ~25 strings after the Impressum marker
+      const section = textContent.slice(impressumIdx, impressumIdx + 25);
+      const extractedText = section.map(s => s.text).join('\n');
+      console.log(`[Company Search] Extracted ${section.length} text strings from Impressum section (${extractedText.length} chars)`);
+      return extractedText;
+    } catch (error) {
+      console.error(`[Company Search] Failed to fetch bundle ${bundleUrl}:`, error);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if HTML content looks like a JS-rendered SPA (minimal content)
  */
 function isLikelySPA(html: string): boolean {
@@ -200,9 +285,12 @@ async function extractCompanyDataFromWebsite(
 
     // Step 1: Try normal fetch first
     let html = await fetchWithSimpleRequest(normalizedUrl);
+    const originalHtml = html; // Keep original for SPA bundle fallback
+    let detectedSPA = false;
 
     // Step 2: Check if we need Browserless (SPA/React site)
     if (html && isLikelySPA(html)) {
+      detectedSPA = true;
       console.log('[Company Search] Detected SPA, trying Browserless...');
       const renderedHtml = await fetchWithBrowserless(normalizedUrl);
       if (renderedHtml) {
@@ -229,9 +317,9 @@ async function extractCompanyDataFromWebsite(
       // Try simple fetch first for Impressum
       let impressumHtml = await fetchWithSimpleRequest(impressumUrl);
 
-      // If Impressum also looks like SPA, use Browserless
-      if (impressumHtml && isLikelySPA(impressumHtml)) {
-        console.log('[Company Search] Impressum also SPA, using Browserless...');
+      // If Impressum fetch failed or looks like SPA, use Browserless
+      if (!impressumHtml || isLikelySPA(impressumHtml)) {
+        console.log('[Company Search] Impressum not available or SPA, using Browserless...');
         const renderedImpressum = await fetchWithBrowserless(impressumUrl);
         if (renderedImpressum) {
           impressumHtml = renderedImpressum;
@@ -245,9 +333,19 @@ async function extractCompanyDataFromWebsite(
     }
 
     // Extract relevant text
-    const cleanText = extractRelevantText(html);
+    let cleanText = extractRelevantText(html);
 
-    if (!cleanText || cleanText.length < 100) {
+    // SPA fallback: if content is still too thin, extract text from JS bundles
+    if (detectedSPA && (!cleanText || cleanText.length < 100) && originalHtml) {
+      console.log('[Company Search] SPA content too thin, trying JS bundle extraction...');
+      const bundleText = await extractTextFromSPABundles(originalHtml, normalizedUrl);
+      if (bundleText && bundleText.length >= 50) {
+        cleanText = bundleText;
+        console.log(`[Company Search] Using bundle-extracted text: ${cleanText.length} chars`);
+      }
+    }
+
+    if (!cleanText || cleanText.length < 50) {
       console.error('[Company Search] No relevant content found');
       return null;
     }
@@ -408,6 +506,10 @@ function extractRelevantText(html: string): string {
     'geschäftsführer',
     'vertreten durch',
     'amtsgericht',
+    'anschrift',
+    'adresse',
+    'straße',
+    'str.',
   ];
 
   let bestIndex = -1;
@@ -421,7 +523,7 @@ function extractRelevantText(html: string): string {
   }
 
   if (bestIndex !== -1) {
-    const start = Math.max(0, bestIndex - 300);
+    const start = Math.max(0, bestIndex - 600);
     const end = Math.min(text.length, bestIndex + 2500);
     text = text.substring(start, end);
   } else {

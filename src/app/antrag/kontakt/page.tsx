@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { ArrowLeft, User, Mail, Check, ShieldCheck, Ban, Lock, Loader2, MailCheck } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -10,6 +11,8 @@ import Footer from "@/components/Footer";
 export default function KontaktPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "kontakt" }); }, [trackEvent]);
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,10 +44,10 @@ export default function KontaktPage() {
     if (validateForm()) {
       setIsSubmitting(true);
 
-      // TODO: Submit all funnel data to backend
-      console.log("Final submission:", {
-        firstName,
-        lastName,
+      trackEvent("funnel_data", {
+        step: "kontakt",
+        first_name: firstName,
+        last_name: lastName,
         email,
       });
 

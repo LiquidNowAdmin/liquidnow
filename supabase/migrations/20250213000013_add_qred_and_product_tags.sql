@@ -13,7 +13,7 @@ on conflict do nothing;
 -- Pricing: 0.95%-1.95% monthly fee → ~11.4%-23.4% annualized
 insert into products (id, provider_id, name, type, min_volume, max_volume, min_term_months, max_term_months, interest_rate_from, interest_rate_to, is_active, metadata) values
   ('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000006', 'Geschäftskredit', 'term_loan', 5000, 500000, 1, 36, 11.40, 23.40, true,
-   '{"processing_time_days": 1, "requires_collateral": false, "personal_guarantee": true, "fee_model": "0.95%-1.95% Gebuehr/Monat", "fees": "keine zusaetzlichen", "note": "Auszahlung innerhalb von 24 Stunden", "highlight": "Schnellste Auszahlung", "tags": ["24h Auszahlung", "Keine Mindestlaufzeit", "Digital & schnell", "Banklizenz"], "trustpilot": 4.9}')
+   '{"processing_time_days": 1, "requires_collateral": false, "personal_guarantee": true, "fee_model": "0.95%-1.95% Gebuehr/Monat", "fees": "keine zusaetzlichen", "note": "Auszahlung innerhalb von 24 Stunden", "highlight": "24h Auszahlung", "tags": ["24h Auszahlung", "Keine Mindestlaufzeit", "Digital & schnell", "Banklizenz"], "trustpilot": 4.9}')
 on conflict do nothing;
 
 -- ===== TENANT PROVIDER SETTING FOR QRED =====

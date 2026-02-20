@@ -13,13 +13,8 @@ interface CompanyData {
   website?: string;
 }
 
-interface SearchResponse {
-  success: boolean;
-  data: CompanyData;
-  error?: string;
-}
-
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const BROWSERLESS_URL = 'https://chrome.browserless.io/content';
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,6 +60,198 @@ export async function POST(req: NextRequest) {
   }
 }
 
+async function fetchWithBrowserless(url: string): Promise<string | null> {
+  const browserlessApiKey = process.env.BROWSERLESS_API_KEY;
+  if (!browserlessApiKey) {
+    console.log('[Company Search] BROWSERLESS_API_KEY not set, skipping headless rendering');
+    return null;
+  }
+
+  console.log(`[Company Search] Fetching with Browserless: ${url}`);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${BROWSERLESS_URL}?token=${browserlessApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        gotoOptions: {
+          waitUntil: 'networkidle2',
+          timeout: 20000,
+        },
+        waitForSelector: {
+          selector: 'body',
+          timeout: 10000,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Company Search] Browserless error: ${response.status}`, errorText);
+      return null;
+    }
+
+    const html = await response.text();
+    console.log(`[Company Search] Browserless returned ${html.length} chars`);
+    return html;
+  } catch (error) {
+    console.error('[Company Search] Browserless fetch error:', error);
+    return null;
+  }
+}
+
+async function fetchWithSimpleRequest(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.error(`[Company Search] Simple fetch failed: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    console.log(`[Company Search] Simple fetch returned ${html.length} chars`);
+    return html;
+  } catch (error) {
+    console.error('[Company Search] Simple fetch error:', error);
+    return null;
+  }
+}
+
+/**
+ * Fallback for SPAs without Browserless: fetch JS bundles and extract text content
+ * from JSX children patterns (e.g. children:"Impressum text...")
+ */
+async function extractTextFromSPABundles(html: string, baseUrl: string): Promise<string | null> {
+  const scriptPattern = /<script[^>]*src=["']([^"']+\.js)["'][^>]*>/gi;
+  const bundleUrls: string[] = [];
+  let match;
+
+  while ((match = scriptPattern.exec(html)) !== null) {
+    let scriptUrl = match[1];
+    if (scriptUrl.startsWith('/')) {
+      const urlObj = new URL(baseUrl);
+      scriptUrl = `${urlObj.protocol}//${urlObj.host}${scriptUrl}`;
+    } else if (!scriptUrl.startsWith('http')) {
+      const urlObj = new URL(baseUrl);
+      scriptUrl = `${urlObj.protocol}//${urlObj.host}/${scriptUrl}`;
+    }
+    bundleUrls.push(scriptUrl);
+  }
+
+  if (bundleUrls.length === 0) {
+    console.log('[Company Search] No JS bundles found in HTML');
+    return null;
+  }
+
+  console.log(`[Company Search] Found ${bundleUrls.length} JS bundle(s), extracting text...`);
+
+  const impressumMarkers = ['angaben gemäß', '§ 5 tmg', '§ 5 ddg'];
+
+  for (const bundleUrl of bundleUrls) {
+    try {
+      const bundleResponse = await fetch(bundleUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)' },
+      });
+
+      if (!bundleResponse.ok) continue;
+
+      const bundleText = await bundleResponse.text();
+      console.log(`[Company Search] Fetched bundle: ${bundleUrl} (${bundleText.length} chars)`);
+
+      const lowerBundle = bundleText.toLowerCase();
+      if (!impressumMarkers.some(m => lowerBundle.includes(m))) continue;
+
+      console.log('[Company Search] Bundle contains Impressum content, extracting JSX text...');
+
+      // Extract text content from JSX children:"..." patterns
+      const childrenPattern = /children:\s*["']([^"']{2,500})["']/g;
+      let strMatch;
+      const textContent: { text: string; index: number }[] = [];
+
+      while ((strMatch = childrenPattern.exec(bundleText)) !== null) {
+        const str = strMatch[1];
+        // Skip JSX/code fragments
+        if (str.includes('m.jsx') || str.includes('m.jsxs')) continue;
+        if (str.startsWith(',') || str.startsWith('{')) continue;
+        textContent.push({ text: str, index: strMatch.index });
+      }
+
+      if (textContent.length === 0) continue;
+
+      // Find the Impressum section marker
+      let impressumIdx = -1;
+      for (let i = 0; i < textContent.length; i++) {
+        const lower = textContent[i].text.toLowerCase();
+        if (impressumMarkers.some(m => lower.includes(m))) {
+          impressumIdx = i;
+          break;
+        }
+      }
+
+      if (impressumIdx === -1) continue;
+
+      // Take ~25 strings after the Impressum marker (covers address, contact, legal info)
+      const section = textContent.slice(impressumIdx, impressumIdx + 25);
+      const extractedText = section.map(s => s.text).join('\n');
+      console.log(`[Company Search] Extracted ${section.length} text strings from Impressum section (${extractedText.length} chars)`);
+      return extractedText;
+    } catch (error) {
+      console.error(`[Company Search] Failed to fetch bundle ${bundleUrl}:`, error);
+    }
+  }
+
+  return null;
+}
+
+function isLikelySPA(html: string): boolean {
+  const cleanText = extractRelevantText(html);
+
+  if (cleanText.length < 150) {
+    console.log(`[Company Search] Content too short (${cleanText.length} chars), likely SPA`);
+    return true;
+  }
+
+  const spaIndicators = [
+    '<div id="root"></div>',
+    '<div id="root">',
+    '<div id="app"></div>',
+    '<div id="app">',
+    '<div id="__next"></div>',
+    'window.__INITIAL_STATE__',
+    'window.__NUXT__',
+  ];
+
+  const lowerHtml = html.toLowerCase();
+  for (const indicator of spaIndicators) {
+    if (lowerHtml.includes(indicator.toLowerCase())) {
+      if (cleanText.length < 500) {
+        console.log(`[Company Search] SPA indicator found: ${indicator}, content thin (${cleanText.length} chars)`);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 async function extractCompanyDataFromWebsite(
   website: string,
   apiKey: string
@@ -78,54 +265,68 @@ async function extractCompanyDataFromWebsite(
 
     console.log(`[Company Search] Fetching ${normalizedUrl}...`);
 
-    // Fetch website with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    // Step 1: Try normal fetch first
+    let html = await fetchWithSimpleRequest(normalizedUrl);
+    const originalHtml = html; // Keep original for SPA bundle fallback
+    let detectedSPA = false;
 
-    let websiteResponse: Response;
-    try {
-      websiteResponse = await fetch(normalizedUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
-        },
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
+    // Step 2: Check if we need Browserless (SPA/React site)
+    if (html && isLikelySPA(html)) {
+      detectedSPA = true;
+      console.log('[Company Search] Detected SPA, trying Browserless...');
+      const renderedHtml = await fetchWithBrowserless(normalizedUrl);
+      if (renderedHtml) {
+        html = renderedHtml;
+      }
     }
 
-    if (!websiteResponse.ok) {
-      console.error(`[Company Search] Failed to fetch: ${websiteResponse.status}`);
+    if (!html) {
+      // Last resort: try Browserless directly
+      console.log('[Company Search] Normal fetch failed, trying Browserless directly...');
+      html = await fetchWithBrowserless(normalizedUrl);
+    }
+
+    if (!html) {
+      console.error('[Company Search] Could not fetch website content');
       return null;
     }
-
-    let html = await websiteResponse.text();
-    console.log(`[Company Search] Fetched ${html.length} chars`);
 
     // Try to find and fetch Impressum page
     const impressumUrl = findImpressumUrl(html, normalizedUrl);
     if (impressumUrl) {
       console.log(`[Company Search] Found Impressum: ${impressumUrl}`);
-      try {
-        const impressumResponse = await fetch(impressumUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; LiqiNow-Bot/1.0)',
-          },
-        });
 
-        if (impressumResponse.ok) {
-          html = await impressumResponse.text();
-          console.log(`[Company Search] Fetched Impressum: ${html.length} chars`);
+      let impressumHtml = await fetchWithSimpleRequest(impressumUrl);
+
+      // If Impressum fetch failed or looks like SPA, use Browserless
+      if (!impressumHtml || isLikelySPA(impressumHtml)) {
+        console.log('[Company Search] Impressum not available or SPA, using Browserless...');
+        const renderedImpressum = await fetchWithBrowserless(impressumUrl);
+        if (renderedImpressum) {
+          impressumHtml = renderedImpressum;
         }
-      } catch (error) {
-        console.log('[Company Search] Failed to fetch Impressum, using main page');
+      }
+
+      if (impressumHtml) {
+        html = impressumHtml;
+        console.log(`[Company Search] Using Impressum content: ${html.length} chars`);
       }
     }
 
     // Extract relevant text
-    const cleanText = extractRelevantText(html);
+    let cleanText = extractRelevantText(html);
 
-    if (!cleanText || cleanText.length < 100) {
+    // SPA fallback: if content is still too thin, extract text from JS bundles
+    if (detectedSPA && (!cleanText || cleanText.length < 100) && originalHtml) {
+      console.log('[Company Search] SPA content too thin, trying JS bundle extraction...');
+      const bundleText = await extractTextFromSPABundles(originalHtml, normalizedUrl);
+      if (bundleText && bundleText.length >= 50) {
+        cleanText = bundleText;
+        console.log(`[Company Search] Using bundle-extracted text: ${cleanText.length} chars`);
+      }
+    }
+
+    if (!cleanText || cleanText.length < 50) {
       console.error('[Company Search] No relevant content found');
       return null;
     }
@@ -257,6 +458,10 @@ function extractRelevantText(html: string): string {
     'geschäftsführer',
     'vertreten durch',
     'amtsgericht',
+    'anschrift',
+    'adresse',
+    'straße',
+    'str.',
   ];
 
   let bestIndex = -1;
@@ -270,7 +475,7 @@ function extractRelevantText(html: string): string {
   }
 
   if (bestIndex !== -1) {
-    const start = Math.max(0, bestIndex - 300);
+    const start = Math.max(0, bestIndex - 600);
     const end = Math.min(text.length, bestIndex + 2500);
     text = text.substring(start, end);
   } else {

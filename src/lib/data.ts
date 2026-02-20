@@ -3,22 +3,29 @@ export const howItWorksSteps = [
     step: 1,
     icon: "Zap" as const,
     iconColor: "gold" as const,
-    headline: "Website eingeben",
-    body: "Gib deine Firmen-Website ein. Unsere KI extrahiert automatisch alle relevanten Unternehmensdaten aus dem Impressum.",
+    headline: "Finanzierungswunsch angeben",
+    body: "Beschreiben Sie Ihren Bedarf – Betrag, Zweck und Laufzeit. In wenigen Klicks ist Ihre Anfrage fertig.",
   },
   {
     step: 2,
     icon: "Waves" as const,
     iconColor: "turquoise" as const,
     headline: "Angebote vergleichen",
-    body: "Erhalte in Echtzeit passende Finanzierungsangebote von geprüften Partnern – mit allen Konditionen transparent dargestellt.",
+    body: "Erhalten Sie in Echtzeit passende Finanzierungsangebote von geprüften Partnern – alle Konditionen transparent auf einen Blick.",
   },
   {
     step: 3,
+    icon: "FileUp" as const,
+    iconColor: "turquoise" as const,
+    headline: "Unterlagen hochladen",
+    body: "Laden Sie die benötigten Dokumente sicher hoch. Wir leiten alles direkt an den Anbieter weiter.",
+  },
+  {
+    step: 4,
     icon: "Banknote" as const,
     iconColor: "turquoise" as const,
-    headline: "Direkt abschließen",
-    body: "Wähle das beste Angebot und schließe direkt mit der Bank ab. Wir vermitteln nur – du behältst die volle Kontrolle.",
+    headline: "Auszahlung erhalten",
+    body: "Nach Prüfung und Zusage wird der Betrag direkt auf Ihr Geschäftskonto ausgezahlt.",
   },
 ];
 
@@ -65,23 +72,29 @@ export const targetAudienceItems = [
 export const testimonials = [
   {
     quote:
-      "Endlich keine versteckten Gebühren mehr! In 4 Minuten hatte ich 3 Angebote auf dem Tisch – ohne Anruf.",
-    author: "Sarah M.",
-    company: "E-Commerce",
+      "Kein Vertrieb, keine Papierstapel. Einfach online vergleichen und selbst entscheiden. In 2 Tagen war das Geld auf dem Konto.",
+    author: "Michael K.",
+    company: "Schreinerei Köhler, München",
+    useCase: "Maschinenfinanzierung",
+    image: "/testimonial-handwerker.png",
     stars: 5,
   },
   {
     quote:
       "Transparent, schnell, von überall nutzbar. Genau so sollte Unternehmensfinanzierung heute funktionieren.",
-    author: "Tim R.",
-    company: "Einzelhandel",
+    author: "Jan F.",
+    company: "Kreativagentur FLUX, Berlin",
+    useCase: "Wachstumsfinanzierung",
+    image: "/testimonial-marketing.png",
     stars: 5,
   },
   {
     quote:
-      "Kein Vertrieb, keine Papierstapel. Einfach online vergleichen und selbst entscheiden.",
-    author: "Michael K.",
-    company: "Handwerk",
+      "Endlich keine versteckten Gebühren mehr! In 4 Minuten hatte ich 3 Angebote auf dem Tisch – ohne Anruf.",
+    author: "Heinrich B.",
+    company: "Hof Brinkmann, Niedersachsen",
+    useCase: "Saisonfinanzierung",
+    image: "/testimonial-bauer.png",
     stars: 5,
   },
 ];

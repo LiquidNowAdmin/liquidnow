@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
+import { TrackingProvider } from "@/lib/tracking";
 
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["300", "400", "600", "700"],
   variable: "--font-poppins",
   display: "swap",
 });
@@ -48,7 +49,9 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${inter.variable} antialiased`}
       >
-        {children}
+        <TrackingProvider>
+          {children}
+        </TrackingProvider>
         <CookieBanner />
       </body>
     </html>

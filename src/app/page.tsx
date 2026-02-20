@@ -2,31 +2,24 @@ import {
   Zap,
   Waves,
   Banknote,
-  Smartphone,
-  ShieldCheck,
+  FileUp,
   Check,
-  Star,
-  Quote,
   ShoppingCart,
   Clock,
   Rocket,
   MousePointerClick,
-  Target,
-  Users,
-  Award,
-  Scale,
 } from "lucide-react";
 import Image from "next/image";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import AnimateOnScroll from "@/components/AnimateOnScroll";
 import FaqItem from "@/components/FaqItem";
+import CountUp from "@/components/CountUp";
+import WaveText from "@/components/WaveText";
+import ScrollWaves from "@/components/ScrollWaves";
 import FunnelWidget from "@/components/FunnelWidget";
 import {
   howItWorksSteps,
-  valueProps,
-  targetAudienceItems,
-  testimonials,
   faqItems,
   partnerLogos,
 } from "@/lib/data";
@@ -35,8 +28,7 @@ const iconMap = {
   Zap,
   Waves,
   Banknote,
-  Smartphone,
-  ShieldCheck,
+  FileUp,
 } as const;
 
 export default function Home() {
@@ -192,340 +184,169 @@ export default function Home() {
           </div>
         </section>
 
-        {/* === WHY LIQUIDNOW === */}
+        {/* === ABOUT / STATS === */}
         <section className="section bg-white border-t border-gray-100">
           <div className="container">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              {/* Left: Heading + USP Grid */}
-              <div>
-                <AnimateOnScroll>
-                  <div className="mb-12">
-                    <h2 className="text-3xl font-bold text-dark mb-3 md:text-4xl">Warum „Vergleichsportale" in Wirklichkeit Strukturvertriebe sind</h2>
-                    <p className="text-lg text-subtle">Viele sogenannte Kreditplattformen positionieren sich als neutrale Vergleichsportale – dabei arbeiten sie mit eigenen Vertriebsteams, die hohe Provisionen kassieren und Konditionen intransparent halten. <strong>LiquiNow ist anders: keine Vertriebsmannschaft, keine Beratungsprovision, keine Gatekeeping-Mechanismen.</strong></p>
-                  </div>
-                </AnimateOnScroll>
+            <div className="relative">
+              {/* Einstein Background – left side, spanning full height */}
+              <div
+                className="absolute right-0 top-0 bottom-0 hidden lg:flex items-end pointer-events-none"
+                style={{ maskImage: 'linear-gradient(to bottom, black 40%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 95%)' }}
+              >
+                <Image
+                  src="/einstein.png"
+                  alt=""
+                  width={400}
+                  height={500}
+                  className="h-full w-auto object-contain"
+                  aria-hidden="true"
+                />
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Content */}
+              <div className="relative z-10">
                 <AnimateOnScroll>
-                  <div className="text-center md:text-left">
-                    <div className="icon-box icon-box-lg icon-box-turquoise mx-auto md:mx-0 mb-4">
-                      <Scale className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-bold text-dark mb-2">100% Unabhängig</h3>
-                    <p className="text-subtle text-sm leading-relaxed">
-                      Neutrale Vergleichsplattform ohne Interessenskonflikt.
-                      Wir empfehlen das beste Angebot für Sie, nicht das mit der höchsten Provision.
-                    </p>
-                  </div>
-                </AnimateOnScroll>
-
-                <AnimateOnScroll delay={0.1}>
-                  <div className="text-center md:text-left">
-                    <div className="icon-box icon-box-lg icon-box-turquoise mx-auto md:mx-0 mb-4">
-                      <Target className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-bold text-dark mb-2">Sie entscheiden</h3>
-                    <p className="text-subtle text-sm leading-relaxed">
-                      100% digital & selbstbestimmt. Keine Verkaufsanrufe, kein Druck.
-                      Sie vergleichen in Ruhe und wählen das beste Angebot.
+                  <div className="max-w-2xl">
+                    <span className="badge badge-gold mb-6">L = IQ²</span>
+                    <h2 className="text-3xl font-bold text-dark md:text-5xl leading-tight">
+                      Finanzierung in Lichtgeschwindigkeit.
+                    </h2>
+                    <blockquote className="mt-6 border-l-4 border-turquoise pl-5 text-xl md:text-2xl italic text-subtle">
+                      &bdquo;Alles ist relativ – außer Ihr Zins.&ldquo;
+                      <footer className="mt-2 text-base not-italic text-dark/60">– Albert Einstein (fast)</footer>
+                    </blockquote>
+                    <p className="text-lg text-subtle mt-6 leading-relaxed">
+                      Unternehmer brauchen Liquidität, wenn es drauf ankommt – nicht
+                      nach drei Bankgesprächen und sechs Wochen Wartezeit. Klassische
+                      Kreditvermittlung passt nicht mehr zur Realität von KMU.
+                      L<span className="text-turquoise font-semibold">IQ</span>uiNow
+                      bringt alle Anbieter auf eine Plattform: vergleichen, auswählen,
+                      abschließen – der IQ in Ihrer Liquidität.
                     </p>
                   </div>
                 </AnimateOnScroll>
 
                 <AnimateOnScroll delay={0.2}>
-                  <div className="text-center md:text-left">
-                    <div className="icon-box icon-box-lg icon-box-turquoise mx-auto md:mx-0 mb-4">
-                      <Award className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-bold text-dark mb-2">Transparent & Fair</h3>
-                    <p className="text-subtle text-sm leading-relaxed">
-                      Keine Beratungskosten für Sie. Wir finanzieren uns über Bankprovisionen –
-                      Sie zahlen nichts extra. Anders als Vermittler erheben wir keine zusätzlichen Gebühren.
-                    </p>
-                  </div>
-                </AnimateOnScroll>
-
-                <AnimateOnScroll delay={0.3}>
-                  <div className="text-center md:text-left">
-                    <div className="icon-box icon-box-lg icon-box-turquoise mx-auto md:mx-0 mb-4">
-                      <Users className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-bold text-dark mb-2">Auf Ihrer Seite</h3>
-                    <p className="text-subtle text-sm leading-relaxed">
-                      Wir arbeiten für Sie, nicht für Banken.
-                      Unser Ziel: Das beste Finanzierungsangebot für Ihr Unternehmen.
-                    </p>
+                  <div className="mt-10">
+                    <a href="/antrag/kreditart" className="btn btn-primary btn-lg">
+                      Jetzt kostenlos vergleichen &rarr;
+                    </a>
                   </div>
                 </AnimateOnScroll>
               </div>
-              </div>
-
-              {/* Right: Image */}
-              <AnimateOnScroll delay={0.2}>
-                <div className="relative rounded-2xl overflow-hidden shadow-lg aspect-[3/4] max-h-[650px]">
-                  <Image
-                    src="/kmu-einzelhandel-betriebsmittelkredit.png"
-                    alt="Geschäftsführerin im Einzelhandel nutzt digitalen Kreditvergleich für schnelle Betriebsmittelfinanzierung"
-                    width={600}
-                    height={750}
-                    className="w-full h-full object-cover object-top"
-                    priority={false}
-                    title="KMU Betriebsmittelkredit für Einzelhandel und E-Commerce"
-                  />
-                </div>
-              </AnimateOnScroll>
             </div>
           </div>
         </section>
 
         {/* === HOW IT WORKS === */}
-        <section id="so-funktionierts" className="section bg-white">
-          <div className="container">
+        <section id="so-funktionierts" className="section relative overflow-hidden bg-gold">
+
+          {/* Abstract brush stroke – breaks out of container to reach right screen edge */}
+          <AnimateOnScroll>
+            <svg className="brush-stroke hidden lg:block absolute top-[36%] left-0 w-full h-24 z-1" viewBox="0 0 1600 80" fill="none" preserveAspectRatio="none">
+              <defs>
+                <filter id="brush-edge" x="-5%" y="-40%" width="110%" height="180%">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="4" result="noise" seed="3" />
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+                </filter>
+              </defs>
+              <path
+                d="M0,20 C0,8 10,4 30,10 C150,14 300,18 500,22 C650,26 800,16 950,14 C1100,10 1200,18 1300,24 C1380,28 1440,32 1500,36 C1540,38 1570,39 1600,40 L1600,40 C1570,41 1540,42 1500,44 C1440,48 1380,52 1300,56 C1200,60 1100,68 950,66 C800,64 650,54 500,58 C300,62 150,66 30,68 C10,72 0,66 0,54 Z"
+                fill="#00CED1"
+                filter="url(#brush-edge)"
+              />
+            </svg>
+          </AnimateOnScroll>
+
+          <div className="container relative z-10">
             <AnimateOnScroll>
               <div className="section-header">
-                <h2>So funktioniert&apos;s</h2>
-                <p>In 3 einfachen Schritten zu Ihrer Finanzierung</p>
+                <h2><WaveText text="Läuft bei Ihnen." /></h2>
+                <p>So einfach kommen Sie an Liquidität.</p>
               </div>
             </AnimateOnScroll>
 
-            <div className="relative grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
-              <div className="gradient-line absolute top-16 left-[16.67%] right-[16.67%] hidden h-0.5 md:block" />
-
-              {howItWorksSteps.map((step, index) => {
-                const Icon = iconMap[step.icon];
-                return (
-                  <AnimateOnScroll key={step.step} delay={index * 0.15}>
-                    <div className="step-card">
-                      <div className="step-number">{step.step}</div>
-
-                      <div
-                        className={`icon-box icon-box-lg mb-6 ${
-                          step.iconColor === "gold"
-                            ? "icon-box-gold"
-                            : "icon-box-turquoise"
-                        }`}
-                      >
-                        <Icon
-                          className={`h-10 w-10 ${
-                            step.iconColor === "gold"
-                              ? "text-gold"
-                              : "text-turquoise"
-                          }`}
-                        />
+            <div className="relative mt-16">
+              <div className="relative z-10 grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
+                {howItWorksSteps.map((step, index) => (
+                    <AnimateOnScroll key={step.step} delay={index * 0.2}>
+                      <div className="text-center">
+                        <span className="text-5xl font-bold text-white mb-3 block">{step.step}</span>
+                        <h3 className="heading-section text-white">{step.headline}</h3>
+                        <p className="text-subtle mt-2 max-w-xs mx-auto">{step.body}</p>
                       </div>
-
-                      <h3 className="heading-section">{step.headline}</h3>
-                      <p className="text-body mt-3 max-w-xs">{step.body}</p>
-                    </div>
-                  </AnimateOnScroll>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* === VALUE PROPS === */}
-        <section id="vorteile" className="section bg-sand-beige/30">
-          <div className="container">
-            <AnimateOnScroll>
-              <div className="section-header">
-                <h2>Ihre Vorteile</h2>
-                <p>Warum Unternehmer LiquiNow wählen</p>
-              </div>
-            </AnimateOnScroll>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-              {valueProps.map((prop, index) => {
-                const Icon = iconMap[prop.icon];
-                return (
-                  <AnimateOnScroll key={prop.headline} delay={index * 0.15}>
-                    <div className="card card-hover">
-                      <div
-                        className={`icon-box icon-box-sm mb-6 ${
-                          prop.iconColor === "gold"
-                            ? "icon-box-gold"
-                            : "icon-box-turquoise"
-                        }`}
-                      >
-                        <Icon
-                          className={`h-7 w-7 ${
-                            prop.iconColor === "gold"
-                              ? "text-gold"
-                              : "text-turquoise"
-                          }`}
-                        />
-                      </div>
-                      <h3 className="heading-section">{prop.headline}</h3>
-                      <p className="text-body mt-3">{prop.body}</p>
-                    </div>
-                  </AnimateOnScroll>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* === TARGET AUDIENCE === */}
-        <section id="fuer-wen" className="section bg-white">
-          <div className="container">
-            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-              <AnimateOnScroll>
-                <div>
-                  <h2 className="heading-hero !text-3xl md:!text-4xl">
-                    Für wen ist LiqiNow?
-                  </h2>
-                  <p className="text-sub mt-4">
-                    Speziell entwickelt für E-Commerce & Handel
-                  </p>
-                  <ul className="mt-8 space-y-4">
-                    {targetAudienceItems.map((item) => (
-                      <li key={item} className="check-item">
-                        <div className="check-icon">
-                          <Check className="h-4 w-4 text-turquoise" />
-                        </div>
-                        <span className="text-dark">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <a href="#starten" className="btn btn-primary btn-lg mt-8">
-                    Jetzt kostenlos starten
-                  </a>
-                </div>
-              </AnimateOnScroll>
-
-              <AnimateOnScroll delay={0.2}>
-                <div className="gradient-bg-soft relative overflow-hidden rounded-2xl p-12 md:p-16">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <Waves className="h-16 w-16 text-turquoise/40 mb-4" />
-                    <p className="text-lg font-semibold text-dark/60">
-                      E-Commerce & Handel
-                    </p>
-                    <p className="mt-2 text-sm text-subtle">
-                      €10.000 – €500.000 Liquidität
-                    </p>
-                    <div className="mt-6 grid grid-cols-2 gap-4 text-center">
-                      <div className="rounded-lg bg-white/80 px-4 py-3 shadow-card">
-                        <p className="text-2xl font-bold text-turquoise">60s</p>
-                        <p className="text-xs text-subtle">Antrag</p>
-                      </div>
-                      <div className="rounded-lg bg-white/80 px-4 py-3 shadow-card">
-                        <p className="text-2xl font-bold text-gold">48h</p>
-                        <p className="text-xs text-subtle">Auszahlung</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </AnimateOnScroll>
-            </div>
-          </div>
-        </section>
-
-        {/* === PARTNER LOGOS === */}
-        <section id="partner" className="py-16 md:py-20 bg-light-bg">
-          <div className="container">
-            <AnimateOnScroll>
-              <p className="section-label">Vertrauensvolle Partner</p>
-            </AnimateOnScroll>
-
-            <AnimateOnScroll delay={0.1}>
-              <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                {partnerLogos.map((logo) => (
-                  <div key={logo.name} className="partner-logo">
-                    {logo.name}
-                  </div>
+                    </AnimateOnScroll>
                 ))}
               </div>
-            </AnimateOnScroll>
-          </div>
-        </section>
+            </div>
 
-        {/* === TESTIMONIALS === */}
-        <section id="kundenstimmen" className="section bg-white">
-          <div className="container">
-            <AnimateOnScroll>
-              <div className="section-header">
-                <h2>Das sagen unsere Kunden</h2>
-                <p>Echte Erfahrungen von E-Commerce-Unternehmern</p>
+            <AnimateOnScroll delay={0.8}>
+              <div className="text-center mt-12">
+                <a href="/antrag/kreditart" className="btn btn-inverted btn-lg">
+                  Jetzt Angebot erhalten &rarr;
+                </a>
               </div>
             </AnimateOnScroll>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              {testimonials.map((testimonial, index) => (
-                <AnimateOnScroll key={testimonial.author} delay={index * 0.15}>
-                  <div className="testimonial-card">
-                    <Quote className="absolute top-6 right-6 h-8 w-8 text-turquoise/20" />
-
-                    <div className="star-rating">
-                      {Array.from({ length: testimonial.stars }).map((_, i) => (
-                        <Star key={i} className="h-5 w-5 fill-gold text-gold" />
-                      ))}
-                    </div>
-
-                    <p className="text-dark leading-relaxed italic">
-                      &ldquo;{testimonial.quote}&rdquo;
-                    </p>
-
-                    <div className="mt-6 border-t border-border pt-4">
-                      <p className="font-semibold text-dark">{testimonial.author}</p>
-                      <p className="text-sm text-subtle">{testimonial.company}</p>
-                    </div>
-                  </div>
-                </AnimateOnScroll>
-              ))}
-            </div>
           </div>
         </section>
 
         {/* === FAQ === */}
         <section id="faq" className="section bg-light-bg">
-          <div className="container-sm">
-            <AnimateOnScroll>
-              <div className="section-header">
-                <h2>Häufig gestellte Fragen</h2>
-                <p>Alles was Sie wissen müssen</p>
-              </div>
-            </AnimateOnScroll>
+          <div className="container">
+            <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-[1fr_auto]">
+              <div>
+                <AnimateOnScroll>
+                  <div className="section-header lg:text-left">
+                    <h2>Häufig gestellte Fragen</h2>
+                    <p>Alles was Sie wissen müssen</p>
+                  </div>
+                </AnimateOnScroll>
 
-            <AnimateOnScroll delay={0.1}>
-              <div className="card-container">
-                {faqItems.map((item) => (
-                  <FaqItem
-                    key={item.question}
-                    question={item.question}
-                    answer={item.answer}
-                  />
-                ))}
+                <AnimateOnScroll delay={0.1}>
+                  <div className="card-container">
+                    {faqItems.map((item) => (
+                      <FaqItem
+                        key={item.question}
+                        question={item.question}
+                        answer={item.answer}
+                      />
+                    ))}
+                  </div>
+                </AnimateOnScroll>
               </div>
-            </AnimateOnScroll>
+
+              <AnimateOnScroll delay={0.2}>
+                <div className="relative rounded-2xl overflow-hidden shadow-lg hidden lg:block max-w-xs">
+                  <Image
+                    src="/kmu-einzelhandel-betriebsmittelkredit.png"
+                    alt="Unternehmerin am Laptop"
+                    width={320}
+                    height={420}
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
+              </AnimateOnScroll>
+            </div>
           </div>
         </section>
 
         {/* === FINAL CTA === */}
         <section
           id="starten"
-          className="gradient-cta relative py-20 md:py-28 overflow-hidden"
+          className="relative py-20 md:py-28 overflow-hidden bg-gold"
         >
-          <div className="absolute bottom-0 left-0 w-full opacity-10">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="w-full">
-              <path
-                fill="#ffffff"
-                d="M0,224L48,213.3C96,203,192,181,288,186.7C384,192,480,224,576,218.7C672,213,768,171,864,165.3C960,160,1056,192,1152,197.3C1248,203,1344,181,1392,170.7L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-              />
-            </svg>
-          </div>
-
           <div className="relative z-10 mx-auto max-w-3xl px-4 text-center md:px-8">
             <AnimateOnScroll>
-              <h2 className="font-heading text-3xl font-bold text-white md:text-5xl">
+              <h2 className="font-heading text-3xl font-bold text-dark md:text-5xl">
                 Bereit für schnelle Liquidität?
               </h2>
-              <p className="mt-6 text-lg text-white/90 md:text-xl">
+              <p className="mt-6 text-lg text-dark/80 md:text-xl">
                 Starten Sie jetzt Ihren kostenlosen Antrag – in nur 60 Sekunden.
               </p>
-              <a href="#" className="btn btn-inverted btn-lg mt-8">
+              <a href="/antrag/kreditart" className="btn btn-inverted btn-lg mt-8">
                 Jetzt kostenlos starten &rarr;
               </a>
-              <p className="mt-6 text-sm text-white/70">
+              <p className="mt-6 text-sm text-dark/50">
                 100% kostenlos · Unverbindlich · Keine SCHUFA-Auswirkung
               </p>
             </AnimateOnScroll>

@@ -2,34 +2,38 @@
 
 import { useState, useEffect } from "react";
 import { useTracking } from "@/lib/tracking";
-import { ArrowLeft, Building2, User, Users, Check } from "lucide-react";
+import { ArrowLeft, RefreshCw, Calendar, Check } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 
-const legalForms = [
-  { id: "gmbh", label: "GmbH", icon: Building2 },
-  { id: "ug", label: "UG (haftungsbeschränkt)", icon: Building2 },
-  { id: "einzelunternehmen", label: "Einzelunternehmen", icon: User },
-  { id: "gbr", label: "GbR", icon: Users },
-  { id: "ag", label: "AG", icon: Building2 },
-  { id: "kg", label: "KG", icon: Building2 },
+const creditTypes = [
+  {
+    id: "kreditlinie",
+    label: "Kreditlinie",
+    description: "Revolvierende Nutzung, z.B. für Wareneinkauf oder Liquiditätspuffer",
+    icon: RefreshCw,
+  },
+  {
+    id: "darlehen",
+    label: "Darlehen",
+    description: "Feste Rückzahlungsraten über eine vereinbarte Laufzeit",
+    icon: Calendar,
+  },
 ];
 
-export default function RechtsformPage() {
+export default function KreditartPage() {
   const router = useRouter();
-  const [legalForm, setLegalForm] = useState("");
+  const [creditType, setCreditType] = useState("");
   const { trackEvent } = useTracking();
-  useEffect(() => { trackEvent("funnel_step", { step: "rechtsform" }); }, [trackEvent]);
+  useEffect(() => { trackEvent("funnel_step", { step: "kreditart" }); }, [trackEvent]);
 
   const handleSelect = (value: string) => {
-    setLegalForm(value);
-    trackEvent("funnel_data", { step: "rechtsform", legal_form: value });
-
-    // Navigate after short delay for visual feedback
+    setCreditType(value);
+    trackEvent("funnel_data", { step: "kreditart", credit_type: value });
     setTimeout(() => {
-      router.push("/antrag");
+      router.push("/antrag/rechtsform");
     }, 400);
   };
 
@@ -48,7 +52,7 @@ export default function RechtsformPage() {
               <span className="text-sm font-medium">Zurück</span>
             </Link>
             <Logo size="md" />
-            <div className="w-20" /> {/* Spacer for centering */}
+            <div className="w-20" />
           </div>
         </div>
       </header>
@@ -68,46 +72,49 @@ export default function RechtsformPage() {
           </div>
         </div>
 
-        {/* Content on top */}
+        {/* Content */}
         <div className="relative z-10 container mx-auto px-4">
           <div className="mx-auto max-w-2xl">
-            {/* Title */}
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-dark mb-3">
-                Welche Rechtsform hat Ihr Unternehmen?
+                Welche Art von Finanzierung benötigen Sie?
               </h1>
               <p className="text-lg text-subtle">
-                Wählen Sie Ihre Unternehmensform aus
+                Wählen Sie die passende Kreditart für Ihr Vorhaben
               </p>
             </div>
 
-            {/* Form Card */}
             <form onSubmit={handleSubmit} className="card p-6 sm:p-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {legalForms.map((form) => {
-                  const Icon = form.icon;
+              <div className="grid grid-cols-1 gap-3">
+                {creditTypes.map((type) => {
+                  const Icon = type.icon;
                   return (
-                    <label key={form.id} className="block cursor-pointer">
+                    <label key={type.id} className="block cursor-pointer">
                       <input
                         type="radio"
-                        name="legalForm"
-                        value={form.id}
-                        checked={legalForm === form.id}
+                        name="creditType"
+                        value={type.id}
+                        checked={creditType === type.id}
                         onChange={(e) => handleSelect(e.target.value)}
                         className="sr-only"
                       />
                       <div
                         className={`funnel-radio-option ${
-                          legalForm === form.id ? "funnel-radio-option-selected" : ""
+                          creditType === type.id ? "funnel-radio-option-selected" : ""
                         }`}
                       >
                         <div className="funnel-icon-badge">
                           <Icon className="h-5 w-5 text-turquoise" />
                         </div>
-                        <span className="text-base font-medium flex-1 text-dark">
-                          {form.label}
-                        </span>
-                        {legalForm === form.id && (
+                        <div className="flex-1">
+                          <span className="text-base font-medium text-dark block">
+                            {type.label}
+                          </span>
+                          <span className="text-sm text-subtle">
+                            {type.description}
+                          </span>
+                        </div>
+                        {creditType === type.id && (
                           <Check className="h-5 w-5 text-turquoise shrink-0" />
                         )}
                       </div>
@@ -116,11 +123,10 @@ export default function RechtsformPage() {
                 })}
               </div>
 
-              {/* Submit Button */}
               <div className="mt-8">
                 <button
                   type="submit"
-                  disabled={!legalForm}
+                  disabled={!creditType}
                   className="btn-cta-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Weiter &rarr;

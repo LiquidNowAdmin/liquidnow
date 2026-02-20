@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { ArrowLeft, Waves, Check, ShoppingCart, TrendingUp, Rocket, Megaphone, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -18,11 +19,12 @@ const loanPurposes = [
 export default function ZweckPage() {
   const router = useRouter();
   const [selectedPurpose, setSelectedPurpose] = useState<string>("");
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "zweck" }); }, [trackEvent]);
 
   const handleSelect = (value: string) => {
     setSelectedPurpose(value);
-    // TODO: Save data and navigate to next step
-    console.log("Loan purpose selected:", value);
+    trackEvent("funnel_data", { step: "zweck", loan_purpose: value });
 
     // Navigate after short delay for visual feedback
     setTimeout(() => {

@@ -11,17 +11,6 @@ const bankResults = [
   { name: "HandelsBank", rate: "4,1%", best: false },
 ];
 
-const termOptions = [
-  { value: 0, label: "Kreditlinie (variabel)", shortLabel: "Variabel", months: null },
-  { value: 1, label: "3 Monate", shortLabel: "3M", months: 3 },
-  { value: 2, label: "6 Monate", shortLabel: "6M", months: 6 },
-  { value: 3, label: "12 Monate", shortLabel: "12M", months: 12 },
-  { value: 4, label: "24 Monate", shortLabel: "24M", months: 24 },
-  { value: 5, label: "36 Monate", shortLabel: "36M", months: 36 },
-  { value: 6, label: "48 Monate", shortLabel: "48M", months: 48 },
-  { value: 7, label: "60 Monate (5 Jahre)", shortLabel: "5J", months: 60 },
-];
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -33,16 +22,9 @@ function formatCurrency(value: number): string {
 
 export default function FunnelWidget() {
   const [amount, setAmount] = useState(50000);
-  const [termValue, setTermValue] = useState(3); // Default: 12 Monate
-
   const min = 10000;
   const max = 500000;
   const percentage = ((amount - min) / (max - min)) * 100;
-
-  const termMin = 0;
-  const termMax = termOptions.length - 1;
-  const termPercentage = (termValue / termMax) * 100;
-  const selectedTerm = termOptions[termValue];
 
   return (
     <div className="funnel-widget">
@@ -72,30 +54,6 @@ export default function FunnelWidget() {
           <div className="funnel-slider-labels">
             <span>{formatCurrency(min)}</span>
             <span>{formatCurrency(max)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Term Slider */}
-      <div className="funnel-field">
-        <label className="funnel-label">Laufzeit</label>
-        <div className="funnel-amount">{selectedTerm.label}</div>
-        <div className="funnel-slider-wrap">
-          <input
-            type="range"
-            min={termMin}
-            max={termMax}
-            step={1}
-            value={termValue}
-            onChange={(e) => setTermValue(Number(e.target.value))}
-            className="funnel-slider"
-            style={{
-              background: `linear-gradient(to right, #00CED1 0%, #00CED1 ${termPercentage}%, #E5E7EB ${termPercentage}%, #E5E7EB 100%)`,
-            }}
-          />
-          <div className="funnel-slider-labels">
-            <span>{termOptions[0].shortLabel}</span>
-            <span>{termOptions[7].shortLabel}</span>
           </div>
         </div>
       </div>
@@ -134,7 +92,7 @@ export default function FunnelWidget() {
 
       {/* CTA */}
       <Link
-        href="/antrag/rechtsform"
+        href="/antrag/kreditart"
         className="btn btn-primary btn-lg w-full text-center mt-2 inline-block"
       >
         Anfragen &rarr;

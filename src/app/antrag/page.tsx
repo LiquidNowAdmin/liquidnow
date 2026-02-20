@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTracking } from "@/lib/tracking";
 import { Search, Loader2, AlertCircle, Building2, MapPin, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -23,6 +24,8 @@ interface CompanyData {
 export default function AntragPage() {
   const router = useRouter();
   const [website, setWebsite] = useState("");
+  const { trackEvent } = useTracking();
+  useEffect(() => { trackEvent("funnel_step", { step: "website" }); }, [trackEvent]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [companyData, setCompanyData] = useState<CompanyData | null>(null);
@@ -43,11 +46,16 @@ export default function AntragPage() {
         ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/company-search`
         : "/api/company-search"; // Fallback to local API for development
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        headers["Authorization"] = `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ website: website.trim() }),
       });
 
@@ -68,8 +76,17 @@ export default function AntragPage() {
 
   const handleConfirm = () => {
     if (companyData) {
-      // TODO: Save data to state management/context
-      console.log("Company data confirmed:", companyData);
+      trackEvent("funnel_data", {
+        step: "website",
+        company_name: companyData.name,
+        company_street: companyData.address?.street,
+        company_zip: companyData.address?.zip,
+        company_city: companyData.address?.city,
+        company_country: companyData.address?.country,
+        company_ust_id: companyData.ustId,
+        company_hrb: companyData.hrb,
+        company_website: website,
+      });
       router.push("/antrag/zweck");
     }
   };
