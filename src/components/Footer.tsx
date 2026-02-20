@@ -11,7 +11,7 @@ export default function Footer() {
               <Logo size="md" />
             </div>
             <p className="footer-text leading-relaxed">
-              Der schnellste Weg zu mehr Liquidität für E-Commerce & Handel.
+              Diagnose statt Symptombehandlung. Working-Capital-Lösungen für KMU – neutral, nachvollziehbar, CFO-tauglich.
             </p>
           </div>
 
@@ -42,7 +42,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 border-t border-white/10 pt-8">
+        <div className="mt-12 pt-8">
           <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
             <p className="text-xs text-white/40">
               &copy; {new Date().getFullYear()} LiqiNow. Alle Rechte vorbehalten.

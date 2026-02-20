@@ -61,7 +61,7 @@ export default function KontaktPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#F5DEB3]/10 to-white">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+      <header className="shadow-sm bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/antrag/branche" className="flex items-center gap-2 text-subtle hover:text-dark transition-colors">
@@ -144,7 +144,7 @@ export default function KontaktPage() {
             {/* Loading State with Info */}
             {isSubmitting && (
               <>
-                <div className="flex items-start gap-3 p-4 bg-turquoise/5 border border-turquoise/20 rounded-lg mb-6">
+                <div className="flex items-start gap-3 p-4 bg-turquoise/5 rounded-lg mb-6">
                   <MailCheck className="h-5 w-5 text-turquoise shrink-0 mt-0.5" />
                   <div className="text-sm">
                     <p className="font-semibold text-dark mb-1">
@@ -213,7 +213,7 @@ export default function KontaktPage() {
                     </p>
                   </div>
 
-                  <div className="w-full max-w-md pt-4 border-t border-gray-200">
+                  <div className="w-full max-w-md pt-4">
                     <p className="text-sm text-subtle">
                       <strong>E-Mail nicht erhalten?</strong> Überprüfen Sie Ihren Spam-Ordner oder{" "}
                       <button
@@ -312,7 +312,7 @@ export default function KontaktPage() {
                 </div>
 
                 {/* Privacy Notice */}
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4">
                   <p className="text-xs text-subtle">
                     Ihre E-Mail-Adresse wird benötigt, damit Sie jederzeit auf Ihre Angebote zugreifen können. Details finden Sie in unserer{" "}
                     <a href="/datenschutz" target="_blank" className="text-turquoise hover:underline font-semibold">

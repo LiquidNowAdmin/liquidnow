@@ -7,7 +7,7 @@ export default function ImpressumPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#F5DEB3]/10 to-white">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+      <header className="shadow-sm bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 text-subtle hover:text-dark transition-colors">
@@ -73,7 +73,7 @@ export default function ImpressumPage() {
                   </p>
                 </div>
 
-                <div className="pt-6 border-t border-gray-200">
+                <div className="pt-6">
                   <h2 className="text-xl font-semibold mb-3">Hinweis</h2>
                   <p className="leading-relaxed text-subtle">
                     LiqiNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.

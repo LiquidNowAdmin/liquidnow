@@ -466,7 +466,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .card {
   background: #ffffff;
-  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   padding: 2rem;
   box-shadow: var(--shadow-card);
@@ -474,7 +473,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .card-hover:hover {
-  border-color: #00CED1;
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-4px);
 }
@@ -691,7 +689,6 @@ h1, h2, h3, h4, h5, h6 {
   height: 3.5rem;
   width: 9rem;
   border-radius: 0.5rem;
-  border: 1px solid var(--color-border);
   background: #ffffff;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
@@ -699,12 +696,12 @@ h1, h2, h3, h4, h5, h6 {
   color: rgba(75, 85, 99, 0.6);
   filter: grayscale(1);
   transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .partner-logo:hover {
   filter: grayscale(0);
   color: var(--color-dark);
-  border-color: #00CED1;
   box-shadow: var(--shadow-card);
 }
 
@@ -715,7 +712,6 @@ h1, h2, h3, h4, h5, h6 {
 .testimonial-card {
   position: relative;
   background: #ffffff;
-  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   padding: 2rem;
   box-shadow: var(--shadow-card);
@@ -723,7 +719,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .testimonial-card:hover {
-  border-color: #00CED1;
   box-shadow: var(--shadow-card-hover);
 }
 
@@ -814,7 +809,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .funnel-widget {
   background: #ffffff;
-  border: 1px solid var(--color-border);
   border-radius: 1rem;
   padding: 1.5rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -1060,7 +1054,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .funnel-bank-row + .funnel-bank-row {
-  border-top: 1px solid var(--color-border);
   padding-top: 0.5rem;
 }
 
@@ -1136,7 +1129,6 @@ h1, h2, h3, h4, h5, h6 {
   align-items: flex-start;
   justify-content: space-between;
   padding: 2rem;
-  border-bottom: 1px solid var(--color-border);
 }
 
 .company-search-close {
@@ -1213,7 +1205,6 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1rem 1.25rem;
   margin-top: 1.5rem;
   background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 0.75rem;
   color: #DC2626;
   font-size: 0.875rem;
@@ -1232,7 +1223,6 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
 }
 
 .company-search-results-grid {
@@ -1269,7 +1259,6 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   gap: 0.75rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--color-border);
 }
 
 @media (min-width: 640px) {
@@ -1543,6 +1532,7 @@ button, .btn, label, .badge, .trust-item {
   .offer-card-body {
     display: grid;
     grid-template-columns: 130px 1fr 180px;
+    grid-template-rows: auto auto;
     gap: 0;
     padding: 0.875rem 1.25rem;
     align-items: start;
@@ -1564,6 +1554,8 @@ button, .btn, label, .badge, .trust-item {
     text-align: center;
     padding-right: 0.75rem;
     gap: 0.25rem;
+    grid-column: 1;
+    grid-row: 1 / 3;
   }
 }
 
@@ -1641,6 +1633,8 @@ button, .btn, label, .badge, .trust-item {
 @media (min-width: 768px) {
   .offer-card-details {
     padding: 0 0.75rem;
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -1756,6 +1750,8 @@ button, .btn, label, .badge, .trust-item {
 @media (min-width: 768px) {
   .offer-card-pricing {
     padding-left: 0.75rem;
+    grid-column: 3;
+    grid-row: 2;
   }
 }
 
@@ -1839,16 +1835,17 @@ button, .btn, label, .badge, .trust-item {
 }
 
 .offer-description {
-  font-size: 0.625rem;
+  font-size: 0.8125rem;
   color: var(--color-subtle);
   line-height: 1.3;
-  margin-top: 0.125rem;
 }
 
 @media (min-width: 768px) {
   .offer-description {
-    text-align: center;
-    max-width: 140px;
+    grid-column: 2 / 4;
+    grid-row: 1;
+    padding-bottom: 0.375rem;
+    margin-bottom: 0.25rem;
   }
 }
 
@@ -1888,38 +1885,24 @@ button, .btn, label, .badge, .trust-item {
 }
 
 /* Tabs */
-.offer-tabs {
+.offer-more-toggle {
   display: flex;
-  gap: 0;
-  background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 1.25rem;
-}
-
-.offer-tab {
-  flex-shrink: 0;
-  padding: 0.625rem 0;
-  margin-right: 1.5rem;
-  font-size: 0.8125rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-subtle);
-  background: none;
+  background: #fff;
   border: none;
-  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  transition: color 0.15s ease;
 }
 
-.offer-tab:hover {
+.offer-more-toggle:hover {
   color: var(--color-dark);
-}
-
-.offer-tab-active {
-  color: var(--color-dark);
-  border-bottom-color: var(--color-dark);
 }
 
 .offer-tab-content {
@@ -2306,7 +2289,6 @@ button, .btn, label, .badge, .trust-item {
   font-weight: 600;
   color: var(--color-dark);
   background: var(--color-light-bg);
-  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2314,8 +2296,8 @@ button, .btn, label, .badge, .trust-item {
 }
 
 .detail-cta-secondary:hover {
-  border-color: var(--color-turquoise);
   color: var(--color-turquoise);
+  box-shadow: var(--shadow-card);
 }
 
 .detail-back {
@@ -2575,7 +2557,6 @@ button, .btn, label, .badge, .trust-item {
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--color-border);
 }
 
 /* --- Status Badge --- */
@@ -3209,4 +3190,284 @@ button, .btn, label, .badge, .trust-item {
   line-height: 1;
   min-width: 2rem;
   text-align: right;
+}
+
+/* ============================================================
+   DIAGNOSIS & QUICKCHECK
+============================================================ */
+
+/* --- Diagnosis Tiles (Landing Page) --- */
+
+.diagnosis-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  cursor: pointer;
+}
+
+.diagnosis-tile:hover .diagnosis-tile-cta {
+  text-decoration: underline;
+}
+
+.diagnosis-tile-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.diagnosis-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 206, 209, 0.1);
+}
+
+.diagnosis-tile-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.diagnosis-tile-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-dark);
+  display: block;
+}
+
+.diagnosis-tile-desc {
+  font-size: 0.8125rem;
+  color: var(--color-subtle);
+  line-height: 1.4;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.diagnosis-tile-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-turquoise);
+  transition: gap 0.2s ease;
+}
+
+.diagnosis-tile:hover .diagnosis-tile-cta {
+  gap: 0.625rem;
+}
+
+/* --- Case Scenario Cards (Landing Page) --- */
+
+.case-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.case-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.case-card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  background: rgba(0, 206, 209, 0.1);
+  color: var(--color-turquoise-dark);
+  width: fit-content;
+}
+
+.case-card-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  color: var(--color-dark);
+}
+
+.case-card-desc {
+  font-size: 0.875rem;
+  color: var(--color-subtle);
+  line-height: 1.5;
+}
+
+/* --- QuickCheck Progress --- */
+
+.quickcheck-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.quickcheck-progress-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: var(--color-border);
+  color: var(--color-subtle);
+  transition: all 0.3s ease;
+}
+
+.quickcheck-progress-step-active {
+  background: var(--color-turquoise);
+  color: white;
+}
+
+.quickcheck-progress-step-done {
+  background: var(--color-turquoise);
+  color: white;
+}
+
+.quickcheck-progress-line {
+  width: 3rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-border);
+  transition: background 0.3s ease;
+}
+
+.quickcheck-progress-line-done {
+  background: var(--color-turquoise);
+}
+
+/* --- QuickCheck Result --- */
+
+.quickcheck-result {
+  padding: 2rem;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.quickcheck-ccc-bar {
+  display: flex;
+  height: 3rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--color-light-bg);
+}
+
+.quickcheck-ccc-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  transition: width 0.6s ease;
+  min-width: 2rem;
+}
+
+.quickcheck-ccc-segment-dso {
+  background: #00CED1;
+}
+
+.quickcheck-ccc-segment-dio {
+  background: #FFD700;
+  color: var(--color-dark);
+}
+
+.quickcheck-ccc-segment-dpo {
+  background: #2C3E50;
+}
+
+.quickcheck-benchmark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-light-bg);
+  border-radius: 0.75rem;
+  gap: 1rem;
+}
+
+.quickcheck-benchmark-value {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.quickcheck-benchmark-label {
+  font-size: 0.8125rem;
+  color: var(--color-subtle);
+  margin-top: 0.25rem;
+}
+
+.quickcheck-recommendation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.quickcheck-recommendation:hover {
+  box-shadow: var(--shadow-turquoise);
+}
+
+/* --- Multi-Select (QuickCheck Probleme) --- */
+
+.quickcheck-multi-option {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--color-border);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quickcheck-multi-option:hover {
+  border-color: var(--color-turquoise-light);
+}
+
+.quickcheck-multi-option-selected {
+  border-color: var(--color-turquoise);
+  background: rgba(0, 206, 209, 0.05);
+  box-shadow: 0 0 0 1px var(--color-turquoise);
+}
+
+.quickcheck-multi-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.quickcheck-multi-checkbox-checked {
+  background: var(--color-turquoise);
+  border-color: var(--color-turquoise);
 }

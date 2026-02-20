@@ -94,7 +94,7 @@ export default function AntragPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#F5DEB3]/10 to-white">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+      <header className="shadow-sm bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/antrag/rechtsform" className="flex items-center gap-2 text-subtle hover:text-dark transition-colors">
@@ -212,7 +212,7 @@ export default function AntragPage() {
 
                 {/* Error */}
                 {error && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                  <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg text-red-700">
                     <AlertCircle className="h-5 w-5 flex-shrink-0" />
                     <p className="text-sm font-medium">{error}</p>
                   </div>
@@ -224,7 +224,7 @@ export default function AntragPage() {
           {/* Results */}
           {companyData && (
             <div className="card p-8">
-              <div className="mb-6 flex items-center gap-3 pb-6 border-b border-gray-200">
+              <div className="mb-6 flex items-center gap-3 pb-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-turquoise/10">
                   <Building2 className="h-6 w-6 text-turquoise" />
                 </div>
@@ -339,7 +339,7 @@ export default function AntragPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row gap-3 pt-6">
                 <button
                   onClick={handleSearch}
                   className="btn btn-inverted btn-lg flex-1"

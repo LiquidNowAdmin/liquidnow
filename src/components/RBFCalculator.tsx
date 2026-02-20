@@ -46,7 +46,7 @@ export default function RBFCalculator() {
   return (
     <div>
       {/* Scenario Tabs */}
-      <div className="flex gap-0 border-b border-border mb-8">
+      <div className="flex gap-0 mb-8">
         {scenarios.map((s) => (
           <button
             key={s.label}
@@ -129,15 +129,15 @@ export default function RBFCalculator() {
         {/* Results */}
         <div>
           <div className="space-y-4 mb-6">
-            <div className="flex justify-between items-baseline py-2 border-b border-border">
+            <div className="flex justify-between items-baseline py-2">
               <span className="text-sm text-subtle">Auszahlung</span>
               <span className="font-heading text-lg text-dark">{fmt(loanAmount)}&nbsp;&euro;</span>
             </div>
-            <div className="flex justify-between items-baseline py-2 border-b border-border">
+            <div className="flex justify-between items-baseline py-2">
               <span className="text-sm text-subtle">Fixe Geb&uuml;hr (8&nbsp;%)</span>
               <span className="font-heading text-lg text-dark">{fmt(calc.feeAmount)}&nbsp;&euro;</span>
             </div>
-            <div className="flex justify-between items-baseline py-2 border-b border-border">
+            <div className="flex justify-between items-baseline py-2">
               <span className="text-sm text-subtle">Gesamtr&uuml;ckzahlung</span>
               <span className="font-heading text-xl font-600 text-dark">{fmt(calc.totalRepayment)}&nbsp;&euro;</span>
             </div>

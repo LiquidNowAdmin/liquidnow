@@ -1,31 +1,106 @@
 export const howItWorksSteps = [
   {
     step: 1,
-    icon: "Zap" as const,
+    icon: "Search" as const,
     iconColor: "gold" as const,
-    headline: "Finanzierungswunsch angeben",
-    body: "Beschreiben Sie Ihren Bedarf – Betrag, Zweck und Laufzeit. In wenigen Klicks ist Ihre Anfrage fertig.",
+    headline: "QuickCheck starten",
+    body: "Beantworten Sie in 5 Minuten wenige Fragen zu Ihrem Geschäft – Branche, Umsatz und grobe Zahlungsströme.",
   },
   {
     step: 2,
-    icon: "Waves" as const,
+    icon: "Activity" as const,
     iconColor: "turquoise" as const,
-    headline: "Angebote vergleichen",
-    body: "Erhalten Sie in Echtzeit passende Finanzierungsangebote von geprüften Partnern – alle Konditionen transparent auf einen Blick.",
+    headline: "Diagnose erhalten",
+    body: "LiqiNow analysiert Ihren Cash Conversion Cycle und zeigt, wo Ihr Cash gebunden ist – bei Kunden, im Lager oder bei Lieferanten.",
   },
   {
     step: 3,
-    icon: "FileUp" as const,
+    icon: "BookOpen" as const,
     iconColor: "turquoise" as const,
-    headline: "Unterlagen hochladen",
-    body: "Laden Sie die benötigten Dokumente sicher hoch. Wir leiten alles direkt an den Anbieter weiter.",
+    headline: "Playbook erhalten",
+    body: "Passend zu Ihrem Cash-Profil erhalten Sie ein Maßnahmenpaket: operative Hebel, Risikobausteine und Finanzierungsoptionen.",
   },
   {
     step: 4,
-    icon: "Banknote" as const,
+    icon: "Target" as const,
     iconColor: "turquoise" as const,
-    headline: "Auszahlung erhalten",
-    body: "Nach Prüfung und Zusage wird der Betrag direkt auf Ihr Geschäftskonto ausgezahlt.",
+    headline: "Passende Lösung finden",
+    body: "Vergleichen Sie neutral die besten Optionen – von Factoring über Kreditversicherung bis Software – und setzen Sie um.",
+  },
+];
+
+export const diagnosisTiles = [
+  {
+    id: "dso",
+    icon: "Users" as const,
+    title: "Kunden zahlen zu spät",
+    description: "Forderungen binden Cash – Ihre <strong>DSO</strong> (Days Sales Outstanding) ist zu hoch.",
+    explainer: "DSO misst, wie viele Tage es dauert, bis Ihre Kunden bezahlen. Je höher die DSO, desto länger ist Ihr Geld in <strong>offenen Rechnungen</strong> gebunden.",
+    solutions: "<strong>Factoring</strong> wandelt offene Rechnungen sofort in Liquidität um. <strong>Betriebsmittelkredite</strong> überbrücken die Wartezeit bis zum Zahlungseingang. <strong>Kreditversicherung</strong> sichert Forderungsausfälle ab. <strong>Mahnmanagement</strong> und kürzere Zahlungsziele senken die DSO operativ.",
+    metric: "DSO",
+  },
+  {
+    id: "dio",
+    icon: "Warehouse" as const,
+    title: "Kapital im Lager gebunden",
+    description: "Bestände wachsen, Umschlag sinkt – Ihre <strong>DIO</strong> (Days Inventory Outstanding) steigt.",
+    explainer: "DIO zeigt, wie viele Tage Ihre Ware im Lager liegt, bevor sie verkauft wird. Hohe DIO bedeutet: Kapital steckt in <strong>Regalen statt auf dem Konto</strong>.",
+    solutions: "<strong>Einkaufsfinanzierung</strong> schont die eigene Liquidität beim Wareneinkauf. <strong>Betriebsmittelkredite</strong> finanzieren den laufenden Warennachschub. <strong>Bestandsoptimierung</strong> durch bessere Absatzplanung senkt die DIO. <strong>Konsignationslager</strong> verlagern das Bestandsrisiko zum Lieferanten.",
+    metric: "DIO",
+  },
+  {
+    id: "dpo",
+    icon: "Truck" as const,
+    title: "Lieferanten drücken auf Vorkasse",
+    description: "Zahlungsziele schrumpfen – Ihre <strong>DPO</strong> (Days Payable Outstanding) sinkt.",
+    explainer: "DPO gibt an, wie viele Tage Sie Zeit haben, Ihre Lieferanten zu bezahlen. Niedrige DPO heißt: Sie zahlen schnell und verlieren Ihren <strong>Cash-Puffer</strong>.",
+    solutions: "<strong>Reverse Factoring</strong> verlängert Ihre Zahlungsziele, ohne den Lieferanten zu belasten. <strong>Betriebsmittelkredite</strong> schaffen Luft für pünktliche Zahlungen. <strong>Lieferantenkredite</strong> neu verhandeln schafft Spielraum. <strong>Skonto-Optimierung</strong> senkt Kosten, wenn die Liquidität reicht.",
+    metric: "DPO",
+  },
+];
+
+export const caseScenarios = [
+  {
+    id: "wachstum",
+    tag: "Case A",
+    title: "Wachstum frisst Cash",
+    description: "Volle Auftragsbücher, aber der Einkauf muss vorfinanziert werden – und die Banklinie wächst nicht mit.",
+    bottleneck: "DIO ↑, CCC verlängert",
+  },
+  {
+    id: "zahlungsmoral",
+    tag: "Case B",
+    title: "Zahlungsmoral kippt",
+    description: "Kunden zahlen in 60–90 statt 30 Tagen. Nicht aus Böswilligkeit – sondern weil deren Innenfinanzierung klemmt.",
+    bottleneck: "DSO ↑, Overdues ↑",
+  },
+  {
+    id: "projektgeschaeft",
+    tag: "Case C",
+    title: "Projektgeschäft",
+    description: "Cash kommt spät, Material kommt früh. Jeder Meilenstein ist eine Wette auf Zeit und Abnahme.",
+    bottleneck: "DIO + Abnahme-Risiko",
+  },
+  {
+    id: "inventory-trap",
+    tag: "Case D",
+    title: "Zu viel Lager – aber gefühlt nötig",
+    description: "Ohne Sicherheitsbestand stehe man – mit Sicherheitsbestand steht man bald auch. Nur finanziell.",
+    bottleneck: "DIO ↑, Obsoleszenz ↑",
+  },
+  {
+    id: "dpo-schock",
+    tag: "Case E",
+    title: "Lieferanten drücken Zahlungsziele",
+    description: "Lieferanten verkürzen Zahlungsziele oder verlangen Vorkasse, weil sie selbst unter Druck stehen.",
+    bottleneck: "DPO ↓, CCC explodiert",
+  },
+  {
+    id: "restrukturierung",
+    tag: "Case F",
+    title: "Restrukturierung light",
+    description: "Die Kreditlinie wird zur Zwangsjacke. Jede Abweichung triggert Fragen der Bank.",
+    bottleneck: "Covenants eng",
   },
 ];
 
@@ -101,24 +176,24 @@ export const testimonials = [
 
 export const faqItems = [
   {
-    question: "Warum ist LiquiNow günstiger als klassische Vermittler?",
+    question: "Was ist der QuickCheck – und was bringt er mir?",
     answer:
-      "Wir sind kein §34c-Vermittler und erheben keine Beratungsprovision. Die Bankprovisionen sind bereits in den Konditionen enthalten – du zahlst nichts extra.",
+      "Der QuickCheck analysiert in 5 Minuten, wo Ihr Cash gebunden ist: bei Kunden (DSO), im Lager (DIO) oder bei Lieferanten (DPO). Sie erhalten ein Cash-Profil mit konkreten Handlungsempfehlungen – noch bevor Sie über Finanzierungsprodukte nachdenken.",
   },
   {
-    question: "Wie funktioniert die automatische Datenprüfung?",
+    question: "Ist LiqiNow ein Finanzierungsvergleich?",
     answer:
-      "Unsere KI analysiert deine Website und extrahiert Firmendaten aus dem Impressum – vollautomatisch, ohne Personalkosten und ohne manuelle Zwischenschritte.",
+      "LiqiNow ist zuerst ein Diagnose- und Orientierungsportal. Viele Unternehmen starten mit \u201EWir brauchen Finanzierung\u201C. Häufig ist die bessere Frage: Wo steckt unser Cash – und welcher Hebel löst das Problem am schnellsten? Erst nach der Diagnose zeigen wir neutral passende Lösungen.",
   },
   {
-    question: "Welche Finanzierungspartner sind dabei?",
+    question: "Was ist der Cash Conversion Cycle (CCC)?",
     answer:
-      "Wir arbeiten mit führenden Banken und Fintech-Anbietern zusammen, die auf KMU-Finanzierung spezialisiert sind.",
+      "Der CCC misst, wie viele Tage Ihr Cash im operativen Kreislauf gebunden ist: DSO (Forderungen) + DIO (Lager) – DPO (Verbindlichkeiten). Je höher der CCC, desto mehr Liquidität brauchen Sie. LiqiNow hilft, den CCC zu senken – operativ, über Risikobausteine und bei Bedarf mit Finanzierung.",
   },
   {
-    question: "Ist das wirklich unverbindlich?",
+    question: "Was kostet LiqiNow?",
     answer:
-      "Ja. Du vergleichst kostenlos und entscheidest selbst, ob du ein Angebot annimmst. Kein Vertrieb, kein Druck.",
+      "Der QuickCheck, die Diagnose und alle Wiki-Inhalte sind kostenlos. LiqiNow finanziert sich über Vermittlungsprovisionen der Finanzierungspartner – Sie zahlen keine Zusatzgebühren.",
   },
 ];
 

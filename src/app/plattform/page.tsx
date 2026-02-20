@@ -93,7 +93,6 @@ export default function PlattformPage() {
   const [volume, setVolume] = useState(50000);
   const [sortBy, setSortBy] = useState<SortKey>("speed");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("info");
 
   const fetchOffers = useCallback(async () => {
     setLoading(true);
@@ -135,7 +134,7 @@ export default function PlattformPage() {
     `linear-gradient(to right, #00CED1 0%, #00CED1 ${((val - min) / (max - min)) * 100}%, #E5E7EB ${((val - min) / (max - min)) * 100}%, #E5E7EB 100%)`;
 
   return (
-    <div className="flex flex-col min-h-screen relative" style={{ background: "linear-gradient(180deg, rgba(0,206,209,0.08) 0%, rgba(0,206,209,0.04) 40%, #ffffff 70%)" }}>
+    <div className="flex flex-col min-h-screen relative bg-white">
       {/* Header */}
       <header className="relative z-10 bg-white">
         <div className="mx-auto px-[5%] xl:px-[10%] py-2.5">
@@ -176,7 +175,7 @@ export default function PlattformPage() {
                 <img
                   src="/ki-assistant.png"
                   alt="KI-Assistentin"
-                  className="w-14 h-14 rounded-full object-cover mx-auto mb-2 border-2 border-turquoise"
+                  className="w-14 h-14 rounded-full object-cover mx-auto mb-2 shadow-md"
                 />
                 <p className="text-sm font-semibold text-dark mb-0.5">Deine KI-Assistentin</p>
                 <p className="text-xs text-subtle">
@@ -324,7 +323,6 @@ export default function PlattformPage() {
                             <div className="offer-provider-info">
                               <div className="offer-provider-name">{offer.provider_name}</div>
                               <div className="offer-product-name">{offer.product_name}</div>
-                              {description && <div className="offer-description">{description}</div>}
                               <div className="flex flex-col items-center gap-1 mt-1">
                                 {trustpilot && <TrustpilotStars rating={trustpilot} />}
                                 <span className={`offer-provider-type-badge ${offer.provider_type === "fintech" ? "offer-provider-type-badge-fintech" : ""}`}>
@@ -333,6 +331,9 @@ export default function PlattformPage() {
                               </div>
                             </div>
                           </div>
+
+                          {/* Description row */}
+                          {description && <div className="offer-description">{description}</div>}
 
                           {/* Details */}
                           <div className="offer-card-details">
@@ -398,166 +399,105 @@ export default function PlattformPage() {
                           </div>
                         </div>
 
-                        {/* Tab titles as toggle */}
+                        {/* More info toggle */}
                         {hasTabs && (
-                          <div className="offer-tabs">
-                            {["info", ...(suitability ? ["eignung"] : []), ...(trust ? ["trust"] : [])].map((tab) => (
-                              <button
-                                key={tab}
-                                className={`offer-tab ${isExpanded && activeTab === tab ? "offer-tab-active" : ""}`}
-                                onClick={() => {
-                                  if (isExpanded && activeTab === tab) { setExpandedId(null); }
-                                  else { setExpandedId(offer.product_id); setActiveTab(tab); }
-                                }}
-                              >
-                                {tab === "info" ? "Info" : tab === "eignung" ? "Eignung" : "Trust"}
-                              </button>
-                            ))}
-                          </div>
+                          <button
+                            className="offer-more-toggle"
+                            onClick={() => setExpandedId(isExpanded ? null : offer.product_id)}
+                          >
+                            <span>{isExpanded ? "Weniger anzeigen" : "Mehr Informationen"}</span>
+                            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                          </button>
                         )}
 
-                        {/* Accordion */}
+                        {/* Expanded content */}
                         {isExpanded && hasTabs && (
                           <div className="offer-accordion">
-
                             <div className="offer-tab-content">
-                              {activeTab === "info" && (
-                                <div className="detail-two-col">
-                                  <div>
-                                    <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Konditionen</div>
-                                    <div className="detail-table">
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">Betrag</span>
-                                        <span className="detail-table-value">{formatVolume(offer.min_volume)} – {formatVolume(offer.max_volume)} EUR</span>
-                                      </div>
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">Laufzeit</span>
-                                        <span className="detail-table-value">{offer.min_term_months} – {offer.max_term_months} Monate</span>
-                                      </div>
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">{fees ? "Gebuehr" : "Zinssatz"}</span>
-                                        <span className="detail-table-value">{fees ?? `${offer.interest_rate_from.toFixed(2)}% – ${offer.interest_rate_to.toFixed(2)}% p.a.`}</span>
-                                      </div>
-                                      {days && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Bearbeitung</span>
-                                          <span className="detail-table-value">{days === 1 ? "24h Auszahlung" : `${days} Tage`}</span>
-                                        </div>
-                                      )}
-                                      {feeExample && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Beispiel</span>
-                                          <span className="detail-table-value">{feeExample}</span>
-                                        </div>
-                                      )}
-                                      {repayment && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Rueckzahlung</span>
-                                          <span className="detail-table-value">{repayment}</span>
-                                        </div>
-                                      )}
+                              <div className="detail-two-col">
+                                <div>
+                                  <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Konditionen</div>
+                                  <div className="detail-table">
+                                    <div className="detail-table-row">
+                                      <span className="detail-table-label">Betrag</span>
+                                      <span className="detail-table-value">{formatVolume(offer.min_volume)} – {formatVolume(offer.max_volume)} EUR</span>
                                     </div>
-                                    {useCases.length > 0 && (
-                                      <div style={{ marginTop: "0.75rem" }}>
-                                        <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Verwendungszwecke</div>
-                                        <div className="detail-usecases">
-                                          {useCases.map(uc => (
-                                            <span key={uc} className="detail-usecase">{uc}</span>
-                                          ))}
-                                        </div>
+                                    <div className="detail-table-row">
+                                      <span className="detail-table-label">Laufzeit</span>
+                                      <span className="detail-table-value">{offer.min_term_months} – {offer.max_term_months} Monate</span>
+                                    </div>
+                                    <div className="detail-table-row">
+                                      <span className="detail-table-label">{fees ? "Gebuehr" : "Zinssatz"}</span>
+                                      <span className="detail-table-value">{fees ?? `${offer.interest_rate_from.toFixed(2)}% – ${offer.interest_rate_to.toFixed(2)}% p.a.`}</span>
+                                    </div>
+                                    {days && (
+                                      <div className="detail-table-row">
+                                        <span className="detail-table-label">Bearbeitung</span>
+                                        <span className="detail-table-value">{days === 1 ? "24h Auszahlung" : `${days} Tage`}</span>
+                                      </div>
+                                    )}
+                                    {feeExample && (
+                                      <div className="detail-table-row">
+                                        <span className="detail-table-label">Beispiel</span>
+                                        <span className="detail-table-value">{feeExample}</span>
+                                      </div>
+                                    )}
+                                    {repayment && (
+                                      <div className="detail-table-row">
+                                        <span className="detail-table-label">Rueckzahlung</span>
+                                        <span className="detail-table-value">{repayment}</span>
                                       </div>
                                     )}
                                   </div>
-                                  {requirements && (
-                                    <div>
-                                      <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Kriterien</div>
-                                      <div className="detail-table">
-                                        {requirements.min_monthly_revenue_eur != null && (
-                                          <div className="detail-table-row">
-                                            <span className="detail-table-label">Mindestumsatz</span>
-                                            <span className="detail-table-value">{(requirements.min_monthly_revenue_eur as number).toLocaleString("de-DE")} EUR/Monat</span>
-                                          </div>
-                                        )}
-                                        {requirements.bank_statements_months != null && (
-                                          <div className="detail-table-row">
-                                            <span className="detail-table-label">Kontoauszuege</span>
-                                            <span className="detail-table-value">mind. {requirements.bank_statements_months as number} Monate</span>
-                                          </div>
-                                        )}
-                                        {requirements.openbanking != null && (
-                                          <div className="detail-table-row">
-                                            <span className="detail-table-label">Openbanking</span>
-                                            <span className="detail-table-value">erforderlich</span>
-                                          </div>
-                                        )}
-                                        {requirements.ubo_required != null && (
-                                          <div className="detail-table-row">
-                                            <span className="detail-table-label">UBO/Shareholder</span>
-                                            <span className="detail-table-value">{requirements.ubo_required as string}</span>
-                                          </div>
-                                        )}
-                                        {requirements.for_100k != null && (
-                                          <div className="detail-table-row">
-                                            <span className="detail-table-label">Ab 100k</span>
-                                            <span className="detail-table-value">{requirements.for_100k as string}</span>
-                                          </div>
-                                        )}
+                                  {useCases.length > 0 && (
+                                    <div style={{ marginTop: "0.75rem" }}>
+                                      <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Verwendungszwecke</div>
+                                      <div className="detail-usecases">
+                                        {useCases.map(uc => (
+                                          <span key={uc} className="detail-usecase">{uc}</span>
+                                        ))}
                                       </div>
                                     </div>
                                   )}
                                 </div>
-                              )}
-
-                              {activeTab === "eignung" && (
-                                <div>
-                                  {suitability && (
-                                    <div className="detail-table" style={{ marginBottom: "0.75rem" }}>
-                                      {suitability.crefo_max != null && (
+                                {requirements && (
+                                  <div>
+                                    <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Kriterien</div>
+                                    <div className="detail-table">
+                                      {requirements.min_monthly_revenue_eur != null && (
                                         <div className="detail-table-row">
-                                          <span className="detail-table-label">Crefo Score</span>
-                                          <span className="detail-table-value">bis {suitability.crefo_max as number}</span>
+                                          <span className="detail-table-label">Mindestumsatz</span>
+                                          <span className="detail-table-value">{(requirements.min_monthly_revenue_eur as number).toLocaleString("de-DE")} EUR/Monat</span>
                                         </div>
                                       )}
-                                      {suitability.typical_profile != null && (
+                                      {requirements.bank_statements_months != null && (
                                         <div className="detail-table-row">
-                                          <span className="detail-table-label">Typisches Profil</span>
-                                          <span className="detail-table-value">{suitability.typical_profile as string}</span>
+                                          <span className="detail-table-label">Kontoauszuege</span>
+                                          <span className="detail-table-value">mind. {requirements.bank_statements_months as number} Monate</span>
+                                        </div>
+                                      )}
+                                      {requirements.openbanking != null && (
+                                        <div className="detail-table-row">
+                                          <span className="detail-table-label">Openbanking</span>
+                                          <span className="detail-table-value">erforderlich</span>
+                                        </div>
+                                      )}
+                                      {requirements.ubo_required != null && (
+                                        <div className="detail-table-row">
+                                          <span className="detail-table-label">UBO/Shareholder</span>
+                                          <span className="detail-table-value">{requirements.ubo_required as string}</span>
+                                        </div>
+                                      )}
+                                      {requirements.for_100k != null && (
+                                        <div className="detail-table-row">
+                                          <span className="detail-table-label">Ab 100k</span>
+                                          <span className="detail-table-value">{requirements.for_100k as string}</span>
                                         </div>
                                       )}
                                     </div>
-                                  )}
-                                  {suitability?.good_for != null && (
-                                    <div className="detail-usecases">
-                                      {(suitability.good_for as string[]).map(g => (
-                                        <span key={g} className="detail-badge detail-badge-green">{g}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {activeTab === "trust" && trust && (
-                                <div className="detail-table">
-                                  {trust.funded_smes != null && (
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">Finanzierte KMU</span>
-                                      <span className="detail-table-value">{trust.funded_smes as string}</span>
-                                    </div>
-                                  )}
-                                  {trust.monthly_volume != null && (
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">Monatl. Volumen</span>
-                                      <span className="detail-table-value">{trust.monthly_volume as string}</span>
-                                    </div>
-                                  )}
-                                  {trust.repeat_customers_pct != null && (
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">Wiederkehrende Kunden</span>
-                                      <span className="detail-table-value">{trust.repeat_customers_pct as number}%</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}

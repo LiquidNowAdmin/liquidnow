@@ -13,7 +13,7 @@ export default function FaqItem({ question, answer }: FaqItemProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-b border-border">
+    <div className="mb-2">
       <button onClick={() => setIsOpen(!isOpen)} className="faq-trigger">
         <span className="faq-question">{question}</span>
         <motion.span

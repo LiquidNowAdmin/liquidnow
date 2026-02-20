@@ -19,19 +19,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LiqiNow | Liquidität in 48 Stunden für E-Commerce & Handel",
+  title: "LiqiNow | Working-Capital-Diagnose für KMU – Wo steckt Ihr Cash?",
   description:
-    "Betriebsmittelkredit von €10.000 bis €500.000. Antrag in 60 Sekunden, Auszahlung in 48 Stunden. 4+ Banken vergleichen. 100% kostenlos & unverbindlich.",
+    "Kostenloser QuickCheck: Finden Sie in 5 Minuten heraus, wo Ihr Cash gebunden ist (DSO/DIO/DPO). Playbooks, neutrale Lösungen und Finanzierungsvergleich für Mittelstand und KMU.",
   keywords:
-    "Betriebsmittelkredit, Firmenkredit, E-Commerce Finanzierung, Liquidität, KMU Kredit, Online-Shop Kredit",
+    "Working Capital, Cash Conversion Cycle, DSO, DIO, DPO, Factoring, Liquidität, KMU, Mittelstand, Betriebsmittelkredit",
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "LiqiNow – Liquidität in 48 Stunden",
+    title: "LiqiNow – Wo steckt Ihr Cash?",
     description:
-      "Der schnellste Weg zu Ihrem Firmenkredit. 60-Sekunden-Antrag, 4+ Banken, 48h Auszahlung.",
+      "Working-Capital-Diagnose in 5 Minuten. Von Symptom zur Ursache zur Lösung – neutral, nachvollziehbar, CFO-tauglich.",
     url: "https://liqinow.de",
     siteName: "LiqiNow",
     locale: "de_DE",
