@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Clock, ArrowRight, Search, Banknote, ChevronDown, Check, Zap, ThumbsUp, Tag, Shuffle, X, MessageCircle } from "lucide-react";
+import { Clock, ArrowRight, Search, Banknote, ChevronDown, Check, Zap, ThumbsUp, Tag, Shuffle, X, MessageCircle, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
