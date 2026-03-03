@@ -78,7 +78,7 @@ export default function CookieBanner() {
           >
             <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
               {/* Header mit Trust-Signal */}
-              <div className="bg-gradient-to-r from-[#00CED1]/5 to-[#FFD700]/10 px-6 py-4">
+              <div className="bg-gradient-to-r from-[#273469]/5 to-[#E4D9FF]/10 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-turquoise rounded-full flex items-center justify-center">
                     <Shield className="w-5 h-5 text-white" />
@@ -108,7 +108,7 @@ export default function CookieBanner() {
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleAccept}
-                    className="w-full bg-turquoise hover:bg-[#40E0D0] text-white px-8 py-3 rounded-xl font-semibold text-base shadow-lg hover:shadow-xl transition-all"
+                    className="w-full bg-turquoise hover:bg-[#E4D9FF] text-white px-8 py-3 rounded-xl font-semibold text-base shadow-lg hover:shadow-xl transition-all"
                   >
                     Alle akzeptieren
                   </button>

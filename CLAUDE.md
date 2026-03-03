@@ -56,7 +56,7 @@
 - Each step is a dedicated route (e.g., `/antrag`, `/antrag/zweck`, etc.)
 
 ### Design Tokens
-- Colors: Turquoise (#00CED1), Gold (#FFD700), Dark (#2C3E50)
+- Colors: Slate Blue (#8890A8), Light Slate (#C8CEDF), Deep Shadow (#3D3F52), Olive (#9BAA28), Tennis Yellow-Green (#C4D42B), Warm Cream (#EDE6DB)
 - Solid colors for buttons/badges (gradients only for decorative elements)
 
 ## Tech Stack

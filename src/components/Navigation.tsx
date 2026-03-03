@@ -5,8 +5,7 @@ import { Menu, X } from "lucide-react";
 import Logo from "@/components/Logo";
 
 const navLinks = [
-  { href: "/quickcheck", label: "QuickCheck" },
-  { href: "#so-funktionierts", label: "So funktioniert's" },
+  { href: "/plattform", label: "Plattform" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -46,8 +45,8 @@ export default function Navigation() {
               {link.label}
             </a>
           ))}
-          <a href="/quickcheck" className="btn btn-primary btn-md">
-            QuickCheck starten
+          <a href="/antrag" className="btn btn-primary btn-md">
+            Jetzt vergleichen
           </a>
         </div>
 
@@ -74,11 +73,11 @@ export default function Navigation() {
               </a>
             ))}
             <a
-              href="/quickcheck"
+              href="/antrag"
               onClick={() => setMobileOpen(false)}
               className="btn btn-primary btn-lg mt-4 w-full max-w-xs text-center"
             >
-              QuickCheck starten
+              Jetzt vergleichen
             </a>
           </div>
         </div>

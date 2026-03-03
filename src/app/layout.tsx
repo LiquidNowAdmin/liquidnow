@@ -19,19 +19,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LiqiNow | Working-Capital-Diagnose für KMU – Wo steckt Ihr Cash?",
+  title: "LiqiNow | Betriebsmittelkredite vergleichen – Schnell & kostenlos",
   description:
-    "Kostenloser QuickCheck: Finden Sie in 5 Minuten heraus, wo Ihr Cash gebunden ist (DSO/DIO/DPO). Playbooks, neutrale Lösungen und Finanzierungsvergleich für Mittelstand und KMU.",
+    "Intelligent vergleichen, schneller finanzieren. Betriebsmittelkredite von führenden Banken und Fintechs – kostenlos verglichen, für Unternehmer mit Köpfchen.",
   keywords:
-    "Working Capital, Cash Conversion Cycle, DSO, DIO, DPO, Factoring, Liquidität, KMU, Mittelstand, Betriebsmittelkredit",
+    "Betriebsmittelkredit, Unternehmenskredit, Finanzierungsvergleich, Kredit KMU, Mittelstand Finanzierung, Kredit Vergleich",
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "LiqiNow – Wo steckt Ihr Cash?",
+    title: "LiqiNow – Intelligent vergleichen. Schneller finanzieren.",
     description:
-      "Working-Capital-Diagnose in 5 Minuten. Von Symptom zur Ursache zur Lösung – neutral, nachvollziehbar, CFO-tauglich.",
+      "Betriebsmittelkredite von führenden Banken und Fintechs – kostenlos verglichen, für Unternehmer mit Köpfchen.",
     url: "https://liqinow.de",
     siteName: "LiqiNow",
     locale: "de_DE",

@@ -85,7 +85,7 @@ export default function RBFCalculator() {
               onChange={(e) => setLoanAmount(Number(e.target.value))}
               className="funnel-slider w-full"
               style={{
-                background: `linear-gradient(to right, #2C3E50 ${pct(loanAmount, 10000, 250000)}%, #E5E7EB ${pct(loanAmount, 10000, 250000)}%)`,
+                background: `linear-gradient(to right, #30343F ${pct(loanAmount, 10000, 250000)}%, #E5E7EB ${pct(loanAmount, 10000, 250000)}%)`,
               }}
             />
             <div className="flex justify-between mt-1 text-xs text-subtle">
@@ -111,7 +111,7 @@ export default function RBFCalculator() {
               onChange={(e) => setMonthlyRevenue(Number(e.target.value))}
               className="funnel-slider w-full"
               style={{
-                background: `linear-gradient(to right, #2C3E50 ${pct(monthlyRevenue, 10000, 200000)}%, #E5E7EB ${pct(monthlyRevenue, 10000, 200000)}%)`,
+                background: `linear-gradient(to right, #30343F ${pct(monthlyRevenue, 10000, 200000)}%, #E5E7EB ${pct(monthlyRevenue, 10000, 200000)}%)`,
               }}
             />
             <div className="flex justify-between mt-1 text-xs text-subtle">

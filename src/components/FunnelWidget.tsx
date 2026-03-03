@@ -48,7 +48,7 @@ export default function FunnelWidget() {
             onChange={(e) => setAmount(Number(e.target.value))}
             className="funnel-slider"
             style={{
-              background: `linear-gradient(to right, #00CED1 0%, #00CED1 ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`,
+              background: `linear-gradient(to right, #273469 0%, #273469 ${percentage}%, #E5E7EB ${percentage}%, #E5E7EB 100%)`,
             }}
           />
           <div className="funnel-slider-labels">
@@ -92,10 +92,10 @@ export default function FunnelWidget() {
 
       {/* CTA */}
       <Link
-        href="/antrag/kreditart"
+        href="/plattform"
         className="btn btn-primary btn-lg w-full text-center mt-2 inline-block"
       >
-        Anfragen &rarr;
+        Jetzt vergleichen &rarr;
       </Link>
 
       <p className="funnel-disclaimer">

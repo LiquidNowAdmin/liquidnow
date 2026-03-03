@@ -460,7 +460,7 @@ export default function ProduktDetailPage() {
       className="flex flex-col min-h-screen"
       style={{
         background:
-          "linear-gradient(180deg, rgba(0,206,209,0.06) 0%, #ffffff 40%)",
+          "linear-gradient(180deg, rgba(39,52,105,0.06) 0%, #ffffff 40%)",
       }}
     >
       <header className="bg-white">

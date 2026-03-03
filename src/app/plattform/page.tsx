@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Award, Check, Clock, ArrowRight, Search, Zap, CalendarRange, Banknote, Timer, Star, Shield, ThumbsUp, ChevronDown, X, FileCheck } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Clock, ArrowRight, Search, Banknote, ChevronDown, Check, Zap, ThumbsUp, Tag, Shuffle, X, MessageCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase";
@@ -44,6 +46,68 @@ function getProviderInitials(name: string): string {
   return name.split(" ").map(w => w[0]).join("").slice(0, 3).toUpperCase();
 }
 
+interface MetricScore { score: number; label: string; }
+
+function speedScore(days: number | undefined): MetricScore {
+  if (!days || days <= 1) return { score: 4, label: "Sehr schnell" };
+  if (days <= 2)          return { score: 3, label: "Schnell" };
+  if (days <= 5)          return { score: 2, label: "Mittel" };
+  return                         { score: 1, label: "Langsam" };
+}
+
+function approvalScore(pct: number | undefined): MetricScore {
+  if (!pct)       return { score: 2, label: "k. A." };
+  if (pct >= 70)  return { score: 4, label: "Sehr hoch" };
+  if (pct >= 50)  return { score: 3, label: "Hoch" };
+  if (pct >= 30)  return { score: 2, label: "Mittel" };
+  return                 { score: 1, label: "Niedrig" };
+}
+
+function priceScore(rate: number, hasFeeModel: boolean): MetricScore {
+  if (hasFeeModel)  return { score: 2, label: "Gebührenbasiert" };
+  if (rate <= 3)    return { score: 4, label: "Sehr günstig" };
+  if (rate <= 6)    return { score: 3, label: "Günstig" };
+  if (rate <= 12)   return { score: 2, label: "Mittel" };
+  return                   { score: 1, label: "Teuer" };
+}
+
+function flexibilityScore(productType: string, m: Record<string, unknown>): MetricScore {
+  const explicit = m.flexibility_score as number | undefined;
+  if (explicit) {
+    const labels = ["", "Fest", "Standard", "Flexibel", "Sehr flexibel"];
+    const s = Math.min(4, Math.max(1, explicit));
+    return { score: s, label: labels[s] };
+  }
+  const t = (productType ?? "").toLowerCase();
+  if (t.includes("linie") || t.includes("revolv"))      return { score: 4, label: "Sehr flexibel" };
+  if (t.includes("flexi") || t.includes("merchant") || t.includes("cash advance")) return { score: 3, label: "Flexibel" };
+  if (t.includes("kredit") || t.includes("darlehen"))   return { score: 2, label: "Standard" };
+  return { score: 2, label: "Standard" };
+}
+
+function SignalBar({ icon: Icon, metric }: { icon: LucideIcon; metric: MetricScore }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon style={{ width: "0.875rem", height: "0.875rem", flexShrink: 0, color: "var(--color-subtle)" }} />
+      <div className="flex gap-0.5 items-center shrink-0">
+        {[1, 2, 3, 4].map(i => (
+          <span
+            key={i}
+            style={{
+              display: "block",
+              width: "1.125rem",
+              height: "0.375rem",
+              borderRadius: "999px",
+              background: i <= metric.score ? "var(--color-turquoise)" : "var(--color-border)",
+            }}
+          />
+        ))}
+      </div>
+      <span className="text-xs font-semibold" style={{ color: "var(--color-dark)" }}>{metric.label}</span>
+    </div>
+  );
+}
+
 function TrustpilotStars({ rating }: { rating: number }) {
   const fullStars = Math.floor(rating);
   return (
@@ -62,24 +126,33 @@ function TrustpilotStars({ rating }: { rating: number }) {
 
 function SkeletonCard() {
   return (
-    <div className="offer-skeleton animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 bg-gray-200 rounded" />
-        <div>
-          <div className="h-3.5 w-20 bg-gray-200 rounded mb-1.5" />
-          <div className="h-2.5 w-16 bg-gray-100 rounded" />
+    <div className="offer-card animate-pulse">
+      <div className="offer-card-body">
+        <div className="offer-card-grid">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 bg-gray-200 rounded-xl shrink-0" />
+            <div className="flex flex-col gap-2">
+              <div className="h-3 w-24 bg-gray-200 rounded" />
+              <div className="h-2.5 w-16 bg-gray-100 rounded" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-full bg-gray-100 rounded" />
+            <div className="h-3 w-4/5 bg-gray-100 rounded" />
+            <div className="h-3 w-3/4 bg-gray-100 rounded" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-full bg-gray-100 rounded" />
+            <div className="h-3 w-2/3 bg-gray-100 rounded" />
+          </div>
+          <div className="flex flex-col gap-2 items-end">
+            <div className="h-4 w-16 bg-gray-200 rounded" />
+            <div className="h-3 w-20 bg-gray-100 rounded" />
+            <div className="h-3 w-14 bg-gray-100 rounded" />
+            <div className="h-9 w-28 bg-gray-200 rounded-lg mt-1" />
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-        <div className="h-3 w-full bg-gray-100 rounded" />
-        <div className="h-3 w-full bg-gray-100 rounded" />
-        <div className="h-3 w-4/5 bg-gray-100 rounded" />
-        <div className="h-3 w-3/4 bg-gray-100 rounded" />
-      </div>
-      <div className="flex flex-col items-end gap-1.5">
-        <div className="h-2.5 w-12 bg-gray-100 rounded" />
-        <div className="h-6 w-20 bg-gray-200 rounded" />
-        <div className="h-8 w-full bg-gray-200 rounded mt-1" />
+        <div style={{ height: "1.25rem" }} />
       </div>
     </div>
   );
@@ -93,6 +166,26 @@ export default function PlattformPage() {
   const [volume, setVolume] = useState(50000);
   const [sortBy, setSortBy] = useState<SortKey>("speed");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterTopUp, setFilterTopUp] = useState(false);
+  const [filter48h, setFilter48h] = useState(false);
+  const [filterFlexRepayment, setFilterFlexRepayment] = useState(false);
+  const [filterGracePeriod, setFilterGracePeriod] = useState(false);
+  const [filterNegativeSchufa, setFilterNegativeSchufa] = useState(false);
+  const [filterUseCases, setFilterUseCases] = useState<string[]>([]);
+  const [filterRechtsform, setFilterRechtsform] = useState("");
+  const [filterBranche, setFilterBranche] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [skeletonStartCount, setSkeletonStartCount] = useState(25);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setSkeletonStartCount(22 + Math.floor(Math.random() * 6));
+    if (!sessionStorage.getItem("onboarding_done")) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const fetchOffers = useCallback(async () => {
     setLoading(true);
@@ -113,7 +206,29 @@ export default function PlattformPage() {
     return offer.min_volume <= volume && offer.max_volume >= volume;
   };
 
-  const matchesAll = (offer: Offer) => matchesTerm(offer) && matchesVolume(offer);
+  const matchesFeatures = (offer: Offer) => {
+    const m = (offer.metadata ?? {}) as Record<string, unknown>;
+    if (filterTopUp && !m.top_up) return false;
+    if (filter48h && !m.payout_48h) return false;
+    if (filterFlexRepayment && !m.flexible_repayment) return false;
+    if (filterGracePeriod && !m.grace_period) return false;
+    if (filterNegativeSchufa && !m.negative_schufa) return false;
+    if (filterUseCases.length > 0) {
+      const productUseCases = (m.use_cases as string[] | undefined) ?? [];
+      if (!filterUseCases.some((uc) => productUseCases.includes(uc))) return false;
+    }
+    if (filterRechtsform) {
+      const allowed = (m.eligible_legal_forms as string[] | undefined) ?? [];
+      if (allowed.length > 0 && !allowed.includes(filterRechtsform)) return false;
+    }
+    if (filterBranche) {
+      const allowed = (m.eligible_industries as string[] | undefined) ?? [];
+      if (allowed.length > 0 && !allowed.includes(filterBranche)) return false;
+    }
+    return true;
+  };
+
+  const matchesAll = (offer: Offer) => matchesTerm(offer) && matchesVolume(offer) && matchesFeatures(offer);
 
   const sortedOffers = [...offers].sort((a, b) => {
     const aMatch = matchesAll(a) ? 0 : 1;
@@ -131,58 +246,79 @@ export default function PlattformPage() {
   });
 
   const sliderBg = (val: number, min: number, max: number) =>
-    `linear-gradient(to right, #00CED1 0%, #00CED1 ${((val - min) / (max - min)) * 100}%, #E5E7EB ${((val - min) / (max - min)) * 100}%, #E5E7EB 100%)`;
+    `linear-gradient(to right, #507AA6 0%, #507AA6 ${((val - min) / (max - min)) * 100}%, #D0DCE8 ${((val - min) / (max - min)) * 100}%, #D0DCE8 100%)`;
+
+  const ONBOARDING_STEPS = 5;
+  const matchingCount = offers.filter(matchesAll).length;
+  const skeletonCount = loading
+    ? skeletonStartCount
+    : Math.max(matchingCount, Math.round(skeletonStartCount * Math.pow(0.65, onboardingStep)));
+
+  function completeOnboarding() {
+    sessionStorage.setItem("onboarding_done", "1");
+    setShowOnboarding(false);
+  }
+
+  function nextStep() {
+    if (onboardingStep < ONBOARDING_STEPS - 1) {
+      setOnboardingStep(onboardingStep + 1);
+    } else {
+      completeOnboarding();
+    }
+  }
+
+  const rechtsformen = [
+    { id: "gmbh", label: "GmbH" },
+    { id: "ug", label: "UG" },
+    { id: "einzelunternehmen", label: "Einzelunternehmen" },
+    { id: "gbr", label: "GbR" },
+    { id: "ag", label: "AG" },
+    { id: "kg", label: "KG" },
+  ];
+
+  const branchen = [
+    { id: "handel", label: "E-Commerce & Handel" },
+    { id: "dienstleistung", label: "Dienstleistung" },
+    { id: "produktion", label: "Produktion & Handwerk" },
+    { id: "gastronomie", label: "Gastronomie & Hotellerie" },
+    { id: "andere", label: "Andere" },
+  ];
+
+  const verwendungszwecke = [
+    { id: "wareneinkauf", label: "Wareneinkauf" },
+    { id: "liquiditaet", label: "Liquiditätsengpass" },
+    { id: "wachstum", label: "Wachstum & Expansion" },
+    { id: "marketing", label: "Marketing" },
+    { id: "andere", label: "Andere" },
+  ];
+
+  const onboardingTitles = [
+    { title: "Wie viel möchten Sie finanzieren?", sub: "Wählen Sie Ihren gewünschten Kreditbetrag." },
+    { title: "Wie lange soll die Laufzeit sein?", sub: "Oder benötigen Sie eine revolvierende Kreditlinie?" },
+    { title: "Was trifft auf Sie zu?", sub: "Wählen Sie Ihre Rechtsform." },
+    { title: "In welcher Branche sind Sie tätig?", sub: "Wir zeigen nur passende Angebote." },
+    { title: "Wofür benötigen Sie die Finanzierung?", sub: "Mehrfachauswahl möglich." },
+  ];
 
   return (
-    <div className="flex flex-col min-h-screen relative bg-white">
+    <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <header className="relative z-10 bg-white">
-        <div className="mx-auto px-[5%] xl:px-[10%] py-2.5">
+      <header className="relative z-10 bg-white border-b border-border">
+        <div className="mx-auto px-[5%] xl:px-[10%] py-3">
           <div className="flex items-center justify-between">
             <Logo size="md" />
-            <div className="flex items-center gap-2 text-xs text-subtle">
-              <Shield className="h-3.5 w-3.5 text-turquoise" />
-              <span className="hidden sm:inline">Unabhaengiger Vergleich</span>
-            </div>
           </div>
         </div>
       </header>
 
-      {/* Wave Background – bottom of viewport */}
-      <div className="fixed top-0 left-0 w-full h-screen overflow-hidden pointer-events-none z-0">
-        <div className="absolute bottom-0 left-0 w-full opacity-70">
-          <div className="hero-wave">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 320" preserveAspectRatio="none" className="w-full h-full">
-              <path
-                fill="#00CED1"
-                fillOpacity="0.15"
-                d="M0,200C240,150,480,150,720,200C960,250,1200,250,1440,200C1680,150,1920,150,2160,200C2400,250,2640,250,2880,200L2880,320L0,320Z"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
 
       {/* Main */}
-      <main className="relative z-10 flex-1 py-4">
+      <main className="flex-1 py-6 bg-white">
         <div className="mx-auto px-[5%] xl:px-[10%]">
           <div className="platform-layout">
 
             {/* Filter Sidebar */}
             <aside className="filter-sidebar">
-              {/* KI Assistant */}
-              <div className="text-center pb-4 mb-4">
-                <img
-                  src="/ki-assistant.png"
-                  alt="KI-Assistentin"
-                  className="w-14 h-14 rounded-full object-cover mx-auto mb-2 shadow-md"
-                />
-                <p className="text-sm font-semibold text-dark mb-0.5">Deine KI-Assistentin</p>
-                <p className="text-xs text-subtle">
-                  Ich helfe dir persoenlich bei der Antragstellung — schnell und unkompliziert.
-                </p>
-              </div>
-
               <div className="filter-sidebar-title">Filter</div>
 
               <div className="filter-group">
@@ -231,9 +367,52 @@ export default function PlattformPage() {
                 <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
               </div>
 
-              {(termMonths !== 12 || termType !== "monate" || volume !== 50000) && (
+              <div className="filter-group">
+                <span className="filter-label">Verwendungszweck</span>
+                {([
+                  { id: "wareneinkauf", label: "Wareneinkauf" },
+                  { id: "liquiditaet", label: "Liquiditätsengpass" },
+                  { id: "wachstum", label: "Wachstum & Expansion" },
+                  { id: "marketing", label: "Marketing" },
+                  { id: "andere", label: "Andere" },
+                ]).map(({ id, label }) => {
+                  const active = filterUseCases.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setFilterUseCases(active ? filterUseCases.filter((u) => u !== id) : [...filterUseCases, id])}
+                      className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${active ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                    >
+                      {label}
+                      {active && <Check className="h-3 w-3" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Merkmale</span>
+                {([
+                  { label: "Aufstockung möglich", value: filterTopUp, set: setFilterTopUp },
+                  { label: "48h Auszahlung", value: filter48h, set: setFilter48h },
+                  { label: "Flexible Rückzahlung", value: filterFlexRepayment, set: setFilterFlexRepayment },
+                  { label: "Tilgungsfreie Zeit", value: filterGracePeriod, set: setFilterGracePeriod },
+                  { label: "Negative Schufa/Crefo", value: filterNegativeSchufa, set: setFilterNegativeSchufa },
+                ] as { label: string; value: boolean; set: (v: boolean) => void }[]).map(({ label, value, set }) => (
+                  <button
+                    key={label}
+                    onClick={() => set(!value)}
+                    className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${value ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                  >
+                    {label}
+                    {value && <Check className="h-3 w-3" />}
+                  </button>
+                ))}
+              </div>
+
+              {(termMonths !== 12 || termType !== "monate" || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
                 <button
-                  onClick={() => { setTermType("monate"); setTermMonths(12); setVolume(50000); }}
+                  onClick={() => { setTermType("monate"); setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
                   className="w-full text-center text-xs text-turquoise font-semibold mt-1 hover:underline cursor-pointer"
                 >
                   Zuruecksetzen
@@ -245,22 +424,19 @@ export default function PlattformPage() {
             {/* Results */}
             <div className="platform-results">
               <p className="platform-results-header">
-                {loading ? "Lade Angebote..." : (
-                  <><strong>{offers.length} Angebote</strong> verfuegbar</>
+                {loading || showOnboarding ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-3 w-28 bg-gray-200 rounded animate-pulse" />
+                  </span>
+                ) : (
+                  <><strong>{offers.length} Angebote</strong> verfügbar</>
                 )}
               </p>
 
-              <div className="platform-sort-tabs">
-                {(["rate", "speed", "volume", "term"] as SortKey[]).map(key => (
-                  <button key={key} className={`platform-sort-tab ${sortBy === key ? "platform-sort-tab-active" : ""}`} onClick={() => setSortBy(key)}>
-                    {{ rate: "Niedrigster Zins", speed: "24h Auszahlung", volume: "Hoechstes Volumen", term: "Laengste Laufzeit" }[key]}
-                  </button>
-                ))}
-              </div>
 
               <div className="flex flex-col gap-2">
-                {loading ? (
-                  <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
+                {loading || showOnboarding ? (
+                  Array.from({ length: skeletonCount }).map((_, i) => <SkeletonCard key={i} />)
                 ) : sortedOffers.length === 0 ? (
                   <div className="bg-white rounded-lg p-8 text-center">
                     <Search className="h-8 w-8 text-turquoise mx-auto mb-3" />
@@ -271,239 +447,146 @@ export default function PlattformPage() {
                     </button>
                   </div>
                 ) : (
-                  sortedOffers.map((offer, idx) => {
+                  sortedOffers.map((offer) => {
                     const m = (offer.metadata ?? {}) as Record<string, unknown>;
-                    const isMatch = matchesAll(offer);
-                    const isBest = idx === 0 && isMatch;
-                    const calcTerm = termType === "monate" && matchesTerm(offer) ? termMonths : offer.max_term_months;
-                    const calcVolume = matchesVolume(offer) ? volume : offer.min_volume;
-                    const monthly = calculateMonthlyRate(calcVolume, offer.interest_rate_from, calcTerm);
-                    const days = m.processing_time_days as number | undefined;
-                    const highlight = m.highlight as string | undefined;
-                    const tags = (m.tags ?? []) as string[];
-                    const trustpilot = m.trustpilot as number | undefined;
-                    const fees = (m.fee_model ?? m.fees) as string | undefined;
-                    const note = m.note as string | undefined;
-                    const description = m.description as string | undefined;
-                    const approvalRate = m.approval_rate_pct as number | undefined;
                     const ctaPrimary = m.cta_primary as string | undefined;
-                    const repayment = m.repayment as string | undefined;
-                    const feeExample = m.fee_example as string | undefined;
-                    const pros = (m.pros ?? []) as string[];
-                    const cons = (m.cons ?? []) as string[];
-                    const useCases = (m.use_cases ?? []) as string[];
-                    const requirements = m.requirements as Record<string, unknown> | undefined;
-                    const suitability = m.suitability as Record<string, unknown> | undefined;
-                    const trust = m.trust as Record<string, unknown> | undefined;
+                    const days = m.processing_time_days as number | undefined;
+                    const approvalPct = m.approval_rate_pct as number | undefined;
+                    const hasFeeModel = !!m.fee_model && (m.fee_pct_from as number | undefined) != null;
+                    const isCreditLine = (offer.product_type ?? "").toLowerCase().includes("linie") || (offer.product_type ?? "").toLowerCase().includes("credit_line");
+                    const feePctFrom = m.fee_pct_from as number | undefined;
+                    const effectiveVolume = Math.min(Math.max(volume, offer.min_volume), offer.max_volume);
+                    const effectiveTerm = Math.min(Math.max(termMonths, offer.min_term_months), offer.max_term_months);
+                    const volumeClamped = volume < offer.min_volume ? "min" : volume > offer.max_volume ? "max" : null;
+                    const termClamped = !isCreditLine && (termMonths < offer.min_term_months ? "min" : termMonths > offer.max_term_months ? "max" : null);
+                    const feeEur = feePctFrom != null ? Math.round(effectiveVolume * feePctFrom / 100) : null;
+                    const monthlyPayment = isCreditLine ? null
+                      : hasFeeModel
+                        ? (feeEur != null ? Math.round((effectiveVolume + feeEur) / effectiveTerm) : null)
+                        : Math.round(calculateMonthlyRate(effectiveVolume, offer.interest_rate_from ?? 0, effectiveTerm));
+                    const pros = ((m.pros ?? []) as string[]).slice(0, 5);
+                    const rateStr = (offer.interest_rate_from ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+                    const laufzeit = isCreditLine ? "Flexibel" : `${effectiveTerm} Monate`;
                     const isExpanded = expandedId === offer.product_id;
-                    const hasTabs = !!(requirements || suitability || trust || feeExample || repayment || useCases.length);
-                    const sortLabel = { rate: "Beste Konditionen", speed: "24h Auszahlung", volume: "Hoechstes Volumen", term: "Laengste Laufzeit" }[sortBy];
+                    const feeModel = m.fee_model as string | undefined;
+                    const repayment = m.repayment as string | undefined;
+                    const description = m.description as string | undefined;
+                    const cons = ((m.cons ?? []) as string[]);
+                    const req = (m.requirements ?? {}) as Record<string, unknown>;
 
                     return (
-                      <div key={offer.product_id} className={`offer-card ${isBest ? "offer-card-best" : ""} ${!isMatch ? "opacity-50" : ""}`}>
-                        {/* Top bar */}
-                        <div className="offer-card-topbar">
-                          {isBest && (
-                            <span className="offer-card-badge">
-                              <Award className="h-3 w-3" /> {sortLabel}
-                            </span>
-                          )}
-                          {highlight && <span className="offer-highlight-label">{highlight}</span>}
-                        </div>
-
-                        {/* Body */}
+                      <div key={offer.product_id} className="offer-card" style={volumeClamped || termClamped ? { opacity: 0.45 } : undefined}>
                         <div className="offer-card-body">
-                          {/* Provider */}
-                          <div className="offer-card-provider">
-                            <div className="offer-provider-logo">
-                              {offer.provider_logo_url
-                                ? <img src={offer.provider_logo_url} alt={offer.provider_name} />
-                                : <span>{getProviderInitials(offer.provider_name)}</span>}
-                            </div>
-                            <div className="offer-provider-info">
-                              <div className="offer-provider-name">{offer.provider_name}</div>
-                              <div className="offer-product-name">{offer.product_name}</div>
-                              <div className="flex flex-col items-center gap-1 mt-1">
-                                {trustpilot && <TrustpilotStars rating={trustpilot} />}
-                                <span className={`offer-provider-type-badge ${offer.provider_type === "fintech" ? "offer-provider-type-badge-fintech" : ""}`}>
-                                  {offer.provider_type === "bank" ? "Bank" : "Fintech"}
-                                </span>
+                          <div className="offer-card-grid">
+                            {/* Col 1: Logo + Name */}
+                            <div className="offer-card-provider">
+                              <div className="offer-provider-logo">
+                                {offer.provider_logo_url
+                                  ? <img src={offer.provider_logo_url} alt={offer.provider_name} />
+                                  : <span>{getProviderInitials(offer.provider_name)}</span>}
+                              </div>
+                              <div className="offer-provider-info">
+                                <div className="offer-provider-name">{offer.provider_name}</div>
+                                <div className="offer-product-name">{offer.product_name}</div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Description row */}
-                          {description && <div className="offer-description">{description}</div>}
+                            {/* Col 2: Signal bars */}
+                            <div className="offer-signals">
+                              <SignalBar icon={Zap} metric={speedScore(days)} />
+                              <SignalBar icon={ThumbsUp} metric={approvalScore(approvalPct)} />
+                              <SignalBar icon={Tag} metric={priceScore(offer.interest_rate_from, hasFeeModel)} />
+                              <SignalBar icon={Shuffle} metric={flexibilityScore(offer.product_type, m)} />
+                            </div>
 
-                          {/* Details */}
-                          <div className="offer-card-details">
-                            <div className="offer-details-cols">
-                              <div className="offer-features-grid">
-                                <div className="offer-feature">
-                                  <Check className="offer-feature-icon" />
-                                  <span><strong>{offer.interest_rate_from.toFixed(2)}%–{offer.interest_rate_to.toFixed(2)}%</strong> p.a.</span>
-                                </div>
-                                <div className="offer-feature">
-                                  <Banknote className="offer-feature-icon" />
-                                  <span><strong>{formatVolume(offer.min_volume)}–{formatVolume(offer.max_volume)}</strong> EUR</span>
-                                </div>
-                                {fees && (
-                                  <div className="offer-feature">
-                                    <Zap className="offer-feature-icon" />
-                                    <span>{fees}</span>
+                            {/* Col 3: Pros */}
+                            {pros.length > 0 && (
+                              <div className="offer-pros">
+                                {pros.map((p) => (
+                                  <div key={p} className="offer-pro-item">
+                                    <Check className="offer-pro-icon" />
+                                    <span>{p}</span>
                                   </div>
-                                )}
+                                ))}
                               </div>
-                              {(pros.length > 0 || cons.length > 0 || requirements?.min_monthly_revenue_eur != null) && (
-                                <div className="offer-proscons-compact">
-                                  {requirements?.min_monthly_revenue_eur != null && (
-                                    <div className="offer-proscon-item offer-proscon-pro">
-                                      <Check className="h-3 w-3" />
-                                      <span>ab {(requirements.min_monthly_revenue_eur as number).toLocaleString("de-DE")}€ Monatsumsatz</span>
-                                    </div>
-                                  )}
-                                  {pros.slice(0, 3).map(p => (
-                                    <div key={p} className="offer-proscon-item offer-proscon-pro">
-                                      <Check className="h-3 w-3" />
-                                      <span>{p}</span>
-                                    </div>
-                                  ))}
-                                  {cons.slice(0, 1).map(c => (
-                                    <div key={c} className="offer-proscon-item offer-proscon-con">
-                                      <X className="h-3 w-3" />
-                                      <span>{c}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                            )}
+
+                            {/* Col 4: Konditionen + CTA */}
+                            <div className="offer-card-pricing">
+                              <div className="offer-terms-compact">
+                                <span className="offer-terms-laufzeit">{effectiveVolume.toLocaleString("de-DE")} €</span>
+                                <span className="offer-terms-rate">{`${rateStr}%`}</span>
+                                {monthlyPayment != null && (
+                                  <span className="offer-terms-calc">{`${monthlyPayment.toLocaleString("de-DE")} € mtl.`}</span>
+                                )}
+                                <div className="offer-terms-laufzeit">{laufzeit}</div>
+                              </div>
+                              <button className="offer-cta">
+                                {ctaPrimary ?? "Jetzt anfragen"} <ArrowRight className="h-3 w-3" />
+                              </button>
                             </div>
                           </div>
 
-                          {/* Pricing */}
-                          <div className="offer-card-pricing">
-                            {termType === "monate" && isMatch && (
-                              <div className="text-xs font-semibold text-turquoise mb-1">{termMonths} Monate</div>
-                            )}
-                            {!isMatch && (
-                              <div className="text-xs font-semibold text-dark/40 mb-1">{offer.min_term_months}–{offer.max_term_months} Mo</div>
-                            )}
-                            <div className="offer-rate-label">ab</div>
-                            <div className="offer-rate offer-rate-highlight">{offer.interest_rate_from.toFixed(2)}%</div>
-                            <div className="offer-rate-label">p.a. effektiv</div>
-                            <div className="offer-monthly">ab {formatCurrency(monthly)}/Mo</div>
-                            <div className="offer-monthly-label">monatl. Rate</div>
-                            <button className="offer-cta">
-                              {ctaPrimary ?? "Jetzt anfragen"} <ArrowRight className="h-3 w-3" />
-                            </button>
-                            {note && <div className="offer-cta-sub">{note}</div>}
-                          </div>
-                        </div>
-
-                        {/* More info toggle */}
-                        {hasTabs && (
+                          {/* Accordion toggle – inside card-body, no border */}
                           <button
-                            className="offer-more-toggle"
+                            className="offer-accordion-toggle"
                             onClick={() => setExpandedId(isExpanded ? null : offer.product_id)}
                           >
-                            <span>{isExpanded ? "Weniger anzeigen" : "Mehr Informationen"}</span>
-                            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            <ChevronDown className={`offer-accordion-chevron${isExpanded ? " offer-accordion-chevron-open" : ""}`} />
+                            <span>{isExpanded ? "Weniger" : "Details"}</span>
                           </button>
-                        )}
+                        </div>
 
-                        {/* Expanded content */}
-                        {isExpanded && hasTabs && (
-                          <div className="offer-accordion">
-                            <div className="offer-tab-content">
-                              <div className="detail-two-col">
-                                <div>
-                                  <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Konditionen</div>
-                                  <div className="detail-table">
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">Betrag</span>
-                                      <span className="detail-table-value">{formatVolume(offer.min_volume)} – {formatVolume(offer.max_volume)} EUR</span>
-                                    </div>
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">Laufzeit</span>
-                                      <span className="detail-table-value">{offer.min_term_months} – {offer.max_term_months} Monate</span>
-                                    </div>
-                                    <div className="detail-table-row">
-                                      <span className="detail-table-label">{fees ? "Gebuehr" : "Zinssatz"}</span>
-                                      <span className="detail-table-value">{fees ?? `${offer.interest_rate_from.toFixed(2)}% – ${offer.interest_rate_to.toFixed(2)}% p.a.`}</span>
-                                    </div>
-                                    {days && (
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">Bearbeitung</span>
-                                        <span className="detail-table-value">{days === 1 ? "24h Auszahlung" : `${days} Tage`}</span>
-                                      </div>
-                                    )}
-                                    {feeExample && (
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">Beispiel</span>
-                                        <span className="detail-table-value">{feeExample}</span>
-                                      </div>
-                                    )}
-                                    {repayment && (
-                                      <div className="detail-table-row">
-                                        <span className="detail-table-label">Rueckzahlung</span>
-                                        <span className="detail-table-value">{repayment}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {useCases.length > 0 && (
-                                    <div style={{ marginTop: "0.75rem" }}>
-                                      <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Verwendungszwecke</div>
-                                      <div className="detail-usecases">
-                                        {useCases.map(uc => (
-                                          <span key={uc} className="detail-usecase">{uc}</span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                        {/* Accordion panel */}
+                        {isExpanded && (
+                          <div className="offer-accordion-panel">
+                            {description && (
+                              <p className="offer-accordion-desc">{description}</p>
+                            )}
+                            <div className="offer-accordion-grid">
+                              <div className="offer-accordion-col">
+                                <p className="offer-accordion-col-title">Konditionen</p>
+                                <div className="offer-accordion-rows">
+                                  <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
+                                  {!isCreditLine && <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>}
+                                  <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `${rateStr}% p.a.`}</span></div>
+                                  {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
+                                  {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
                                 </div>
-                                {requirements && (
-                                  <div>
-                                    <div className="detail-item-label" style={{ marginBottom: "0.375rem" }}>Kriterien</div>
-                                    <div className="detail-table">
-                                      {requirements.min_monthly_revenue_eur != null && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Mindestumsatz</span>
-                                          <span className="detail-table-value">{(requirements.min_monthly_revenue_eur as number).toLocaleString("de-DE")} EUR/Monat</span>
-                                        </div>
-                                      )}
-                                      {requirements.bank_statements_months != null && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Kontoauszuege</span>
-                                          <span className="detail-table-value">mind. {requirements.bank_statements_months as number} Monate</span>
-                                        </div>
-                                      )}
-                                      {requirements.openbanking != null && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Openbanking</span>
-                                          <span className="detail-table-value">erforderlich</span>
-                                        </div>
-                                      )}
-                                      {requirements.ubo_required != null && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">UBO/Shareholder</span>
-                                          <span className="detail-table-value">{requirements.ubo_required as string}</span>
-                                        </div>
-                                      )}
-                                      {requirements.for_100k != null && (
-                                        <div className="detail-table-row">
-                                          <span className="detail-table-label">Ab 100k</span>
-                                          <span className="detail-table-value">{requirements.for_100k as string}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
                               </div>
+                              {cons.length > 0 && (
+                                <div className="offer-accordion-col">
+                                  <p className="offer-accordion-col-title">Nachteile</p>
+                                  <div className="flex flex-col gap-1.5">
+                                    {cons.map((c) => (
+                                      <div key={c} className="offer-accordion-con">
+                                        <X className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-subtle)" }} />
+                                        <span>{c}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
                       </div>
                     );
                   })
+                )}
+
+                {/* Kontakt-Info */}
+                {!loading && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem", background: "var(--color-light-bg)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <MessageCircle className="h-4 w-4 shrink-0" style={{ color: "var(--color-subtle)" }} />
+                      <p className="text-sm" style={{ color: "var(--color-subtle)" }}>
+                        <span style={{ fontWeight: 600, color: "var(--color-dark)" }}>Kein passendes Angebot dabei?</span>{" "}
+                        Wir beraten Sie gerne persönlich.
+                      </p>
+                    </div>
+                    <a href="mailto:hallo@liquidnow.de" className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap", flexShrink: 0 }}>Kontakt aufnehmen</a>
+                  </div>
                 )}
               </div>
 
@@ -518,6 +601,123 @@ export default function PlattformPage() {
       </main>
 
       <Footer />
+
+      {/* Onboarding Overlay — portal to body to escape stacking contexts */}
+      {mounted && showOnboarding && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(36,54,80,0.65)", backdropFilter: "blur(6px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: "1.5rem", padding: "2rem", width: "100%", maxWidth: "480px", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}>
+
+            {/* Progress dots */}
+            <div style={{ display: "flex", gap: "0.375rem", marginBottom: "2rem" }}>
+              {Array.from({ length: ONBOARDING_STEPS }).map((_, i) => (
+                <div key={i} style={{ height: "3px", flex: 1, borderRadius: "2px", background: i <= onboardingStep ? "#507AA6" : "#D0DCE8", opacity: i < onboardingStep ? 0.4 : 1, transition: "background 0.3s" }} />
+              ))}
+            </div>
+
+            {/* Title */}
+            <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650", marginBottom: "0.375rem" }}>{onboardingTitles[onboardingStep].title}</p>
+            <p style={{ fontSize: "0.8125rem", color: "#536B87", marginBottom: "1.5rem" }}>{onboardingTitles[onboardingStep].sub}</p>
+
+            {/* Step 0: Volumen */}
+            {onboardingStep === 0 && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{formatCurrency(volume)}</span>
+                </div>
+                <input type="range" min={5000} max={500000} step={5000} value={volume}
+                  onChange={e => setVolume(+e.target.value)}
+                  className="funnel-slider" style={{ background: sliderBg(volume, 5000, 500000) }} />
+                <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
+              </div>
+            )}
+
+            {/* Step 1: Laufzeit */}
+            {onboardingStep === 1 && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+                  {(["monate", "linie"] as const).map((t) => (
+                    <button key={t} onClick={() => setTermType(t)} style={{ flex: 1, padding: "0.5rem", fontSize: "0.875rem", fontWeight: 600, borderRadius: "0.5rem", border: "none", cursor: "pointer", background: termType === t ? "#507AA6" : "#F3F6F9", color: termType === t ? "#fff" : "#536B87", transition: "all 0.15s" }}>
+                      {t === "monate" ? "Laufzeitkredit" : "Kreditlinie"}
+                    </button>
+                  ))}
+                </div>
+                {termType === "monate" && (
+                  <>
+                    <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+                      <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{termMonths} Monate</span>
+                    </div>
+                    <input type="range" min={1} max={60} step={1} value={termMonths}
+                      onChange={e => setTermMonths(+e.target.value)}
+                      className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                    <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Step 2: Rechtsform */}
+            {onboardingStep === 2 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                {rechtsformen.map(({ id, label }) => {
+                  const sel = filterRechtsform === id;
+                  return (
+                    <button key={id} onClick={() => setFilterRechtsform(sel ? "" : id)} style={{ padding: "0.625rem 0.5rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Step 3: Branche */}
+            {onboardingStep === 3 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                {branchen.map(({ id, label }) => {
+                  const sel = filterBranche === id;
+                  return (
+                    <button key={id} onClick={() => setFilterBranche(sel ? "" : id)} style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Step 4: Verwendungszweck */}
+            {onboardingStep === 4 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                {verwendungszwecke.map(({ id, label }) => {
+                  const active = filterUseCases.includes(id);
+                  return (
+                    <button key={id} onClick={() => setFilterUseCases(active ? filterUseCases.filter(u => u !== id) : [...filterUseCases, id])} style={{ padding: "0.625rem 0.5rem", borderRadius: "0.75rem", border: `1.5px solid ${active ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: active ? "#243650" : "#536B87", background: active ? "#E8EEF5" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Count */}
+            {!loading && (
+              <p style={{ fontSize: "0.75rem", textAlign: "center", color: "#536B87", marginBottom: "1rem" }}>
+                {matchingCount === 0 ? "Keine passenden Angebote" : <><strong style={{ color: "#243650" }}>{matchingCount}</strong> passende Angebote</>}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+              <button onClick={nextStep} className="btn btn-primary btn-md" style={{ width: "100%" }}>
+                {onboardingStep < ONBOARDING_STEPS - 1 ? "Weiter →" : "Angebote anzeigen →"}
+              </button>
+              <button onClick={completeOnboarding} style={{ fontSize: "0.75rem", color: "#536B87", cursor: "pointer", textDecoration: "underline", background: "none", border: "none", padding: "0.25rem" }}>
+                Überspringen
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

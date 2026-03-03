@@ -14,7 +14,7 @@ export default function FlowWave() {
         {/* Static wave path */}
         <path
           d="M0,40 C150,10 150,70 300,40 C450,10 450,70 600,40 C750,10 750,70 900,40"
-          stroke="#00CED1"
+          stroke="#273469"
           strokeWidth="2"
           strokeOpacity="0.15"
           fill="none"
@@ -22,7 +22,7 @@ export default function FlowWave() {
         {/* Animated flowing wave */}
         <motion.path
           d="M0,40 C150,10 150,70 300,40 C450,10 450,70 600,40 C750,10 750,70 900,40"
-          stroke="#00CED1"
+          stroke="#273469"
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"
@@ -34,7 +34,7 @@ export default function FlowWave() {
         {/* Flowing dot */}
         <motion.circle
           r="5"
-          fill="#00CED1"
+          fill="#273469"
           initial={{ offsetDistance: "0%" }}
           whileInView={{ offsetDistance: "100%" }}
           viewport={{ once: true, amount: 0.5 }}

@@ -114,7 +114,7 @@ export default function AntragPage() {
           <div className="hero-wave">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2880 320" preserveAspectRatio="none" className="w-full h-full">
               <path
-                fill="#00CED1"
+                fill="#273469"
                 fillOpacity="0.15"
                 d="M0,200C240,150,480,150,720,200C960,250,1200,250,1440,200C1680,150,1920,150,2160,200C2400,250,2640,250,2880,200L2880,320L0,320Z"
               />
