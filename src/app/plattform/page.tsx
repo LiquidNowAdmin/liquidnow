@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Clock, ArrowRight, Search, Banknote, ChevronDown, Check, Zap, ThumbsUp, Tag, Shuffle, X, MessageCircle, Star } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Clock, ArrowRight, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
+import UserMenu from "@/components/UserMenu";
 import { createClient } from "@/lib/supabase";
 
 interface Offer {
@@ -42,20 +43,37 @@ function formatVolume(value: number): string {
   return `${value}`;
 }
 
+const USE_CASE_LABELS: Record<string, string> = {
+  wareneinkauf: "Wareneinkauf",
+  liquiditaet: "Liquiditätsengpass",
+  wachstum: "Wachstum & Expansion",
+  marketing: "Marketing",
+  steuer: "Steuerrückzahlung",
+  andere: "Andere",
+};
+
 function getProviderInitials(name: string): string {
   return name.split(" ").map(w => w[0]).join("").slice(0, 3).toUpperCase();
 }
 
 interface MetricScore { score: number; label: string; }
 
-function speedScore(days: number | undefined): MetricScore {
+function speedScore(days: number | undefined, explicit?: number): MetricScore {
+  if (explicit) {
+    const s = Math.min(4, Math.max(1, explicit));
+    return { score: s, label: ["", "Langsam", "Mittel", "Schnell", "Sehr schnell"][Math.round(s)] };
+  }
   if (!days || days <= 1) return { score: 4, label: "Sehr schnell" };
   if (days <= 2)          return { score: 3, label: "Schnell" };
   if (days <= 5)          return { score: 2, label: "Mittel" };
   return                         { score: 1, label: "Langsam" };
 }
 
-function approvalScore(pct: number | undefined): MetricScore {
+function approvalScore(pct: number | undefined, explicit?: number): MetricScore {
+  if (explicit) {
+    const s = Math.min(4, Math.max(1, explicit));
+    return { score: s, label: ["", "Niedrig", "Mittel", "Hoch", "Sehr hoch"][Math.round(s)] };
+  }
   if (!pct)       return { score: 2, label: "k. A." };
   if (pct >= 70)  return { score: 4, label: "Sehr hoch" };
   if (pct >= 50)  return { score: 3, label: "Hoch" };
@@ -63,7 +81,11 @@ function approvalScore(pct: number | undefined): MetricScore {
   return                 { score: 1, label: "Niedrig" };
 }
 
-function priceScore(rate: number, hasFeeModel: boolean): MetricScore {
+function priceScore(rate: number, hasFeeModel: boolean, explicit?: number): MetricScore {
+  if (explicit) {
+    const s = Math.min(4, Math.max(1, explicit));
+    return { score: s, label: ["", "Teuer", "Mittel", "Günstig", "Sehr günstig"][Math.round(s)] };
+  }
   if (hasFeeModel)  return { score: 2, label: "Gebührenbasiert" };
   if (rate <= 3)    return { score: 4, label: "Sehr günstig" };
   if (rate <= 6)    return { score: 3, label: "Günstig" };
@@ -85,10 +107,10 @@ function flexibilityScore(productType: string, m: Record<string, unknown>): Metr
   return { score: 2, label: "Standard" };
 }
 
-function SignalBar({ icon: Icon, metric }: { icon: LucideIcon; metric: MetricScore }) {
+function SignalBar({ label, metric }: { label: string; metric: MetricScore }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon style={{ width: "0.875rem", height: "0.875rem", flexShrink: 0, color: "var(--color-subtle)" }} />
+    <div className="flex items-center gap-4">
+      <span style={{ width: "5rem", fontSize: "0.6875rem", color: "var(--color-subtle)", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
       <div className="flex gap-0.5 items-center shrink-0">
         {[1, 2, 3, 4].map(i => (
           <span
@@ -159,13 +181,13 @@ function SkeletonCard() {
 }
 
 export default function PlattformPage() {
+  const router = useRouter();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [termType, setTermType] = useState<"linie" | "monate">("monate");
   const [termMonths, setTermMonths] = useState(12);
   const [volume, setVolume] = useState(50000);
   const [sortBy, setSortBy] = useState<SortKey>("speed");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [filterTopUp, setFilterTopUp] = useState(false);
   const [filter48h, setFilter48h] = useState(false);
   const [filterFlexRepayment, setFilterFlexRepayment] = useState(false);
@@ -174,8 +196,11 @@ export default function PlattformPage() {
   const [filterUseCases, setFilterUseCases] = useState<string[]>([]);
   const [filterRechtsform, setFilterRechtsform] = useState("");
   const [filterBranche, setFilterBranche] = useState("");
+  const [annualRevenue, setAnnualRevenue] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [showFilter, setShowFilter] = useState(false);
+  const [showUseCaseFilter, setShowUseCaseFilter] = useState(false);
   const [skeletonStartCount, setSkeletonStartCount] = useState(25);
   const [mounted, setMounted] = useState(false);
 
@@ -197,10 +222,7 @@ export default function PlattformPage() {
 
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
-  const matchesTerm = (offer: Offer) => {
-    if (termType === "linie") return true;
-    return offer.min_term_months <= termMonths && offer.max_term_months >= termMonths;
-  };
+  const matchesTerm = (offer: Offer) => offer.min_term_months <= termMonths && offer.max_term_months >= termMonths;
 
   const matchesVolume = (offer: Offer) => {
     return offer.min_volume <= volume && offer.max_volume >= volume;
@@ -225,10 +247,19 @@ export default function PlattformPage() {
       const allowed = (m.eligible_industries as string[] | undefined) ?? [];
       if (allowed.length > 0 && !allowed.includes(filterBranche)) return false;
     }
+    if (annualRevenue > 0) {
+      const req = (m.requirements ?? {}) as Record<string, unknown>;
+      const minMonthly = req.min_monthly_revenue_eur as number | undefined;
+      if (minMonthly != null && annualRevenue < minMonthly * 12) return false;
+    }
     return true;
   };
 
   const matchesAll = (offer: Offer) => matchesTerm(offer) && matchesVolume(offer) && matchesFeatures(offer);
+
+  function handleCta(href: string) {
+    router.push(href);
+  }
 
   const sortedOffers = [...offers].sort((a, b) => {
     const aMatch = matchesAll(a) ? 0 : 1;
@@ -248,7 +279,14 @@ export default function PlattformPage() {
   const sliderBg = (val: number, min: number, max: number) =>
     `linear-gradient(to right, #507AA6 0%, #507AA6 ${((val - min) / (max - min)) * 100}%, #D0DCE8 ${((val - min) / (max - min)) * 100}%, #D0DCE8 100%)`;
 
-  const ONBOARDING_STEPS = 5;
+  const activeFilterCount =
+    (termMonths !== 12 ? 1 : 0) + (volume !== 50000 ? 1 : 0) +
+    (filterTopUp ? 1 : 0) + (filter48h ? 1 : 0) + (filterFlexRepayment ? 1 : 0) +
+    (filterGracePeriod ? 1 : 0) + (filterNegativeSchufa ? 1 : 0) +
+    filterUseCases.length + (filterRechtsform ? 1 : 0) + (filterBranche ? 1 : 0) +
+    (annualRevenue > 0 ? 1 : 0);
+
+  const ONBOARDING_STEPS = 6;
   const matchingCount = offers.filter(matchesAll).length;
   const skeletonCount = loading
     ? skeletonStartCount
@@ -289,24 +327,27 @@ export default function PlattformPage() {
     { id: "liquiditaet", label: "Liquiditätsengpass" },
     { id: "wachstum", label: "Wachstum & Expansion" },
     { id: "marketing", label: "Marketing" },
+    { id: "steuer", label: "Steuerrückzahlung" },
     { id: "andere", label: "Andere" },
   ];
 
   const onboardingTitles = [
     { title: "Wie viel möchten Sie finanzieren?", sub: "Wählen Sie Ihren gewünschten Kreditbetrag." },
-    { title: "Wie lange soll die Laufzeit sein?", sub: "Oder benötigen Sie eine revolvierende Kreditlinie?" },
+    { title: "Wie lange soll die Laufzeit sein?", sub: "Wählen Sie die gewünschte Laufzeit." },
     { title: "Was trifft auf Sie zu?", sub: "Wählen Sie Ihre Rechtsform." },
     { title: "In welcher Branche sind Sie tätig?", sub: "Wir zeigen nur passende Angebote." },
     { title: "Wofür benötigen Sie die Finanzierung?", sub: "Mehrfachauswahl möglich." },
+    { title: "Wie hoch war Ihr Jahresumsatz?", sub: "Wir zeigen nur erreichbare Angebote." },
   ];
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="relative z-10 bg-white border-b border-border">
-        <div className="mx-auto px-[5%] xl:px-[10%] py-3">
+        <div className="mx-auto px-[5%] py-3">
           <div className="flex items-center justify-between">
             <Logo size="md" />
+            <UserMenu />
           </div>
         </div>
       </header>
@@ -314,43 +355,38 @@ export default function PlattformPage() {
 
       {/* Main */}
       <main className="flex-1 py-6 bg-white">
-        <div className="mx-auto px-[5%] xl:px-[10%]">
+        <div className="mx-auto px-[5%]">
           <div className="platform-layout">
 
             {/* Filter Sidebar */}
             <aside className="filter-sidebar">
+              <button className="filter-mobile-toggle" onClick={() => setShowFilter(v => !v)}>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <SlidersHorizontal className="h-4 w-4" style={{ color: "var(--color-turquoise)" }} />
+                  <span className="filter-sidebar-title" style={{ margin: 0 }}>Filter</span>
+                  {activeFilterCount > 0 && (
+                    <span style={{ background: "var(--color-turquoise)", color: "#fff", fontSize: "0.625rem", fontWeight: 700, borderRadius: "999px", padding: "0.1rem 0.45rem", lineHeight: 1.6 }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown className={`filter-mobile-toggle-icon${showFilter ? " filter-mobile-toggle-icon-open" : ""}`} />
+              </button>
               <div className="filter-sidebar-title">Filter</div>
 
+              <div className={`filter-sidebar-content${showFilter ? "" : " filter-sidebar-content-hidden"}`}>
               <div className="filter-group">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-turquoise" />
                   <span className="filter-label">Laufzeit</span>
                 </div>
-                <div className="flex gap-1 mb-1">
-                  <button
-                    onClick={() => setTermType("monate")}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${termType === "monate" ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
-                  >
-                    Monate
-                  </button>
-                  <button
-                    onClick={() => setTermType("linie")}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${termType === "linie" ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
-                  >
-                    Linie
-                  </button>
+                <div className="text-center">
+                  <span className="filter-value">{termMonths} Monate</span>
                 </div>
-                {termType === "monate" && (
-                  <>
-                    <div className="text-center">
-                      <span className="filter-value">{termMonths} Monate</span>
-                    </div>
-                    <input type="range" min={1} max={60} step={1} value={termMonths}
-                      onChange={e => setTermMonths(+e.target.value)}
-                      className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
-                    <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
-                  </>
-                )}
+                <input type="range" min={1} max={60} step={1} value={termMonths}
+                  onChange={e => setTermMonths(+e.target.value)}
+                  className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
               </div>
 
               <div className="filter-group">
@@ -368,12 +404,17 @@ export default function PlattformPage() {
               </div>
 
               <div className="filter-group">
-                <span className="filter-label">Verwendungszweck</span>
+                <button className="filter-group-toggle" onClick={() => setShowUseCaseFilter(v => !v)}>
+                  <span className="filter-label">Verwendungszweck</span>
+                  <ChevronDown className={`filter-mobile-toggle-icon filter-group-toggle-icon${showUseCaseFilter ? " filter-mobile-toggle-icon-open" : ""}`} />
+                </button>
+                <div className={`filter-group-content${showUseCaseFilter ? "" : " filter-group-content-hidden"}`}>
                 {([
                   { id: "wareneinkauf", label: "Wareneinkauf" },
                   { id: "liquiditaet", label: "Liquiditätsengpass" },
                   { id: "wachstum", label: "Wachstum & Expansion" },
                   { id: "marketing", label: "Marketing" },
+                  { id: "steuer", label: "Steuerrückzahlung" },
                   { id: "andere", label: "Andere" },
                 ]).map(({ id, label }) => {
                   const active = filterUseCases.includes(id);
@@ -388,10 +429,12 @@ export default function PlattformPage() {
                     </button>
                   );
                 })}
+                </div>{/* filter-group-content */}
               </div>
 
               <div className="filter-group">
                 <span className="filter-label">Merkmale</span>
+                <div>
                 {([
                   { label: "Aufstockung möglich", value: filterTopUp, set: setFilterTopUp },
                   { label: "48h Auszahlung", value: filter48h, set: setFilter48h },
@@ -408,16 +451,18 @@ export default function PlattformPage() {
                     {value && <Check className="h-3 w-3" />}
                   </button>
                 ))}
+                </div>
               </div>
 
-              {(termMonths !== 12 || termType !== "monate" || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
+              {(termMonths !== 12 || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
                 <button
-                  onClick={() => { setTermType("monate"); setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
+                  onClick={() => { setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
                   className="w-full text-center text-xs text-turquoise font-semibold mt-1 hover:underline cursor-pointer"
                 >
-                  Zuruecksetzen
+                  Zurücksetzen
                 </button>
               )}
+              </div>{/* filter-sidebar-content */}
 
             </aside>
 
@@ -442,8 +487,8 @@ export default function PlattformPage() {
                     <Search className="h-8 w-8 text-turquoise mx-auto mb-3" />
                     <p className="font-bold text-dark mb-1">Keine passenden Angebote</p>
                     <p className="text-sm text-subtle mb-4">Filter anpassen, um mehr Angebote zu sehen.</p>
-                    <button onClick={() => { setTermType("monate"); setTermMonths(12); setVolume(50000); }} className="btn btn-md btn-primary">
-                      Zuruecksetzen
+                    <button onClick={() => { setTermMonths(12); setVolume(50000); }} className="btn btn-md btn-primary">
+                      Zurücksetzen
                     </button>
                   </div>
                 ) : (
@@ -453,29 +498,33 @@ export default function PlattformPage() {
                     const days = m.processing_time_days as number | undefined;
                     const approvalPct = m.approval_rate_pct as number | undefined;
                     const hasFeeModel = !!m.fee_model && (m.fee_pct_from as number | undefined) != null;
-                    const isCreditLine = (offer.product_type ?? "").toLowerCase().includes("linie") || (offer.product_type ?? "").toLowerCase().includes("credit_line");
                     const feePctFrom = m.fee_pct_from as number | undefined;
                     const effectiveVolume = Math.min(Math.max(volume, offer.min_volume), offer.max_volume);
                     const effectiveTerm = Math.min(Math.max(termMonths, offer.min_term_months), offer.max_term_months);
                     const volumeClamped = volume < offer.min_volume ? "min" : volume > offer.max_volume ? "max" : null;
-                    const termClamped = !isCreditLine && (termMonths < offer.min_term_months ? "min" : termMonths > offer.max_term_months ? "max" : null);
+                    const termClamped = termMonths < offer.min_term_months ? "min" : termMonths > offer.max_term_months ? "max" : null;
                     const feeEur = feePctFrom != null ? Math.round(effectiveVolume * feePctFrom / 100) : null;
-                    const monthlyPayment = isCreditLine ? null
-                      : hasFeeModel
-                        ? (feeEur != null ? Math.round((effectiveVolume + feeEur) / effectiveTerm) : null)
-                        : Math.round(calculateMonthlyRate(effectiveVolume, offer.interest_rate_from ?? 0, effectiveTerm));
-                    const pros = ((m.pros ?? []) as string[]).slice(0, 5);
+                    const monthlyPayment = hasFeeModel
+                      ? (feeEur != null ? Math.round((effectiveVolume + feeEur) / effectiveTerm) : null)
+                      : Math.round(calculateMonthlyRate(effectiveVolume, offer.interest_rate_from ?? 0, effectiveTerm));
+                    const merkmale: string[] = [];
+                    if (m.top_up) merkmale.push("Aufstockung möglich");
+                    if (m.payout_48h) merkmale.push("48h Auszahlung");
+                    if (m.flexible_repayment) merkmale.push("Flexible Rückzahlung");
+                    if (m.grace_period) merkmale.push("Tilgungsfreie Zeit");
+                    if (m.negative_schufa) merkmale.push("Neg. Schufa/Crefo ok");
+                    const isQred = offer.provider_name.toLowerCase().includes("qred");
                     const rateStr = (offer.interest_rate_from ?? 0).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-                    const laufzeit = isCreditLine ? "Flexibel" : `${effectiveTerm} Monate`;
-                    const isExpanded = expandedId === offer.product_id;
+                    const laufzeit = `${effectiveTerm} Monate`;
+                    const isExpanded = expandedIds.has(offer.product_id);
                     const feeModel = m.fee_model as string | undefined;
                     const repayment = m.repayment as string | undefined;
                     const description = m.description as string | undefined;
-                    const cons = ((m.cons ?? []) as string[]);
                     const req = (m.requirements ?? {}) as Record<string, unknown>;
+                    const productUseCases = (m.use_cases as string[] | undefined) ?? [];
 
                     return (
-                      <div key={offer.product_id} className="offer-card" style={volumeClamped || termClamped ? { opacity: 0.45 } : undefined}>
+                      <div key={offer.product_id} className="offer-card" style={!matchesAll(offer) ? { opacity: 0.45 } : undefined}>
                         <div className="offer-card-body">
                           <div className="offer-card-grid">
                             {/* Col 1: Logo + Name */}
@@ -493,16 +542,16 @@ export default function PlattformPage() {
 
                             {/* Col 2: Signal bars */}
                             <div className="offer-signals">
-                              <SignalBar icon={Zap} metric={speedScore(days)} />
-                              <SignalBar icon={ThumbsUp} metric={approvalScore(approvalPct)} />
-                              <SignalBar icon={Tag} metric={priceScore(offer.interest_rate_from, hasFeeModel)} />
-                              <SignalBar icon={Shuffle} metric={flexibilityScore(offer.product_type, m)} />
+                              <SignalBar label="Geschwindigkeit" metric={speedScore(days, m.speed_score as number | undefined)} />
+                              <SignalBar label="Annahmequote" metric={approvalScore(approvalPct, m.approval_score as number | undefined)} />
+                              <SignalBar label="Preis" metric={priceScore(offer.interest_rate_from, hasFeeModel, m.price_score as number | undefined)} />
+                              <SignalBar label="Flexibilität" metric={flexibilityScore(offer.product_type, m)} />
                             </div>
 
-                            {/* Col 3: Pros */}
-                            {pros.length > 0 && (
+                            {/* Col 3: Merkmale */}
+                            {merkmale.length > 0 && (
                               <div className="offer-pros">
-                                {pros.map((p) => (
+                                {merkmale.map((p) => (
                                   <div key={p} className="offer-pro-item">
                                     <Check className="offer-pro-icon" />
                                     <span>{p}</span>
@@ -521,7 +570,13 @@ export default function PlattformPage() {
                                 )}
                                 <div className="offer-terms-laufzeit">{laufzeit}</div>
                               </div>
-                              <button className="offer-cta">
+                              <button
+                                className="offer-cta"
+                                onClick={() => isQred
+                                  ? handleCta(`/antrag/qred?amount=${effectiveVolume}&term=${effectiveTerm}`)
+                                  : undefined
+                                }
+                              >
                                 {ctaPrimary ?? "Jetzt anfragen"} <ArrowRight className="h-3 w-3" />
                               </button>
                             </div>
@@ -530,7 +585,7 @@ export default function PlattformPage() {
                           {/* Accordion toggle – inside card-body, no border */}
                           <button
                             className="offer-accordion-toggle"
-                            onClick={() => setExpandedId(isExpanded ? null : offer.product_id)}
+                            onClick={() => setExpandedIds(prev => { const s = new Set(prev); isExpanded ? s.delete(offer.product_id) : s.add(offer.product_id); return s; })}
                           >
                             <ChevronDown className={`offer-accordion-chevron${isExpanded ? " offer-accordion-chevron-open" : ""}`} />
                             <span>{isExpanded ? "Weniger" : "Details"}</span>
@@ -548,21 +603,20 @@ export default function PlattformPage() {
                                 <p className="offer-accordion-col-title">Konditionen</p>
                                 <div className="offer-accordion-rows">
                                   <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
-                                  {!isCreditLine && <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>}
+                                  <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>
                                   <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `${rateStr}% p.a.`}</span></div>
                                   {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
                                   {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
                                 </div>
                               </div>
-                              {cons.length > 0 && (
+                              {productUseCases.length > 0 && (
                                 <div className="offer-accordion-col">
-                                  <p className="offer-accordion-col-title">Nachteile</p>
-                                  <div className="flex flex-col gap-1.5">
-                                    {cons.map((c) => (
-                                      <div key={c} className="offer-accordion-con">
-                                        <X className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--color-subtle)" }} />
-                                        <span>{c}</span>
-                                      </div>
+                                  <p className="offer-accordion-col-title">Geeignet für</p>
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {productUseCases.map((uc) => (
+                                      <span key={uc} style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "999px", background: filterUseCases.includes(uc) ? "var(--color-turquoise)" : "var(--color-light-bg)", color: filterUseCases.includes(uc) ? "#fff" : "var(--color-subtle)" }}>
+                                        {USE_CASE_LABELS[uc] ?? uc}
+                                      </span>
                                     ))}
                                   </div>
                                 </div>
@@ -581,7 +635,7 @@ export default function PlattformPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                       <MessageCircle className="h-4 w-4 shrink-0" style={{ color: "var(--color-subtle)" }} />
                       <p className="text-sm" style={{ color: "var(--color-subtle)" }}>
-                        <span style={{ fontWeight: 600, color: "var(--color-dark)" }}>Kein passendes Angebot dabei?</span>{" "}
+                        <span style={{ fontWeight: 600, color: "var(--color-dark)" }}>Kein passendes Angebot dabei?</span><br />
                         Wir beraten Sie gerne persönlich.
                       </p>
                     </div>
@@ -606,6 +660,11 @@ export default function PlattformPage() {
       {mounted && showOnboarding && createPortal(
         <div style={{ position: "fixed", inset: 0, background: "rgba(36,54,80,0.65)", backdropFilter: "blur(6px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#fff", borderRadius: "1.5rem", padding: "2rem", width: "100%", maxWidth: "480px", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}>
+
+            {/* Heading CTA */}
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#507AA6", marginBottom: "0.75rem" }}>
+              Auszahlung in 48h möglich · Kostenlos &amp; unverbindlich
+            </p>
 
             {/* Progress dots */}
             <div style={{ display: "flex", gap: "0.375rem", marginBottom: "2rem" }}>
@@ -634,24 +693,13 @@ export default function PlattformPage() {
             {/* Step 1: Laufzeit */}
             {onboardingStep === 1 && (
               <div style={{ marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                  {(["monate", "linie"] as const).map((t) => (
-                    <button key={t} onClick={() => setTermType(t)} style={{ flex: 1, padding: "0.5rem", fontSize: "0.875rem", fontWeight: 600, borderRadius: "0.5rem", border: "none", cursor: "pointer", background: termType === t ? "#507AA6" : "#F3F6F9", color: termType === t ? "#fff" : "#536B87", transition: "all 0.15s" }}>
-                      {t === "monate" ? "Laufzeitkredit" : "Kreditlinie"}
-                    </button>
-                  ))}
+                <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
+                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{termMonths} Monate</span>
                 </div>
-                {termType === "monate" && (
-                  <>
-                    <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
-                      <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{termMonths} Monate</span>
-                    </div>
-                    <input type="range" min={1} max={60} step={1} value={termMonths}
-                      onChange={e => setTermMonths(+e.target.value)}
-                      className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
-                    <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
-                  </>
-                )}
+                <input type="range" min={1} max={60} step={1} value={termMonths}
+                  onChange={e => setTermMonths(+e.target.value)}
+                  className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
               </div>
             )}
 
@@ -697,21 +745,35 @@ export default function PlattformPage() {
               </div>
             )}
 
-            {/* Count */}
-            {!loading && (
-              <p style={{ fontSize: "0.75rem", textAlign: "center", color: "#536B87", marginBottom: "1rem" }}>
-                {matchingCount === 0 ? "Keine passenden Angebote" : <><strong style={{ color: "#243650" }}>{matchingCount}</strong> passende Angebote</>}
-              </p>
+
+            {/* Step 5: Jahresumsatz */}
+            {onboardingStep === 5 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                {([
+                  { label: "Unter 100.000 €", value: 50000 },
+                  { label: "100.000 – 250.000 €", value: 175000 },
+                  { label: "250.000 – 500.000 €", value: 375000 },
+                  { label: "500.000 – 1.000.000 €", value: 750000 },
+                  { label: "Über 1.000.000 €", value: 1500000 },
+                ]).map(({ label, value }) => {
+                  const sel = annualRevenue === value;
+                  return (
+                    <button key={value} onClick={() => setAnnualRevenue(sel ? 0 : value)} style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
 
             {/* Actions */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem" }}>
               <button onClick={nextStep} className="btn btn-primary btn-md" style={{ width: "100%" }}>
                 {onboardingStep < ONBOARDING_STEPS - 1 ? "Weiter →" : "Angebote anzeigen →"}
               </button>
-              <button onClick={completeOnboarding} style={{ fontSize: "0.75rem", color: "#536B87", cursor: "pointer", textDecoration: "underline", background: "none", border: "none", padding: "0.25rem" }}>
-                Überspringen
-              </button>
+              <p style={{ fontSize: "0.6875rem", color: "#8A9AB0", textAlign: "center" }}>
+                Keine Anmeldung nötig · Keine SCHUFA-Auswirkung
+              </p>
             </div>
 
           </div>

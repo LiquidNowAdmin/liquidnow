@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import Logo from "@/components/Logo";
+import UserMenu from "@/components/UserMenu";
+import { createClient } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
   { href: "/plattform", label: "Plattform" },
@@ -12,6 +15,7 @@ const navLinks = [
 export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -21,17 +25,28 @@ export default function Navigation() {
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
 
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/95 backdrop-blur-md shadow-md"
-          : "bg-white/80 backdrop-blur-sm"
+        scrolled ? "bg-white/95 backdrop-blur-md shadow-md" : "bg-white/80 backdrop-blur-sm"
       }`}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
@@ -45,9 +60,10 @@ export default function Navigation() {
               {link.label}
             </a>
           ))}
-          <a href="/antrag" className="btn btn-primary btn-md">
+          <a href="/plattform" className="btn btn-primary btn-md">
             Jetzt vergleichen
           </a>
+          <UserMenu />
         </div>
 
         <button
@@ -60,23 +76,33 @@ export default function Navigation() {
       </nav>
 
       {mobileOpen && (
-        <div className="fixed inset-0 top-[72px] z-40 bg-white md:hidden">
+        <div className="fixed inset-0 top-18 z-40 bg-white md:hidden">
           <div className="flex flex-col items-center gap-6 px-4 pt-12">
             {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="nav-link-mobile"
-              >
+              <a key={link.href} href={link.href} onClick={() => setMobileOpen(false)} className="nav-link-mobile">
                 {link.label}
               </a>
             ))}
-            <a
-              href="/antrag"
-              onClick={() => setMobileOpen(false)}
-              className="btn btn-primary btn-lg mt-4 w-full max-w-xs text-center"
-            >
+            {user ? (
+              <div style={{ width: "100%", maxWidth: "20rem", borderRadius: "0.875rem", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid var(--color-border)" }}>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>Angemeldet als</p>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</p>
+                </div>
+                <button
+                  onClick={() => { setMobileOpen(false); handleLogout(); }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.875rem 1rem", background: "none", border: "none", fontSize: "0.9375rem", color: "var(--color-dark)", cursor: "pointer" }}
+                >
+                  <LogOut style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)" }} />
+                  Abmelden
+                </button>
+              </div>
+            ) : (
+              <a href="/auth/login" onClick={() => setMobileOpen(false)} className="btn btn-secondary btn-lg w-full max-w-xs text-center">
+                Anmelden
+              </a>
+            )}
+            <a href="/plattform" onClick={() => setMobileOpen(false)} className="btn btn-primary btn-lg mt-2 w-full max-w-xs text-center">
               Jetzt vergleichen
             </a>
           </div>

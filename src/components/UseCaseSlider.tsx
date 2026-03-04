@@ -66,6 +66,7 @@ const SCROLL_PER_SLIDE = 400; // px of vertical scroll per horizontal step
 
 export default function UseCaseSlider() {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
   const trackWrapRef = useRef<HTMLDivElement>(null);
   const cardWidthRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -118,6 +119,19 @@ export default function UseCaseSlider() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [rawProgress]);
 
+  // Horizontal wheel → vertical scroll (so left/right swipe advances slides)
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      window.scrollBy({ top: e.deltaX });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   // Clicking a dot scrolls the page to that slide's position
   const goToSlide = (i: number) => {
     if (!wrapperRef.current) return;
@@ -133,7 +147,7 @@ export default function UseCaseSlider() {
       className="usecase-scroll-wrapper"
       style={{ height: `calc(100vh + ${(N - 1) * SCROLL_PER_SLIDE}px)` }}
     >
-      <div className="usecase-sticky">
+      <div ref={stickyRef} className="usecase-sticky">
         {/* Header */}
         <p className="usecase-sticky-label">Für Ihre Situation</p>
         <h2 className="usecase-sticky-heading">
@@ -155,7 +169,7 @@ export default function UseCaseSlider() {
                   >
                     <p className="usecase-cta-label">Ihre Situation ist dabei.</p>
                     <h3 className="usecase-cta-heading">Jetzt die passende Finanzierung finden.</h3>
-                    <a href="/antrag" className="btn btn-md btn-primary usecase-cta-btn">
+                    <a href="/plattform" className="btn btn-md btn-primary usecase-cta-btn">
                       Jetzt vergleichen
                     </a>
                   </div>

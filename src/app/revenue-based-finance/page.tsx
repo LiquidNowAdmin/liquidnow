@@ -689,7 +689,7 @@ export default function RevenueBasedFinancePage() {
                 SCHUFA-Auswirkung.
               </p>
               <div className="mt-8">
-                <a href="/antrag/kreditart" className="btn btn-primary btn-lg">
+                <a href="/plattform" className="btn btn-primary btn-lg">
                   Jetzt Angebote vergleichen &rarr;
                 </a>
               </div>

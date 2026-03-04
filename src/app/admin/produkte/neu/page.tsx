@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 interface Provider {
@@ -11,56 +10,6 @@ interface Provider {
   name: string;
 }
 
-function ArrayField({
-  label,
-  items,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  items: string[];
-  onChange: (items: string[]) => void;
-  placeholder?: string;
-}) {
-  const [input, setInput] = useState("");
-
-  function add() {
-    if (!input.trim()) return;
-    onChange([...items, input.trim()]);
-    setInput("");
-  }
-
-  return (
-    <div className="admin-field">
-      <label className="admin-label">{label}</label>
-      <div className="flex gap-2 mb-2">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          className="admin-input"
-          placeholder={placeholder ?? "Eingabe + Enter"}
-        />
-        <button type="button" onClick={add} className="btn btn-secondary btn-md" style={{ padding: "0 0.875rem", flexShrink: 0 }}>
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-      {items.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ background: "var(--color-light-bg)" }}>
-              <span className="text-sm flex-1">{item}</span>
-              <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))}>
-                <X className="h-3.5 w-3.5" style={{ color: "var(--color-subtle)" }} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -80,7 +29,6 @@ export default function ProduktNeuPage() {
   const [providerId, setProviderId] = useState("");
   const [name, setName] = useState("");
   const [isTermLoan, setIsTermLoan] = useState(true);
-  const [isCreditLine, setIsCreditLine] = useState(false);
   const [minVolume, setMinVolume] = useState("10000");
   const [maxVolume, setMaxVolume] = useState("500000");
   const [minTermMonths, setMinTermMonths] = useState("3");
@@ -100,11 +48,12 @@ export default function ProduktNeuPage() {
 
   // Meta: Kennzahlen
   const [approvalRatePct, setApprovalRatePct] = useState("");
-  const [flexibilityScore, setFlexibilityScore] = useState("");
 
-  // Meta: Vorteile / Nachteile
-  const [pros, setPros] = useState<string[]>([]);
-  const [cons, setCons] = useState<string[]>([]);
+  // Meta: Bewertung (explizite Scores)
+  const [speedScoreVal, setSpeedScoreVal] = useState("");
+  const [approvalScoreVal, setApprovalScoreVal] = useState("");
+  const [priceScoreVal, setPriceScoreVal] = useState("");
+  const [flexibilityScore, setFlexibilityScore] = useState("");
 
   // Meta: Merkmale
   const [topUp, setTopUp] = useState(false);
@@ -143,9 +92,10 @@ export default function ProduktNeuPage() {
     if (repayment) meta.repayment = repayment;
     if (processingTimeDays) meta.processing_time_days = parseInt(processingTimeDays);
     if (approvalRatePct) meta.approval_rate_pct = parseInt(approvalRatePct);
-    if (flexibilityScore) meta.flexibility_score = parseInt(flexibilityScore);
-    if (pros.length) meta.pros = pros;
-    if (cons.length) meta.cons = cons;
+    if (speedScoreVal)    meta.speed_score       = parseFloat(speedScoreVal);
+    if (approvalScoreVal) meta.approval_score    = parseFloat(approvalScoreVal);
+    if (priceScoreVal)    meta.price_score       = parseFloat(priceScoreVal);
+    if (flexibilityScore) meta.flexibility_score = parseFloat(flexibilityScore);
     if (topUp) meta.top_up = true;
     if (payout48h) meta.payout_48h = true;
     if (flexibleRepayment) meta.flexible_repayment = true;
@@ -171,7 +121,7 @@ export default function ProduktNeuPage() {
     const { error: insertError } = await supabase.from("products").insert({
       provider_id: providerId,
       name,
-      type: isCreditLine && isTermLoan ? "both" : isCreditLine ? "credit_line" : "term_loan",
+      type: "term_loan",
       min_volume: parseInt(minVolume),
       max_volume: parseInt(maxVolume),
       min_term_months: parseInt(minTermMonths),
@@ -220,10 +170,6 @@ export default function ProduktNeuPage() {
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input type="checkbox" checked={isTermLoan} onChange={(e) => setIsTermLoan(e.target.checked)} className="admin-checkbox" />
               Laufzeitkredit
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" checked={isCreditLine} onChange={(e) => setIsCreditLine(e.target.checked)} className="admin-checkbox" />
-              Kreditlinie
             </label>
           </div>
         </div>
@@ -300,15 +246,33 @@ export default function ProduktNeuPage() {
         {/* ── Kennzahlen ── */}
         <SectionHeader title="Kennzahlen" />
 
+        <div className="admin-field">
+          <label htmlFor="approval_rate" className="admin-label">Annahmequote (%)</label>
+          <input id="approval_rate" type="number" value={approvalRatePct} onChange={(e) => setApprovalRatePct(e.target.value)} className="admin-input" placeholder="z.B. 75" />
+        </div>
+
+        {/* ── Bewertung ── */}
+        <SectionHeader title="Bewertung" />
+
+        <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "0.75rem" }}>
+          Leer lassen = automatisch aus Konditionen berechnet.
+        </p>
+
         <div className="grid grid-cols-2 gap-4">
-          <div className="admin-field">
-            <label htmlFor="approval_rate" className="admin-label">Zusagequote (%)</label>
-            <input id="approval_rate" type="number" value={approvalRatePct} onChange={(e) => setApprovalRatePct(e.target.value)} className="admin-input" placeholder="z.B. 75" />
-          </div>
-          <div className="admin-field">
-            <label htmlFor="flexibility" className="admin-label">Flexibilität (1–4)</label>
-            <input id="flexibility" type="number" min={1} max={4} value={flexibilityScore} onChange={(e) => setFlexibilityScore(e.target.value)} className="admin-input" placeholder="1 = fest, 4 = sehr flexibel" />
-          </div>
+          {([
+            { id: "speed_score",    label: "Geschwindigkeit", val: speedScoreVal,    set: setSpeedScoreVal,    hints: ["Langsam","Mittel","Schnell","Sehr schnell"] },
+            { id: "approval_score", label: "Annahmequote",   val: approvalScoreVal, set: setApprovalScoreVal, hints: ["Niedrig","Mittel","Hoch","Sehr hoch"] },
+            { id: "price_score",    label: "Preis",           val: priceScoreVal,    set: setPriceScoreVal,    hints: ["Teuer","Mittel","Günstig","Sehr günstig"] },
+            { id: "flex_score",     label: "Flexibilität",    val: flexibilityScore, set: setFlexibilityScore, hints: ["Fest","Standard","Flexibel","Sehr flexibel"] },
+          ] as { id: string; label: string; val: string; set: (v: string) => void; hints: string[] }[]).map(({ id, label, val, set, hints }) => (
+            <div className="admin-field" key={id}>
+              <label htmlFor={id} className="admin-label">
+                {label}
+                {val && <span style={{ color: "var(--color-turquoise)", marginLeft: "0.5rem" }}>→ {hints[Math.round(parseFloat(val)) - 1] ?? ""}</span>}
+              </label>
+              <input id={id} type="number" min={1} max={4} step={0.5} value={val} onChange={(e) => set(e.target.value)} className="admin-input" placeholder="1.0 – 4.0" />
+            </div>
+          ))}
         </div>
 
         {/* ── Merkmale ── */}
@@ -343,6 +307,7 @@ export default function ProduktNeuPage() {
               { id: "liquiditaet", label: "Liquiditätsengpass überbrücken" },
               { id: "wachstum", label: "Wachstum & Expansion" },
               { id: "marketing", label: "Investition in Marketing" },
+              { id: "steuer", label: "Steuerrückzahlung" },
               { id: "andere", label: "Andere" },
             ]).map(({ id, label }) => (
               <label key={id} className="flex items-center gap-2 cursor-pointer text-sm">
@@ -397,12 +362,6 @@ export default function ProduktNeuPage() {
             ))}
           </div>
         </div>
-
-        {/* ── Vorteile & Nachteile ── */}
-        <SectionHeader title="Vorteile & Nachteile" />
-
-        <ArrayField label="Vorteile" items={pros} onChange={setPros} placeholder="z.B. Schnelle Auszahlung" />
-        <ArrayField label="Nachteile" items={cons} onChange={setCons} placeholder="z.B. Nur für Bestandskunden" />
 
         {/* ── Voraussetzungen ── */}
         <SectionHeader title="Voraussetzungen" />

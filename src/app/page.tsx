@@ -14,6 +14,7 @@ import FaqItem from "@/components/FaqItem";
 import FunnelWidget from "@/components/FunnelWidget";
 import UseCaseSlider from "@/components/UseCaseSlider";
 import { faqItems } from "@/lib/data";
+import customerImg from "../../img/category/customer.png";
 
 export default function Home() {
   return (
@@ -157,16 +158,28 @@ export default function Home() {
         {/* === FÜR WEN === */}
         <section className="section bg-white">
           <div className="container">
+            <AnimateOnScroll>
+              <p className="usecase-sticky-label text-center mb-3">Voraussetzungen</p>
+              <h2 className="usecase-sticky-heading text-center mb-10">Für wen ist<br />LiquidNow?</h2>
+            </AnimateOnScroll>
             <div className="eligibility-grid">
               <AnimateOnScroll>
-                <p className="section-label">Voraussetzungen</p>
-                <h2 className="heading-section mt-2">Für wen ist<br />LiquidNow?</h2>
-                <p className="text-sub mt-4 max-w-sm">
-                  Wir konzentrieren uns auf etablierte deutsche Unternehmen mit laufendem Geschäftsbetrieb – keine Startups, keine Konzerne.
-                </p>
+                <div className="overflow-hidden rounded-2xl">
+                  <Image
+                    src={customerImg}
+                    alt=""
+                    width={800}
+                    height={500}
+                    className="w-full object-cover block"
+                    aria-hidden="true"
+                  />
+                </div>
               </AnimateOnScroll>
 
               <AnimateOnScroll delay={0.1}>
+                <p className="text-sub mb-6 max-w-sm">
+                  Wir konzentrieren uns auf etablierte deutsche Unternehmen mit laufendem Geschäftsbetrieb – keine Startups, keine Konzerne.
+                </p>
                 <ul className="eligibility-list">
                   {[
                     ["Deutsches Unternehmen", "GmbH, UG, GbR, Einzelunternehmen u. a."],
