@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, User as UserIcon, FolderOpen } from "lucide-react";
 import Logo from "@/components/Logo";
 import UserMenu from "@/components/UserMenu";
 import { createClient } from "@/lib/supabase";
@@ -89,9 +89,18 @@ export default function Navigation() {
                   <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>Angemeldet als</p>
                   <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</p>
                 </div>
+                {[
+                  { href: "/plattform/profil", icon: UserIcon, label: "Mein Profil" },
+                  { href: "/plattform/dokumente", icon: FolderOpen, label: "Meine Dokumente" },
+                ].map(({ href, icon: Icon, label }) => (
+                  <a key={href} href={href} onClick={() => setMobileOpen(false)} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.875rem 1rem", borderTop: "1px solid var(--color-border)", textDecoration: "none", fontSize: "0.9375rem", color: "var(--color-dark)" }}>
+                    <Icon style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)" }} />
+                    {label}
+                  </a>
+                ))}
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout(); }}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.875rem 1rem", background: "none", border: "none", fontSize: "0.9375rem", color: "var(--color-dark)", cursor: "pointer" }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.875rem 1rem", background: "none", border: "none", borderTop: "1px solid var(--color-border)", fontSize: "0.9375rem", color: "var(--color-dark)", cursor: "pointer" }}
                 >
                   <LogOut style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)" }} />
                   Abmelden

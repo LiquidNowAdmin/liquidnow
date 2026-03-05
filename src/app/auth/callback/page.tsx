@@ -13,15 +13,17 @@ function CallbackContent() {
     const next = searchParams.get("next") ?? "/plattform";
 
     async function exchange() {
-      console.log("[callback] code:", code, "next:", next);
       if (code) {
         const supabase = createClient();
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        console.log("[callback] exchange result:", { data, error });
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          console.error("[callback] exchange error:", error);
           router.replace("/auth/login?error=1");
           return;
+        }
+        // Link anonymous marketing session to authenticated user
+        const sessionId = localStorage.getItem("mkt_session_id");
+        if (sessionId) {
+          await supabase.rpc("link_marketing_session", { p_session_id: sessionId });
         }
       }
       window.location.href = next;

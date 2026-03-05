@@ -351,7 +351,7 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: none;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   transform: translateY(-2px);
 }
 
@@ -375,9 +375,16 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 20px rgba(122, 160, 196, 0.4);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #8FB8D8 0%, #243650 100%);
   box-shadow: 0 6px 28px rgba(122, 160, 196, 0.55);
+}
+
+.btn-primary:disabled {
+  background: var(--color-light-bg);
+  color: var(--color-subtle);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .btn-gold {
@@ -2634,6 +2641,39 @@ button, .btn, label, .badge, .trust-item {
   color: var(--color-turquoise);
 }
 
+/* Two-column product+funnel layout */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 3rem;
+  align-items: start;
+  padding: 1.5rem 0 3rem;
+}
+
+@media (max-width: 1024px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+.detail-left {
+  min-width: 0;
+}
+
+.detail-right {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.detail-funnel-card {
+  background: #fff;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-border);
+  padding: 1.75rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+}
+
 /* --- Skeleton --- */
 .offer-skeleton {
   background: #fff;
@@ -2972,6 +3012,16 @@ button, .btn, label, .badge, .trust-item {
 
 .admin-input:focus {
   border-color: var(--color-turquoise);
+}
+
+/* Chrome autofill detection via animation */
+@keyframes onAutofill {
+  from { opacity: 1; }
+  to { opacity: 1; }
+}
+.admin-input:-webkit-autofill {
+  animation-name: onAutofill;
+  animation-duration: 1ms;
 }
 
 .admin-select {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, User as UserIcon, FolderOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -67,6 +67,27 @@ function Avatar({ user, onLogout }: { user: User; onLogout: () => void }) {
               {user.email}
             </p>
           </div>
+          {[
+            { href: "/plattform/profil", icon: UserIcon, label: "Mein Profil" },
+            { href: "/plattform/dokumente", icon: FolderOpen, label: "Meine Dokumente" },
+          ].map(({ href, icon: Icon, label }) => (
+            <a
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              style={{
+                display: "flex", alignItems: "center", gap: "0.625rem",
+                padding: "0.75rem 1rem", textDecoration: "none",
+                fontSize: "0.875rem", color: "var(--color-dark)", transition: "background 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--color-light-bg)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+            >
+              <Icon style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)" }} />
+              {label}
+            </a>
+          ))}
+          <div style={{ height: "1px", background: "var(--color-border)", margin: "0 1rem" }} />
           <button
             onClick={() => { setOpen(false); onLogout(); }}
             style={{

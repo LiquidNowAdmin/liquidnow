@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, ArrowLeft, Check, Mail } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Loader2, Search } from "lucide-react";
 import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -139,16 +139,52 @@ function QredFunnelContent() {
   const [orgHrb,          setOrgHrb]          = useState("");
   const [orgUstId,        setOrgUstId]        = useState("");
   const [orgTurnover,     setOrgTurnover]     = useState("");
-  const [orgEmail,        setOrgEmail]        = useState("");
-  const [orgPhone,        setOrgPhone]        = useState("");
   const [orgWebpage,      setOrgWebpage]      = useState("");
   const [orgStreet,       setOrgStreet]       = useState("");
   const [orgZip,          setOrgZip]          = useState("");
   const [orgCity,         setOrgCity]         = useState("");
   const [purpose,         setPurpose]         = useState("WORKING_CAPITAL");
   const [purposeManual,   setPurposeManual]   = useState("");
+  const [searchLoading,   setSearchLoading]   = useState(false);
+  const [searchStatus,    setSearchStatus]    = useState<"idle" | "ok" | "error">("idle");
 
   const isLastStep = step === STEPS.length - 1;
+
+  async function handleCompanySearch() {
+    if (!orgWebpage) return;
+    setSearchLoading(true);
+    setSearchStatus("idle");
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/company-search`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ website: orgWebpage }),
+        }
+      );
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
+        if (d.name)            setOrgName(d.name);
+        if (d.hrb)             setOrgHrb(d.hrb);
+        if (d.ustId)           setOrgUstId(d.ustId);
+        if (d.address?.street) setOrgStreet(d.address.street);
+        if (d.address?.zip)    setOrgZip(d.address.zip);
+        if (d.address?.city)   setOrgCity(d.address.city);
+        setSearchStatus("ok");
+      } else {
+        setSearchStatus("error");
+      }
+    } catch {
+      setSearchStatus("error");
+    } finally {
+      setSearchLoading(false);
+    }
+  }
 
   function buildPayload() {
     return {
@@ -162,8 +198,6 @@ function QredFunnelContent() {
         nationalOrganizationNumber: orgHrb,
         uniqueCompanyIdentifier: orgUstId || undefined,
         name: orgName,
-        email: orgEmail || undefined,
-        phone: orgPhone || undefined,
         address: { street: orgStreet, zipCode: orgZip, city: orgCity },
         turnover: orgTurnover ? parseInt(orgTurnover) : undefined,
         webpage: orgWebpage || undefined,
@@ -312,13 +346,44 @@ function QredFunnelContent() {
               {/* Step 0: Unternehmen */}
               {step === 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {/* Website + Autofill */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>
+                      Website
+                    </label>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <input
+                        type="url"
+                        value={orgWebpage}
+                        onChange={e => { setOrgWebpage(e.target.value); setSearchStatus("idle"); }}
+                        placeholder="https://example.de"
+                        className="admin-input"
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCompanySearch}
+                        disabled={!orgWebpage || searchLoading}
+                        className="btn btn-secondary btn-md"
+                        style={{ whiteSpace: "nowrap", gap: "0.375rem", flexShrink: 0 }}
+                      >
+                        {searchLoading
+                          ? <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} />
+                          : <Search style={{ width: "1rem", height: "1rem" }} />}
+                        {searchLoading ? "Suche…" : "Ausfüllen"}
+                      </button>
+                    </div>
+                    {searchStatus === "ok" && (
+                      <p style={{ fontSize: "0.6875rem", color: "var(--color-turquoise)", marginTop: "0.25rem" }}>✓ Firmendaten gefunden und eingetragen.</p>
+                    )}
+                    {searchStatus === "error" && (
+                      <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Keine Daten gefunden. Bitte manuell ausfüllen.</p>
+                    )}
+                  </div>
                   <Field label="Firmenname" value={orgName} onChange={setOrgName} placeholder="Example GmbH" required />
                   <Field label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer" required />
                   <Field label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" hint="Umsatzsteuer-Identifikationsnummer" />
                   <Field label="Ø Monatsumsatz – letzte 3 Monate (EUR)" value={orgTurnover} onChange={setOrgTurnover} type="number" placeholder="20000" required />
-                  <Field label="E-Mail Unternehmen" value={orgEmail} onChange={setOrgEmail} type="email" placeholder="info@example.de" />
-                  <Field label="Telefon Unternehmen" value={orgPhone} onChange={setOrgPhone} placeholder="+49 30 1234567" />
-                  <Field label="Website" value={orgWebpage} onChange={setOrgWebpage} placeholder="https://example.de" />
                 </div>
               )}
 
