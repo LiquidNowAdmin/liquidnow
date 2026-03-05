@@ -540,15 +540,57 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     run().catch(() => { /* ignore tracking errors */ });
   }
 
-  // Prefill personal data from auth user metadata
+  // Prefill funnel fields from user profile + company data
   useEffect(() => {
     if (!user) return;
+    // Seed from OAuth metadata immediately (fast, no network)
     const meta = user.user_metadata ?? {};
     const fullName: string = meta.full_name ?? meta.name ?? "";
     const parts = fullName.trim().split(" ");
     if (!firstName && parts.length > 0) setFirstName(parts[0]);
     if (!lastName && parts.length > 1) setLastName(parts.slice(1).join(" "));
     if (!applicantEmail && user.email) setApplicantEmail(user.email);
+
+    // Then fetch DB profile (overrides metadata if richer data exists)
+    async function fetchProfile() {
+      const [profileRes, memberRes] = await Promise.all([
+        supabase.from("users").select("first_name, last_name, phone, email, metadata").eq("id", user!.id).maybeSingle(),
+        supabase.from("company_members").select("company_id").eq("user_id", user!.id).limit(1).maybeSingle(),
+      ]);
+
+      if (profileRes.data) {
+        const d = profileRes.data;
+        const m = (d.metadata ?? {}) as Record<string, string>;
+        if (d.first_name) setFirstName(d.first_name);
+        if (d.last_name)  setLastName(d.last_name);
+        if (d.email)      setApplicantEmail(d.email);
+        if (d.phone && !applicantPhone) setApplicantPhone(d.phone);
+        if (m.date_of_birth && !dateOfBirth) setDateOfBirth(m.date_of_birth);
+        if (m.street && !applicantStreet)    setApplicantStreet(m.street);
+        if (m.zip && !applicantZip)          setApplicantZip(m.zip);
+        if (m.city && !applicantCity)        setApplicantCity(m.city);
+      }
+
+      if (memberRes.data?.company_id) {
+        const { data: co } = await supabase
+          .from("companies")
+          .select("name, hrb, ust_id, website, address, annual_revenue")
+          .eq("id", memberRes.data.company_id)
+          .maybeSingle();
+        if (co) {
+          const addr = (co.address ?? {}) as Record<string, string>;
+          if (co.name    && !orgName)     { setOrgName(co.name); setShowOrgFields(true); }
+          if (co.hrb     && !orgHrb)      setOrgHrb(co.hrb);
+          if (co.ust_id  && !orgUstId)    setOrgUstId(co.ust_id);
+          if (co.website && !orgWebpage)  setOrgWebpage(co.website);
+          if (addr.street && !orgStreet)  setOrgStreet(addr.street);
+          if (addr.zip    && !orgZip)     setOrgZip(addr.zip);
+          if (addr.city   && !orgCity)    setOrgCity(addr.city);
+          if (co.annual_revenue && !orgTurnover) setOrgTurnover(Math.round(co.annual_revenue / 12));
+        }
+      }
+    }
+    fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -605,6 +647,21 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     finally { setSearchLoading(false); }
   }
 
+  // Fire-and-forget: persist org data to DB profile if logged in
+  async function syncOrg({ withTurnover = false } = {}) {
+    if (!user || !orgName) return;
+    await supabase.rpc("get_or_create_company", {
+      p_name: orgName,
+      p_hrb: orgHrb || null,
+      p_ust_id: orgUstId || null,
+      p_website: orgWebpage || null,
+      p_street: orgStreet || null,
+      p_zip: orgZip || null,
+      p_city: orgCity || null,
+      p_monthly_revenue: withTurnover ? orgTurnover : null,
+    });
+  }
+
   function handleNext() {
     if (step === 2 && orgWebpage && !showOrgFields) {
       handleCompanySearch();
@@ -613,6 +670,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     if (step === 2) {
       saveDraft({ orgWebpage, orgName, orgHrb, orgUstId, orgStreet, orgZip, orgCity });
       trackStep(supabase, "unternehmen", { orgName, orgCity });
+      syncOrg({ withTurnover: true });
     }
     setStep(s => s + 1);
   }
@@ -823,7 +881,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                   <GermanNumberInput
                                     value={orgTurnover} min={1} max={10_000_000} step={1000}
                                     onChange={setOrgTurnover}
-                                    onEnter={() => { if (orgTurnover) { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); setStep(s => s + 1); } }}
+                                    onEnter={() => { if (orgTurnover) { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); } }}
                                     placeholder="20.000"
                                     className="admin-input" style={{ width: "100%", paddingRight: "2rem" }}
                                   />
@@ -834,7 +892,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                 <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
-                                <button type="button" onClick={() => { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                <button type="button" onClick={() => { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                 </button>
                               </div>
