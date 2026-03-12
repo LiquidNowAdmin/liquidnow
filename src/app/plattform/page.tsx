@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2 } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2 } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
@@ -1055,23 +1054,43 @@ export default function PlattformPage() {
   const [filterGracePeriod, setFilterGracePeriod] = useState(false);
   const [filterNegativeSchufa, setFilterNegativeSchufa] = useState(false);
   const [filterUseCases, setFilterUseCases] = useState<string[]>([]);
-  const [filterRechtsform, setFilterRechtsform] = useState("");
-  const [filterBranche, setFilterBranche] = useState("");
-  const [annualRevenue, setAnnualRevenue] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [showFilter, setShowFilter] = useState(false);
+  const [showFilter, setShowFilter] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   const [showUseCaseFilter, setShowUseCaseFilter] = useState(false);
   const [skeletonStartCount, setSkeletonStartCount] = useState(25);
-  const [mounted, setMounted] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<{ offer: Offer; amount: number; term: number } | null>(null);
 
+  // "Mein Unternehmen" bar state
+  const [companyType, setCompanyType] = useState<"" | "kapitalgesellschaft" | "personengesellschaft">("");
+  const [companyBranche, setCompanyBranche] = useState("");
+  const [companyRevenue, setCompanyRevenue] = useState<number | null>(null);
+  const [companyBarOpen, setCompanyBarOpen] = useState(true);
+  const companyBarComplete = !!(companyType && companyBranche && companyRevenue);
+  // Company profile data (from DB, read-only display)
+  const [companyProfile, setCompanyProfile] = useState<{ name?: string; hrb?: string; ust_id?: string; website?: string; street?: string; zip?: string; city?: string } | null>(null);
+
+  const COMPANY_TYPE_FORMS: Record<string, string[]> = {
+    kapitalgesellschaft: ["gmbh", "ug", "ag"],
+    personengesellschaft: ["gbr", "einzelunternehmen", "ohg", "kg"],
+  };
+
+  const BRANCHEN = [
+    { id: "handel", label: "E-Commerce & Handel" },
+    { id: "dienstleistung", label: "Dienstleistung" },
+    { id: "produktion", label: "Produktion & Handwerk" },
+    { id: "gastronomie", label: "Gastronomie & Hotellerie" },
+    { id: "andere", label: "Andere" },
+  ];
+
   useEffect(() => {
-    setMounted(true);
     setSkeletonStartCount(22 + Math.floor(Math.random() * 6));
-    if (!sessionStorage.getItem("onboarding_done")) {
-      setShowOnboarding(true);
-    }
+    // Restore from localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem("company_bar") ?? "{}");
+      if (saved.companyType) setCompanyType(saved.companyType);
+      if (saved.branche) setCompanyBranche(saved.branche);
+      if (saved.revenue) setCompanyRevenue(saved.revenue);
+      if (saved.companyType && saved.branche && saved.revenue) setCompanyBarOpen(false);
+    } catch { /* keep open */ }
   }, []);
 
   const fetchOffers = useCallback(async () => {
@@ -1114,18 +1133,19 @@ export default function PlattformPage() {
       const productUseCases = (m.use_cases as string[] | undefined) ?? [];
       if (!filterUseCases.some((uc) => productUseCases.includes(uc))) return false;
     }
-    if (filterRechtsform) {
+    if (companyType) {
       const allowed = (m.eligible_legal_forms as string[] | undefined) ?? [];
-      if (allowed.length > 0 && !allowed.includes(filterRechtsform)) return false;
+      const forms = COMPANY_TYPE_FORMS[companyType] ?? [];
+      if (allowed.length > 0 && !forms.some(f => allowed.includes(f))) return false;
     }
-    if (filterBranche) {
+    if (companyBranche) {
       const allowed = (m.eligible_industries as string[] | undefined) ?? [];
-      if (allowed.length > 0 && !allowed.includes(filterBranche)) return false;
+      if (allowed.length > 0 && !allowed.includes(companyBranche)) return false;
     }
-    if (annualRevenue > 0) {
+    if (companyRevenue && companyRevenue > 0) {
       const req = (m.requirements ?? {}) as Record<string, unknown>;
       const minMonthly = req.min_monthly_revenue_eur as number | undefined;
-      if (minMonthly != null && annualRevenue < minMonthly * 12) return false;
+      if (minMonthly != null && companyRevenue < minMonthly * 12) return false;
     }
     return true;
   };
@@ -1159,62 +1179,57 @@ export default function PlattformPage() {
     (termMonths !== 12 ? 1 : 0) + (volume !== 50000 ? 1 : 0) +
     (filterTopUp ? 1 : 0) + (filter48h ? 1 : 0) + (filterFlexRepayment ? 1 : 0) +
     (filterGracePeriod ? 1 : 0) + (filterNegativeSchufa ? 1 : 0) +
-    filterUseCases.length + (filterRechtsform ? 1 : 0) + (filterBranche ? 1 : 0) +
-    (annualRevenue > 0 ? 1 : 0);
+    filterUseCases.length;
 
-  const ONBOARDING_STEPS = 6;
   const matchingCount = offers.filter(matchesAll).length;
-  const skeletonCount = loading
-    ? skeletonStartCount
-    : Math.max(matchingCount, Math.round(skeletonStartCount * Math.pow(0.65, onboardingStep)));
 
-  function completeOnboarding() {
-    sessionStorage.setItem("onboarding_done", "1");
-    setShowOnboarding(false);
+  // Save company bar to localStorage + sync to DB if logged in
+  function saveCompanyBar(patch: { companyType?: string; branche?: string; revenue?: number | null }) {
+    const cur = JSON.parse(localStorage.getItem("company_bar") ?? "{}");
+    const updated = { ...cur, ...patch };
+    localStorage.setItem("company_bar", JSON.stringify(updated));
+    // Fire-and-forget DB sync for logged-in users
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data: member } = await supabase.from("company_members").select("company_id").eq("user_id", session.user.id).limit(1).maybeSingle();
+        if (!member?.company_id) return;
+        const type = updated.companyType || companyType;
+        const br = updated.branche || companyBranche;
+        const rev = updated.revenue ?? companyRevenue;
+        await supabase.from("companies").update({
+          legal_form: type,
+          industry: br,
+          annual_revenue: rev,
+          updated_at: new Date().toISOString(),
+        }).eq("id", member.company_id);
+      } catch { /* ignore sync errors */ }
+    })();
   }
 
-  function nextStep() {
-    if (onboardingStep < ONBOARDING_STEPS - 1) {
-      setOnboardingStep(onboardingStep + 1);
-    } else {
-      completeOnboarding();
-    }
-  }
-
-  const rechtsformen = [
-    { id: "gmbh", label: "GmbH" },
-    { id: "ug", label: "UG" },
-    { id: "einzelunternehmen", label: "Einzelunternehmen" },
-    { id: "gbr", label: "GbR" },
-    { id: "ag", label: "AG" },
-    { id: "kg", label: "KG" },
-  ];
-
-  const branchen = [
-    { id: "handel", label: "E-Commerce & Handel" },
-    { id: "dienstleistung", label: "Dienstleistung" },
-    { id: "produktion", label: "Produktion & Handwerk" },
-    { id: "gastronomie", label: "Gastronomie & Hotellerie" },
-    { id: "andere", label: "Andere" },
-  ];
-
-  const verwendungszwecke = [
-    { id: "wareneinkauf", label: "Wareneinkauf" },
-    { id: "liquiditaet", label: "Liquiditätsengpass" },
-    { id: "wachstum", label: "Wachstum & Expansion" },
-    { id: "marketing", label: "Marketing" },
-    { id: "steuer", label: "Steuerrückzahlung" },
-    { id: "andere", label: "Andere" },
-  ];
-
-  const onboardingTitles = [
-    { title: "Wie viel möchten Sie finanzieren?", sub: "Wählen Sie Ihren gewünschten Kreditbetrag." },
-    { title: "Wie lange soll die Laufzeit sein?", sub: "Wählen Sie die gewünschte Laufzeit." },
-    { title: "Was trifft auf Sie zu?", sub: "Wählen Sie Ihre Rechtsform." },
-    { title: "In welcher Branche sind Sie tätig?", sub: "Wir zeigen nur passende Angebote." },
-    { title: "Wofür benötigen Sie die Finanzierung?", sub: "Mehrfachauswahl möglich." },
-    { title: "Wie hoch war Ihr Jahresumsatz?", sub: "Wir zeigen nur erreichbare Angebote." },
-  ];
+  // Load company bar from DB for logged-in users
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data: member } = await supabase.from("company_members").select("company_id").eq("user_id", session.user.id).limit(1).maybeSingle();
+        if (!member?.company_id) return;
+        const { data: co } = await supabase.from("companies").select("name, hrb, ust_id, website, address, legal_form, industry, annual_revenue").eq("id", member.company_id).maybeSingle();
+        if (!co) return;
+        if (co.legal_form) setCompanyType(co.legal_form as typeof companyType);
+        if (co.industry) setCompanyBranche(co.industry);
+        if (co.annual_revenue) setCompanyRevenue(co.annual_revenue);
+        if (co.legal_form && co.industry && co.annual_revenue) setCompanyBarOpen(false);
+        const addr = (co.address ?? {}) as Record<string, string>;
+        if (co.name) setCompanyProfile({ name: co.name, hrb: co.hrb, ust_id: co.ust_id, website: co.website, street: addr.street, zip: addr.zip, city: addr.city });
+      } catch { /* ignore */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -1252,7 +1267,7 @@ export default function PlattformPage() {
 
           <div className={selectedOffer ? "" : "platform-layout"}>
 
-            {/* Filter Sidebar */}
+            {/* Sidebar: Company + Filter */}
             <AnimatePresence initial={false}>
             {!selectedOffer && (
             <motion.aside
@@ -1261,109 +1276,479 @@ export default function PlattformPage() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.25 }}
             >
-              <button className="filter-mobile-toggle" onClick={() => setShowFilter(v => !v)}>
-                <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <SlidersHorizontal className="h-4 w-4" style={{ color: "var(--color-turquoise)" }} />
-                  <span className="filter-sidebar-title" style={{ margin: 0 }}>Filter</span>
-                  {activeFilterCount > 0 && (
-                    <span style={{ background: "var(--color-turquoise)", color: "#fff", fontSize: "0.625rem", fontWeight: 700, borderRadius: "999px", padding: "0.1rem 0.45rem", lineHeight: 1.6 }}>
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </span>
-                <ChevronDown className={`filter-mobile-toggle-icon${showFilter ? " filter-mobile-toggle-icon-open" : ""}`} />
-              </button>
-              <div className="filter-sidebar-title">Filter</div>
+              {/* ── Mobile: Toggle Row / Desktop: Stacked ── */}
+              {(() => {
+                const wizardStep = !companyType ? 0 : !companyBranche ? 1 : 2;
+                const COMPANY_TYPES = [
+                  { id: "kapitalgesellschaft", label: "Kapitalgesellschaft" },
+                  { id: "personengesellschaft", label: "Personengesellschaft" },
+                ] as const;
+                const companySummary = companyBarComplete
+                  ? `${companyType === "kapitalgesellschaft" ? "Kapitalgesellschaft" : "Personengesellschaft"} · ${BRANCHEN.find(b => b.id === companyBranche)?.label ?? companyBranche} · ${formatCurrency(companyRevenue!)}/Jahr`
+                  : null;
+                const mobileActivePanel = showFilter ? "filter" : companyBarOpen ? "company" : null;
+                return (
+                  <>
+                    {/* Toggle buttons row (mobile only, desktop hidden via CSS) */}
+                    <div className="sidebar-toggle-row">
+                      <button
+                        className={`sidebar-pill${showFilter ? " sidebar-pill-active" : ""}`}
+                        onClick={() => { setShowFilter(v => !v); if (!showFilter) setCompanyBarOpen(false); }}
+                      >
+                        <SlidersHorizontal className="h-3.5 w-3.5" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                          <span className="sidebar-accordion-badge">{activeFilterCount}</span>
+                        )}
+                        <ChevronDown className={`sidebar-pill-chevron${showFilter ? " sidebar-pill-chevron-open" : ""}`} />
+                      </button>
+                      <button
+                        className={`sidebar-pill${companyBarOpen ? " sidebar-pill-active" : ""}`}
+                        onClick={() => { setCompanyBarOpen(o => !o); if (!companyBarOpen) setShowFilter(false); }}
+                      >
+                        <Building2 className="h-3.5 w-3.5" />
+                        <span>{companyProfile?.name || "Unternehmen"}</span>
+                        <ChevronDown className={`sidebar-pill-chevron${companyBarOpen ? " sidebar-pill-chevron-open" : ""}`} />
+                      </button>
+                    </div>
 
-              <div className={`filter-sidebar-content${showFilter ? "" : " filter-sidebar-content-hidden"}`}>
-              <div className="filter-group">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-turquoise" />
-                  <span className="filter-label">Laufzeit</span>
-                </div>
-                <div className="text-center">
-                  <span className="filter-value">{termMonths} Monate</span>
-                </div>
-                <input type="range" min={1} max={60} step={1} value={termMonths}
-                  onChange={e => setTermMonths(+e.target.value)}
-                  className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
-                <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
-              </div>
+                    {/* Desktop: Company Accordion (above filter) */}
+                    <div className="sidebar-accordion sidebar-desktop-company">
+                      <button className="sidebar-accordion-toggle" onClick={() => setCompanyBarOpen(o => !o)}>
+                        <span className="sidebar-accordion-toggle-left">
+                          <Building2 className="h-4 w-4 text-turquoise shrink-0" />
+                          <span className="sidebar-accordion-text">
+                            <span className="sidebar-accordion-label">{companyProfile?.name || "Unternehmen"}</span>
+                            {companySummary && !companyBarOpen && (
+                              <span className="sidebar-accordion-hint">{companySummary}</span>
+                            )}
+                          </span>
+                        </span>
+                        <ChevronDown className={`filter-mobile-toggle-icon${companyBarOpen ? " filter-mobile-toggle-icon-open" : ""}`} />
+                      </button>
+                      {companyBarOpen && (
+                        companyBarComplete ? (
+                          <div className="sidebar-accordion-body">
+                            <div className="company-fields-inline">
+                              <span className="company-inline-label">Rechtsform</span>
+                              {COMPANY_TYPES.map(({ id, label }) => (
+                                <button key={id} className={`company-prompt-chip${companyType === id ? " company-prompt-chip-selected" : ""}`}
+                                  onClick={() => { setCompanyType(id); saveCompanyBar({ companyType: id }); }}>
+                                  {label}
+                                </button>
+                              ))}
+                              <span className="company-inline-label">Branche</span>
+                              {BRANCHEN.map(({ id, label }) => (
+                                <button key={id} className={`company-prompt-chip${companyBranche === id ? " company-prompt-chip-selected" : ""}`}
+                                  onClick={() => { setCompanyBranche(id); saveCompanyBar({ branche: id }); }}>
+                                  {label}
+                                </button>
+                              ))}
+                              <span className="company-inline-label">Umsatz</span>
+                              <div className="company-prompt-revenue-wrap">
+                                <GermanNumberInput value={companyRevenue} min={1} max={100_000_000} step={10000}
+                                  onChange={v => { setCompanyRevenue(v); if (v) saveCompanyBar({ revenue: v }); }}
+                                  onEnter={() => setCompanyBarOpen(false)}
+                                  placeholder="500.000" className="admin-input" style={{ width: "100%", paddingRight: "2rem" }} />
+                                <span className="company-prompt-revenue-suffix">€</span>
+                              </div>
+                            </div>
+                            {companyProfile && (
+                              <div className="sidebar-company-profile">
+                                <span className="sidebar-field-label">Firmenprofil</span>
+                                <div className="sidebar-profile-inline">
+                                  {[
+                                    companyProfile.hrb,
+                                    companyProfile.ust_id,
+                                    companyProfile.website?.replace(/^https?:\/\//, ""),
+                                    [companyProfile.street, [companyProfile.zip, companyProfile.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+                                  ].filter(Boolean).map((item, i) => (
+                                    <span key={i} className="sidebar-profile-meta-item">{item}</span>
+                                  ))}
+                                </div>
+                                <a href="/plattform/profil" className="sidebar-profile-link">Profil bearbeiten</a>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="company-incomplete-wrap">
+                            <div className="company-incomplete-spinner" />
+                            <div className="company-incomplete-inner">
+                              <p className="sidebar-field-hint">
+                                {wizardStep === 0 && "Vervollständigen Sie Ihre Angaben"}
+                                {wizardStep === 1 && "In welcher Branche sind Sie tätig?"}
+                                {wizardStep === 2 && "Wie hoch ist Ihr Jahresumsatz?"}
+                              </p>
+                              <AnimatePresence mode="wait">
+                                {wizardStep === 0 && (
+                                  <motion.div key="s0" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                    <div className="company-prompt-chips">
+                                      {COMPANY_TYPES.map(({ id, label }) => (
+                                        <button key={id} className="company-prompt-chip"
+                                          onClick={() => { setCompanyType(id); saveCompanyBar({ companyType: id }); }}>
+                                          {label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                                {wizardStep === 1 && (
+                                  <motion.div key="s1" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                    <div className="company-prompt-chips">
+                                      {BRANCHEN.map(({ id, label }) => (
+                                        <button key={id} className="company-prompt-chip"
+                                          onClick={() => { setCompanyBranche(id); saveCompanyBar({ branche: id }); }}>
+                                          {label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <button className="company-prompt-back" onClick={() => { setCompanyType(""); saveCompanyBar({ companyType: "" }); }}>
+                                      <ArrowLeft /> Zurück
+                                    </button>
+                                  </motion.div>
+                                )}
+                                {wizardStep === 2 && (
+                                  <motion.div key="s2" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                    <div className="company-prompt-revenue">
+                                      <div className="company-prompt-revenue-wrap">
+                                        <GermanNumberInput value={companyRevenue} min={1} max={100_000_000} step={10000}
+                                          onChange={v => { setCompanyRevenue(v); if (v) saveCompanyBar({ revenue: v }); }}
+                                          onEnter={() => { if (companyRevenue) { saveCompanyBar({ revenue: companyRevenue }); setCompanyBarOpen(false); } }}
+                                          placeholder="500.000" className="admin-input" style={{ width: "100%", paddingRight: "2rem" }} />
+                                        <span className="company-prompt-revenue-suffix">€</span>
+                                      </div>
+                                      <button className="btn btn-primary btn-md" disabled={!companyRevenue}
+                                        onClick={() => { if (companyRevenue) { saveCompanyBar({ revenue: companyRevenue }); setCompanyBarOpen(false); } }}>
+                                        Fertig
+                                      </button>
+                                    </div>
+                                    <button className="company-prompt-back" onClick={() => { setCompanyBranche(""); saveCompanyBar({ branche: "" }); }}>
+                                      <ArrowLeft /> Zurück
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
 
-              <div className="filter-group">
-                <div className="flex items-center gap-1.5">
-                  <Banknote className="h-3.5 w-3.5 text-turquoise" />
-                  <span className="filter-label">Volumen</span>
-                </div>
-                <div className="text-center">
-                  <span className="filter-value">{formatCurrency(volume)}</span>
-                </div>
-                <input type="range" min={5000} max={500000} step={5000} value={volume}
-                  onChange={e => setVolume(+e.target.value)}
-                  className="funnel-slider" style={{ background: sliderBg(volume, 5000, 500000) }} />
-                <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
-              </div>
+                    {/* Desktop: Filter Accordion (toggle hidden via CSS, body always visible) */}
+                    <div className="sidebar-accordion sidebar-desktop-filter">
+                      <button className="sidebar-accordion-toggle" onClick={() => setShowFilter(v => !v)}>
+                        <span className="sidebar-accordion-toggle-left">
+                          <SlidersHorizontal className="h-4 w-4 text-turquoise" />
+                          <span className="sidebar-accordion-label">Filter</span>
+                          {activeFilterCount > 0 && (
+                            <span className="sidebar-accordion-badge">{activeFilterCount}</span>
+                          )}
+                        </span>
+                        <ChevronDown className={`filter-mobile-toggle-icon${showFilter ? " filter-mobile-toggle-icon-open" : ""}`} />
+                      </button>
 
-              <div className="filter-group">
-                <button className="filter-group-toggle" onClick={() => setShowUseCaseFilter(v => !v)}>
-                  <span className="filter-label">Verwendungszweck</span>
-                  <ChevronDown className={`filter-mobile-toggle-icon filter-group-toggle-icon${showUseCaseFilter ? " filter-mobile-toggle-icon-open" : ""}`} />
-                </button>
-                <div className={`filter-group-content${showUseCaseFilter ? "" : " filter-group-content-hidden"}`}>
-                {([
-                  { id: "wareneinkauf", label: "Wareneinkauf" },
-                  { id: "liquiditaet", label: "Liquiditätsengpass" },
-                  { id: "wachstum", label: "Wachstum & Expansion" },
-                  { id: "marketing", label: "Marketing" },
-                  { id: "steuer", label: "Steuerrückzahlung" },
-                  { id: "andere", label: "Andere" },
-                ]).map(({ id, label }) => {
-                  const active = filterUseCases.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setFilterUseCases(active ? filterUseCases.filter((u) => u !== id) : [...filterUseCases, id])}
-                      className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${active ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
-                    >
-                      {label}
-                      {active && <Check className="h-3 w-3" />}
-                    </button>
-                  );
-                })}
-                </div>{/* filter-group-content */}
-              </div>
+                      <div className={`sidebar-accordion-body${showFilter ? "" : " sidebar-accordion-body-hidden"}`}>
+                        <div className="filter-group">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-turquoise" />
+                            <span className="filter-label">Laufzeit</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="filter-value">{termMonths} Monate</span>
+                          </div>
+                          <input type="range" min={1} max={60} step={1} value={termMonths}
+                            onChange={e => setTermMonths(+e.target.value)}
+                            className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                          <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
+                        </div>
 
-              <div className="filter-group">
-                <span className="filter-label">Merkmale</span>
-                <div>
-                {([
-                  { label: "Aufstockung möglich", value: filterTopUp, set: setFilterTopUp },
-                  { label: "48h Auszahlung", value: filter48h, set: setFilter48h },
-                  { label: "Flexible Rückzahlung", value: filterFlexRepayment, set: setFilterFlexRepayment },
-                  { label: "Tilgungsfreie Zeit", value: filterGracePeriod, set: setFilterGracePeriod },
-                  { label: "Negative Schufa/Crefo", value: filterNegativeSchufa, set: setFilterNegativeSchufa },
-                ] as { label: string; value: boolean; set: (v: boolean) => void }[]).map(({ label, value, set }) => (
-                  <button
-                    key={label}
-                    onClick={() => set(!value)}
-                    className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${value ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
-                  >
-                    {label}
-                    {value && <Check className="h-3 w-3" />}
-                  </button>
-                ))}
-                </div>
-              </div>
+                        <div className="filter-group">
+                          <div className="flex items-center gap-1.5">
+                            <Banknote className="h-3.5 w-3.5 text-turquoise" />
+                            <span className="filter-label">Volumen</span>
+                          </div>
+                          <div className="text-center">
+                            <span className="filter-value">{formatCurrency(volume)}</span>
+                          </div>
+                          <input type="range" min={5000} max={500000} step={5000} value={volume}
+                            onChange={e => setVolume(+e.target.value)}
+                            className="funnel-slider" style={{ background: sliderBg(volume, 5000, 500000) }} />
+                          <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
+                        </div>
 
-              {(termMonths !== 12 || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
-                <button
-                  onClick={() => { setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
-                  className="w-full text-center text-xs text-turquoise font-semibold mt-1 hover:underline cursor-pointer"
-                >
-                  Zurücksetzen
-                </button>
-              )}
-              </div>{/* filter-sidebar-content */}
+                        <div className="filter-group">
+                          <span className="filter-label">Verwendungszweck</span>
+                          {([
+                            { id: "wareneinkauf", label: "Wareneinkauf" },
+                            { id: "liquiditaet", label: "Liquiditätsengpass" },
+                            { id: "wachstum", label: "Wachstum & Expansion" },
+                            { id: "marketing", label: "Marketing" },
+                            { id: "steuer", label: "Steuerrückzahlung" },
+                            { id: "andere", label: "Andere" },
+                          ]).map(({ id, label }) => {
+                            const active = filterUseCases.includes(id);
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => setFilterUseCases(active ? filterUseCases.filter((u) => u !== id) : [...filterUseCases, id])}
+                                className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${active ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                              >
+                                {label}
+                                {active && <Check className="h-3 w-3" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="filter-group">
+                          <span className="filter-label">Merkmale</span>
+                          <div>
+                          {([
+                            { label: "Aufstockung möglich", value: filterTopUp, set: setFilterTopUp },
+                            { label: "48h Auszahlung", value: filter48h, set: setFilter48h },
+                            { label: "Flexible Rückzahlung", value: filterFlexRepayment, set: setFilterFlexRepayment },
+                            { label: "Tilgungsfreie Zeit", value: filterGracePeriod, set: setFilterGracePeriod },
+                            { label: "Negative Schufa/Crefo", value: filterNegativeSchufa, set: setFilterNegativeSchufa },
+                          ] as { label: string; value: boolean; set: (v: boolean) => void }[]).map(({ label, value, set }) => (
+                            <button
+                              key={label}
+                              onClick={() => set(!value)}
+                              className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${value ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                            >
+                              {label}
+                              {value && <Check className="h-3 w-3" />}
+                            </button>
+                          ))}
+                          </div>
+                        </div>
+
+                        {(termMonths !== 12 || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
+                          <button
+                            onClick={() => { setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
+                            className="w-full text-center text-xs text-turquoise font-semibold mt-1 hover:underline cursor-pointer"
+                          >
+                            Zurücksetzen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mobile: Expanded body (below toggle row) */}
+                    <AnimatePresence mode="wait">
+                      {mobileActivePanel === "filter" && (
+                        <motion.div
+                          key="mobile-filter"
+                          className="sidebar-mobile-body"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                        >
+                          <div className="sidebar-accordion-body">
+                            <div className="filter-group">
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-turquoise" />
+                                <span className="filter-label">Laufzeit</span>
+                              </div>
+                              <div className="text-center">
+                                <span className="filter-value">{termMonths} Monate</span>
+                              </div>
+                              <input type="range" min={1} max={60} step={1} value={termMonths}
+                                onChange={e => setTermMonths(+e.target.value)}
+                                className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                              <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
+                            </div>
+
+                            <div className="filter-group">
+                              <div className="flex items-center gap-1.5">
+                                <Banknote className="h-3.5 w-3.5 text-turquoise" />
+                                <span className="filter-label">Volumen</span>
+                              </div>
+                              <div className="text-center">
+                                <span className="filter-value">{formatCurrency(volume)}</span>
+                              </div>
+                              <input type="range" min={5000} max={500000} step={5000} value={volume}
+                                onChange={e => setVolume(+e.target.value)}
+                                className="funnel-slider" style={{ background: sliderBg(volume, 5000, 500000) }} />
+                              <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
+                            </div>
+
+                            <div className="filter-group">
+                              <span className="filter-label">Verwendungszweck</span>
+                              {([
+                                { id: "wareneinkauf", label: "Wareneinkauf" },
+                                { id: "liquiditaet", label: "Liquiditätsengpass" },
+                                { id: "wachstum", label: "Wachstum & Expansion" },
+                                { id: "marketing", label: "Marketing" },
+                                { id: "steuer", label: "Steuerrückzahlung" },
+                                { id: "andere", label: "Andere" },
+                              ]).map(({ id, label }) => {
+                                const active = filterUseCases.includes(id);
+                                return (
+                                  <button
+                                    key={id}
+                                    onClick={() => setFilterUseCases(active ? filterUseCases.filter((u) => u !== id) : [...filterUseCases, id])}
+                                    className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${active ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                                  >
+                                    {label}
+                                    {active && <Check className="h-3 w-3" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            <div className="filter-group">
+                              <span className="filter-label">Merkmale</span>
+                              <div>
+                              {([
+                                { label: "Aufstockung möglich", value: filterTopUp, set: setFilterTopUp },
+                                { label: "48h Auszahlung", value: filter48h, set: setFilter48h },
+                                { label: "Flexible Rückzahlung", value: filterFlexRepayment, set: setFilterFlexRepayment },
+                                { label: "Tilgungsfreie Zeit", value: filterGracePeriod, set: setFilterGracePeriod },
+                                { label: "Negative Schufa/Crefo", value: filterNegativeSchufa, set: setFilterNegativeSchufa },
+                              ] as { label: string; value: boolean; set: (v: boolean) => void }[]).map(({ label, value, set }) => (
+                                <button
+                                  key={label}
+                                  onClick={() => set(!value)}
+                                  className={`w-full text-left text-xs font-medium px-3 py-2 rounded-lg mb-1 transition-all cursor-pointer flex items-center justify-between ${value ? "bg-turquoise text-white" : "bg-gray-100 text-subtle hover:bg-gray-200"}`}
+                                >
+                                  {label}
+                                  {value && <Check className="h-3 w-3" />}
+                                </button>
+                              ))}
+                              </div>
+                            </div>
+
+                            {(termMonths !== 12 || volume !== 50000 || filterTopUp || filter48h || filterFlexRepayment || filterGracePeriod || filterNegativeSchufa || filterUseCases.length > 0) && (
+                              <button
+                                onClick={() => { setTermMonths(12); setVolume(50000); setFilterTopUp(false); setFilter48h(false); setFilterFlexRepayment(false); setFilterGracePeriod(false); setFilterNegativeSchufa(false); setFilterUseCases([]); }}
+                                className="w-full text-center text-xs text-turquoise font-semibold mt-1 hover:underline cursor-pointer"
+                              >
+                                Zurücksetzen
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                      {mobileActivePanel === "company" && (
+                        <motion.div
+                          key="mobile-company"
+                          className="sidebar-mobile-body"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                        >
+                          {companyBarComplete ? (
+                            <div className="sidebar-accordion-body">
+                              <div className="company-fields-inline">
+                                <span className="company-inline-label">Rechtsform</span>
+                                {COMPANY_TYPES.map(({ id, label }) => (
+                                  <button key={id} className={`company-prompt-chip${companyType === id ? " company-prompt-chip-selected" : ""}`}
+                                    onClick={() => { setCompanyType(id); saveCompanyBar({ companyType: id }); }}>
+                                    {label}
+                                  </button>
+                                ))}
+                                <span className="company-inline-label">Branche</span>
+                                {BRANCHEN.map(({ id, label }) => (
+                                  <button key={id} className={`company-prompt-chip${companyBranche === id ? " company-prompt-chip-selected" : ""}`}
+                                    onClick={() => { setCompanyBranche(id); saveCompanyBar({ branche: id }); }}>
+                                    {label}
+                                  </button>
+                                ))}
+                                <span className="company-inline-label">Umsatz</span>
+                                <div className="company-prompt-revenue-wrap">
+                                  <GermanNumberInput value={companyRevenue} min={1} max={100_000_000} step={10000}
+                                    onChange={v => { setCompanyRevenue(v); if (v) saveCompanyBar({ revenue: v }); }}
+                                    onEnter={() => setCompanyBarOpen(false)}
+                                    placeholder="500.000" className="admin-input" style={{ width: "100%", paddingRight: "2rem" }} />
+                                  <span className="company-prompt-revenue-suffix">€</span>
+                                </div>
+                              </div>
+                              {companyProfile && (
+                                <div className="sidebar-company-profile">
+                                  <span className="sidebar-field-label">Firmenprofil</span>
+                                  <div className="sidebar-profile-inline">
+                                    {[
+                                      companyProfile.hrb,
+                                      companyProfile.ust_id,
+                                      companyProfile.website?.replace(/^https?:\/\//, ""),
+                                      [companyProfile.street, [companyProfile.zip, companyProfile.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+                                    ].filter(Boolean).map((item, i) => (
+                                      <span key={i} className="sidebar-profile-meta-item">{item}</span>
+                                    ))}
+                                  </div>
+                                  <a href="/plattform/profil" className="sidebar-profile-link">Profil bearbeiten</a>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="company-incomplete-wrap">
+                              <div className="company-incomplete-spinner" />
+                              <div className="company-incomplete-inner">
+                                <p className="sidebar-field-hint">
+                                  {wizardStep === 0 && "Vervollständigen Sie Ihre Angaben"}
+                                  {wizardStep === 1 && "In welcher Branche sind Sie tätig?"}
+                                  {wizardStep === 2 && "Wie hoch ist Ihr Jahresumsatz?"}
+                                </p>
+                                <AnimatePresence mode="wait">
+                                  {wizardStep === 0 && (
+                                    <motion.div key="s0" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                      <div className="company-prompt-chips">
+                                        {COMPANY_TYPES.map(({ id, label }) => (
+                                          <button key={id} className="company-prompt-chip"
+                                            onClick={() => { setCompanyType(id); saveCompanyBar({ companyType: id }); }}>
+                                            {label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                  {wizardStep === 1 && (
+                                    <motion.div key="s1" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                      <div className="company-prompt-chips">
+                                        {BRANCHEN.map(({ id, label }) => (
+                                          <button key={id} className="company-prompt-chip"
+                                            onClick={() => { setCompanyBranche(id); saveCompanyBar({ branche: id }); }}>
+                                            {label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <button className="company-prompt-back" onClick={() => { setCompanyType(""); saveCompanyBar({ companyType: "" }); }}>
+                                        <ArrowLeft /> Zurück
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                  {wizardStep === 2 && (
+                                    <motion.div key="s2" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+                                      <div className="company-prompt-revenue">
+                                        <div className="company-prompt-revenue-wrap">
+                                          <GermanNumberInput value={companyRevenue} min={1} max={100_000_000} step={10000}
+                                            onChange={v => { setCompanyRevenue(v); if (v) saveCompanyBar({ revenue: v }); }}
+                                            onEnter={() => { if (companyRevenue) { saveCompanyBar({ revenue: companyRevenue }); setCompanyBarOpen(false); } }}
+                                            placeholder="500.000" className="admin-input" style={{ width: "100%", paddingRight: "2rem" }} />
+                                          <span className="company-prompt-revenue-suffix">€</span>
+                                        </div>
+                                        <button className="btn btn-primary btn-md" disabled={!companyRevenue}
+                                          onClick={() => { if (companyRevenue) { saveCompanyBar({ revenue: companyRevenue }); setCompanyBarOpen(false); } }}>
+                                          Fertig
+                                        </button>
+                                      </div>
+                                      <button className="company-prompt-back" onClick={() => { setCompanyBranche(""); saveCompanyBar({ branche: "" }); }}>
+                                        <ArrowLeft /> Zurück
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                );
+              })()}
 
             </motion.aside>
             )}
@@ -1371,21 +1756,10 @@ export default function PlattformPage() {
 
             {/* Results */}
             <div className="platform-results">
-              {!selectedOffer && (
-                <p className="platform-results-header">
-                  {loading || showOnboarding ? (
-                    <span className="inline-flex items-center gap-2">
-                      <span className="inline-block h-3 w-28 bg-gray-200 rounded animate-pulse" />
-                    </span>
-                  ) : (
-                    <><strong>{offers.length} Angebote</strong> verfügbar</>
-                  )}
-                </p>
-              )}
 
               <div className="flex flex-col gap-2">
-                {loading || showOnboarding ? (
-                  Array.from({ length: skeletonCount }).map((_, i) => <SkeletonCard key={i} />)
+                {loading ? (
+                  Array.from({ length: skeletonStartCount }).map((_, i) => <SkeletonCard key={i} />)
                 ) : sortedOffers.length === 0 && !selectedOffer ? (
                   <div className="bg-white rounded-lg p-8 text-center">
                     <Search className="h-8 w-8 text-turquoise mx-auto mb-3" />
@@ -1573,130 +1947,6 @@ export default function PlattformPage() {
 
       <Footer />
 
-      {/* Onboarding Overlay — portal to body to escape stacking contexts */}
-      {mounted && showOnboarding && createPortal(
-        <div style={{ position: "fixed", inset: 0, background: "rgba(36,54,80,0.65)", backdropFilter: "blur(6px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#fff", borderRadius: "1.5rem", padding: "2rem", width: "100%", maxWidth: "480px", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}>
-
-            {/* Heading CTA */}
-            <p style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#507AA6", marginBottom: "0.75rem" }}>
-              Auszahlung in 48h möglich · Kostenlos &amp; unverbindlich
-            </p>
-
-            {/* Progress dots */}
-            <div style={{ display: "flex", gap: "0.375rem", marginBottom: "2rem" }}>
-              {Array.from({ length: ONBOARDING_STEPS }).map((_, i) => (
-                <div key={i} style={{ height: "3px", flex: 1, borderRadius: "2px", background: i <= onboardingStep ? "#507AA6" : "#D0DCE8", opacity: i < onboardingStep ? 0.4 : 1, transition: "background 0.3s" }} />
-              ))}
-            </div>
-
-            {/* Title */}
-            <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650", marginBottom: "0.375rem" }}>{onboardingTitles[onboardingStep].title}</p>
-            <p style={{ fontSize: "0.8125rem", color: "#536B87", marginBottom: "1.5rem" }}>{onboardingTitles[onboardingStep].sub}</p>
-
-            {/* Step 0: Volumen */}
-            {onboardingStep === 0 && (
-              <div style={{ marginBottom: "1.5rem" }}>
-                <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{formatCurrency(volume)}</span>
-                </div>
-                <input type="range" min={5000} max={500000} step={5000} value={volume}
-                  onChange={e => setVolume(+e.target.value)}
-                  className="funnel-slider" style={{ background: sliderBg(volume, 5000, 500000) }} />
-                <div className="funnel-slider-labels"><span>5k</span><span>500k</span></div>
-              </div>
-            )}
-
-            {/* Step 1: Laufzeit */}
-            {onboardingStep === 1 && (
-              <div style={{ marginBottom: "1.5rem" }}>
-                <div style={{ textAlign: "center", marginBottom: "0.5rem" }}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "#243650" }}>{termMonths} Monate</span>
-                </div>
-                <input type="range" min={1} max={60} step={1} value={termMonths}
-                  onChange={e => setTermMonths(+e.target.value)}
-                  className="funnel-slider" style={{ background: sliderBg(termMonths, 1, 60) }} />
-                <div className="funnel-slider-labels"><span>1</span><span>60 Mo</span></div>
-              </div>
-            )}
-
-            {/* Step 2: Rechtsform */}
-            {onboardingStep === 2 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                {rechtsformen.map(({ id, label }) => {
-                  const sel = filterRechtsform === id;
-                  return (
-                    <button key={id} onClick={() => setFilterRechtsform(sel ? "" : id)} style={{ padding: "0.625rem 0.5rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Step 3: Branche */}
-            {onboardingStep === 3 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                {branchen.map(({ id, label }) => {
-                  const sel = filterBranche === id;
-                  return (
-                    <button key={id} onClick={() => setFilterBranche(sel ? "" : id)} style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Step 4: Verwendungszweck */}
-            {onboardingStep === 4 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                {verwendungszwecke.map(({ id, label }) => {
-                  const active = filterUseCases.includes(id);
-                  return (
-                    <button key={id} onClick={() => setFilterUseCases(active ? filterUseCases.filter(u => u !== id) : [...filterUseCases, id])} style={{ padding: "0.625rem 0.5rem", borderRadius: "0.75rem", border: `1.5px solid ${active ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: active ? "#243650" : "#536B87", background: active ? "#E8EEF5" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-
-            {/* Step 5: Jahresumsatz */}
-            {onboardingStep === 5 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                {([
-                  { label: "Unter 100.000 €", value: 50000 },
-                  { label: "100.000 – 250.000 €", value: 175000 },
-                  { label: "250.000 – 500.000 €", value: 375000 },
-                  { label: "500.000 – 1.000.000 €", value: 750000 },
-                  { label: "Über 1.000.000 €", value: 1500000 },
-                ]).map(({ label, value }) => {
-                  const sel = annualRevenue === value;
-                  return (
-                    <button key={value} onClick={() => setAnnualRevenue(sel ? 0 : value)} style={{ padding: "0.75rem 1rem", borderRadius: "0.75rem", border: `1.5px solid ${sel ? "#507AA6" : "#D0DCE8"}`, fontSize: "0.8125rem", fontWeight: 600, color: sel ? "#243650" : "#536B87", background: sel ? "#E8EEF5" : "#fff", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem" }}>
-              <button onClick={nextStep} className="btn btn-primary btn-md" style={{ width: "100%" }}>
-                {onboardingStep < ONBOARDING_STEPS - 1 ? "Weiter →" : "Angebote anzeigen →"}
-              </button>
-              <p style={{ fontSize: "0.6875rem", color: "#8A9AB0", textAlign: "center" }}>
-                Keine Anmeldung nötig · Keine SCHUFA-Auswirkung
-              </p>
-            </div>
-
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

@@ -587,12 +587,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-turquoise {
-  color: #507AA6;
+  color: #D4872C;
 }
 
 .logo-wave {
   display: inline-block;
-  color: #507AA6;
+  color: #D4872C;
   animation: logo-glow 3s ease-in-out infinite;
   transform-origin: center bottom;
 }
@@ -604,16 +604,26 @@ h1, h2, h3, h4, h5, h6 {
 
 .logo-wave-2 {
   animation-delay: 0.15s;
+  color: #D4872C;
 }
 
 @keyframes logo-glow {
   0%, 100% { transform: scale(1); text-shadow: none; }
-  15% { transform: scale(1.25); text-shadow: 0 0 8px rgba(80, 122, 166, 0.6); }
+  15% { transform: scale(1.25); text-shadow: 0 0 8px rgba(212, 135, 44, 0.6); }
   30% { transform: scale(1); text-shadow: none; }
 }
 
 .logo-gold {
-  color: #6D9EC8;
+  color: #507AA6;
+}
+
+.logo-subtitle {
+  display: block;
+  color: #D4872C;
+  font-weight: 600;
+  line-height: 1;
+  margin-top: 0;
+  letter-spacing: -0.09em;
 }
 
 /* ============================================================
@@ -1316,6 +1326,398 @@ button, .btn, label, .badge, .trust-item {
 /* Für manuelle Tooltips kann später eine Komponente hinzugefügt werden */
 
 /* ============================================================
+   COMPANY ONBOARDING PROMPT (inline on platform page)
+============================================================ */
+
+/* First-fill: prompt strip — no box, just a light bottom border */
+.company-prompt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0 1rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.company-prompt-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: rgba(80, 122, 166, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.company-prompt-icon svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-turquoise);
+}
+
+.company-prompt-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.company-prompt-cta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  line-height: 1.3;
+}
+
+.company-prompt-hint {
+  font-size: 0.6875rem;
+  color: var(--color-subtle);
+  margin-top: 0.125rem;
+}
+
+.company-prompt-step {
+  font-size: 0.6875rem;
+  color: var(--color-subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-top: 0.25rem;
+}
+
+.company-fields-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.company-inline-label {
+  width: 100%;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-subtle);
+}
+
+.company-prompt-chip {
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.company-prompt-chip:hover {
+  border-color: var(--color-turquoise);
+  box-shadow: 0 2px 8px rgba(80, 122, 166, 0.12);
+}
+
+.company-prompt-chip-selected {
+  border-color: var(--color-turquoise);
+  background: rgba(80, 122, 166, 0.06);
+  color: var(--color-turquoise);
+}
+
+.company-prompt-back {
+  font-size: 0.6875rem;
+  color: var(--color-subtle);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.company-prompt-back:hover {
+  color: var(--color-dark);
+}
+
+.company-prompt-back svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.company-prompt-revenue {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.625rem;
+}
+
+.company-prompt-revenue-wrap {
+  position: relative;
+  max-width: 180px;
+}
+
+.company-prompt-revenue-suffix {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: var(--color-subtle);
+  pointer-events: none;
+}
+
+/* Completed: minimal summary line */
+.company-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  margin-bottom: 0.75rem;
+}
+
+.company-summary-check {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-turquoise);
+  flex-shrink: 0;
+}
+
+.company-summary-text {
+  font-size: 0.8125rem;
+  color: var(--color-subtle);
+}
+
+.company-summary-edit {
+  font-size: 0.75rem;
+  color: var(--color-turquoise);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+.company-summary-edit:hover {
+  text-decoration: underline;
+}
+
+/* Edit mode: compact rows, all 3 fields visible */
+.company-edit {
+  padding: 0.75rem 0 1rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.company-edit-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.company-edit-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  width: 5rem;
+}
+
+.company-edit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.company-edit-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .company-prompt {
+    flex-wrap: wrap;
+  }
+  .company-edit-row {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .company-edit-label {
+    width: auto;
+  }
+}
+
+/* ── Animated gradient border for incomplete company section ── */
+
+@keyframes border-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.company-incomplete-wrap {
+  position: relative;
+  border-radius: 1rem;
+  padding: 2px;
+  background: var(--color-border);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.company-incomplete-wrap > .company-incomplete-spinner {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent 0deg,
+    transparent 300deg,
+    #D4872C 330deg,
+    transparent 360deg
+  );
+  animation: border-rotate 2.5s linear infinite;
+}
+
+.company-incomplete-inner {
+  position: relative;
+  background: #fff;
+  border-radius: calc(1rem - 2px);
+  padding: 0.75rem;
+}
+
+/* ── Sidebar Accordion (shared by Company + Filter) ── */
+
+.sidebar-accordion {}
+
+.sidebar-accordion-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.75rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-accordion-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sidebar-accordion-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.sidebar-accordion-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-dark);
+}
+
+.sidebar-accordion-hint {
+  font-size: 0.6875rem;
+  color: var(--color-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-accordion-badge {
+  background: var(--color-turquoise);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.sidebar-accordion-body {
+  padding: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebar-accordion-body-hidden {
+  display: none;
+}
+
+.sidebar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.sidebar-field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-subtle);
+}
+
+.sidebar-field-hint {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-bottom: 0.25rem;
+}
+
+/* Company profile compact display */
+.sidebar-company-profile {
+  padding-top: 0.25rem;
+}
+
+.sidebar-profile-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.125rem 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.sidebar-profile-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  line-height: 1.3;
+}
+
+.sidebar-profile-meta-item {
+  font-size: 0.6875rem;
+  color: var(--color-subtle);
+  line-height: 1.5;
+}
+
+.sidebar-profile-meta-item:not(:last-child)::after {
+  content: " ·";
+}
+
+.sidebar-profile-link {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-turquoise);
+  margin-top: 0.375rem;
+  text-decoration: none;
+}
+
+.sidebar-profile-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
    PLATFORM / OFFER COMPARISON (Check24-Style)
 ============================================================ */
 
@@ -1323,13 +1725,14 @@ button, .btn, label, .badge, .trust-item {
 .platform-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0;
 }
 
 @media (min-width: 1024px) {
   .platform-layout {
     flex-direction: row;
     align-items: flex-start;
+    gap: 1.5rem;
   }
 }
 
@@ -2049,9 +2452,60 @@ button, .btn, label, .badge, .trust-item {
   transform: rotate(180deg);
 }
 
+/* ── Mobile: pill toggle row + animated body ── */
+.sidebar-toggle-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sidebar-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar-pill-active {
+  border-color: var(--color-turquoise);
+  color: var(--color-turquoise);
+}
+
+.sidebar-pill-chevron {
+  width: 0.75rem;
+  height: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-pill-chevron-open {
+  transform: rotate(180deg);
+}
+
+.sidebar-mobile-body {
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+/* Desktop: hide mobile pills, show desktop accordions */
 @media (min-width: 1024px) {
   .filter-mobile-toggle { display: none; }
+  .sidebar-toggle-row { display: none; }
+  .sidebar-mobile-body { display: none !important; }
+  .sidebar-desktop-filter,
+  .sidebar-desktop-company { display: block; }
+  .filter-sidebar .sidebar-desktop-filter .sidebar-accordion-toggle { display: none; }
+  .filter-sidebar .sidebar-desktop-filter .sidebar-accordion-body { display: flex !important; }
+  .filter-sidebar .sidebar-desktop-filter { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border); }
 }
+
+/* Mobile: hide desktop accordions, show pills + mobile body */
 @media (max-width: 1023px) {
   .filter-sidebar-title { display: none; }
   .filter-sidebar-content-hidden { display: none; }
@@ -2059,6 +2513,9 @@ button, .btn, label, .badge, .trust-item {
   .filter-sidebar-content { background: #fff; border-radius: 1.25rem; box-shadow: var(--shadow-card); padding: 1.25rem 1.25rem 1rem; margin-top: 0.5rem; }
   .filter-group-content-hidden { display: none; }
   .filter-group-content { margin-top: 0.5rem; }
+  .sidebar-desktop-filter,
+  .sidebar-desktop-company { display: none; }
+  .company-incomplete-wrap { box-shadow: var(--shadow-card); }
 }
 
 @media (min-width: 1024px) {
