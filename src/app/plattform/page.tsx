@@ -1002,14 +1002,16 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                           )}
 
                           {i === 3 && submitted && (
-                            <div style={{ padding: "1rem 0" }}>
-                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0" }}>
+                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
                               </div>
-                              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Anfrage eingereicht</p>
-                              <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.6 }}>
-                                Wir prüfen Ihren Antrag und melden uns in Kürze.
-                              </p>
+                              <div>
+                                <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Anfrage eingereicht</p>
+                                <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.6 }}>
+                                  Wir prüfen Ihren Antrag und melden uns in Kürze.
+                                </p>
+                              </div>
                             </div>
                           )}
 
