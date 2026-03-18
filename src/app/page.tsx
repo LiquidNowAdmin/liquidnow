@@ -160,7 +160,7 @@ export default function Home() {
           <div className="container">
             <AnimateOnScroll>
               <p className="usecase-sticky-label text-center mb-3">Voraussetzungen</p>
-              <h2 className="usecase-sticky-heading text-center mb-10">Für wen ist<br />LiquidNow?</h2>
+              <h2 className="usecase-sticky-heading text-center mb-10">Für wen ist<br />LiQiNow?</h2>
             </AnimateOnScroll>
             <div className="eligibility-grid">
               <AnimateOnScroll>

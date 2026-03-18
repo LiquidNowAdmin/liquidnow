@@ -127,11 +127,7 @@ export default function UserMenu() {
   }
 
   if (!user) {
-    return (
-      <a href="/auth/login" className="btn btn-secondary btn-md" style={{ fontFamily: "var(--font-body)" }}>
-        Anmelden
-      </a>
-    );
+    return null;
   }
 
   return <Avatar user={user} onLogout={handleLogout} />;

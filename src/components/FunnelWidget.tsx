@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, TrendingUp } from "lucide-react";
 import Logo from "@/components/Logo";
 import Link from "next/link";
-
-const bankResults = [
-  { name: "FinBank", rate: "3,2%", best: true },
-  { name: "KreditDirekt", rate: "3,8%", best: false },
-  { name: "HandelsBank", rate: "4,1%", best: false },
-];
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("de-DE", {
@@ -31,7 +24,6 @@ export default function FunnelWidget() {
       {/* Header */}
       <div className="funnel-header">
         <Logo size="sm" />
-        <span className="funnel-badge funnel-badge-gold">48h</span>
       </div>
 
       {/* Amount Slider */}
@@ -58,41 +50,19 @@ export default function FunnelWidget() {
         </div>
       </div>
 
-      {/* Bank Preview */}
-      <div className="funnel-banks">
-        <p className="funnel-banks-label">Aktuelle Konditionen</p>
-        <div className="funnel-banks-list">
-          {bankResults.map((bank) => (
-            <div key={bank.name} className="funnel-bank-row">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-subtle" />
-                <span className="text-sm font-medium text-dark">
-                  {bank.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-bold ${
-                    bank.best ? "text-turquoise" : "text-dark"
-                  }`}
-                >
-                  ab {bank.rate}
-                </span>
-                {bank.best && (
-                  <span className="funnel-best-badge">
-                    <TrendingUp className="h-3 w-3" />
-                    BEST
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+      {/* Partner Logos */}
+      <div className="funnel-partners">
+        <p className="funnel-logos-label">Jetzt Anbieter vergleichen</p>
+        <div className="funnel-logos">
+          <img src="/logos/Iwoca_Logo_Wiki.svg" alt="Iwoca" className="funnel-logo" />
+          <img src="/logos/qred bank-logo-dark.svg" alt="Qred" className="funnel-logo" />
+          <img src="/logos/youlend.svg" alt="YouLend" className="funnel-logo" />
         </div>
       </div>
 
       {/* CTA */}
       <Link
-        href="/plattform"
+        href={`/plattform?amount=${amount}`}
         className="btn btn-primary btn-lg w-full text-center mt-2 inline-block"
       >
         Jetzt vergleichen &rarr;

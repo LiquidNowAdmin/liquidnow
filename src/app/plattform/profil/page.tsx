@@ -69,7 +69,7 @@ function InlineField({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginBottom: "0.25rem" }}>
-        <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
+        <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>{label}</p>
         {saved && <Check style={{ width: "0.625rem", height: "0.625rem", color: "var(--color-olive)" }} />}
       </div>
       {editing ? (

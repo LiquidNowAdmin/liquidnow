@@ -145,19 +145,19 @@ export default function RBFCalculator() {
 
           <div className="grid grid-cols-3 gap-4 py-4">
             <div>
-              <p className="text-xs text-subtle uppercase tracking-wide">Monatl. Rate</p>
+              <p className="text-xs text-subtle">Monatl. Rate</p>
               <p className="font-heading text-xl text-dark mt-0.5">
                 {fmt(calc.monthlyPayment)}&nbsp;&euro;
               </p>
             </div>
             <div>
-              <p className="text-xs text-subtle uppercase tracking-wide">Laufzeit</p>
+              <p className="text-xs text-subtle">Laufzeit</p>
               <p className="font-heading text-xl text-dark mt-0.5">
                 {calc.months}&nbsp;Mon.
               </p>
             </div>
             <div>
-              <p className="text-xs text-subtle uppercase tracking-wide">Eff. APR</p>
+              <p className="text-xs text-subtle">Eff. APR</p>
               <p className="font-heading text-xl text-dark mt-0.5">
                 ~{calc.impliedAPR}&nbsp;%
               </p>

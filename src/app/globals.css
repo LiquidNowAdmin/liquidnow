@@ -572,6 +572,38 @@ h1, h2, h3, h4, h5, h6 {
   color: #507AA6;
 }
 
+.nav-phone {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  text-decoration: none;
+  color: var(--color-dark);
+  transition: color 0.2s ease;
+}
+
+.nav-phone:hover {
+  color: var(--color-turquoise);
+}
+
+.nav-phone-text {
+  display: flex !important;
+  flex-direction: column !important;
+  line-height: 1.2;
+}
+
+.nav-phone-number {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.nav-phone-hours {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--color-subtle);
+}
+
 .nav-link-mobile {
   font-size: 1.125rem;
   font-weight: 600;
@@ -764,6 +796,8 @@ h1, h2, h3, h4, h5, h6 {
   cursor: pointer;
   background: none;
   border: none;
+  overflow: visible;
+  min-width: 0;
 }
 
 .faq-question {
@@ -772,6 +806,10 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--color-dark);
   padding-right: 1rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .faq-answer {
@@ -979,6 +1017,106 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 0.375rem;
   font-size: 0.75rem;
   color: var(--color-subtle);
+}
+
+.compact-sliders {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.compact-slider-row {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compact-slider-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-subtle);
+}
+
+.compact-slider-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  text-align: center;
+}
+
+.compact-slider-input {
+  height: 4px !important;
+}
+
+@media (min-width: 1024px) {
+  .compact-sliders { display: none; }
+}
+
+.funnel-partners {
+  margin-top: 1rem;
+  margin-bottom: 1.25rem;
+  padding-top: 1rem;
+  padding-bottom: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.funnel-logos-label {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-subtle);
+  margin-bottom: 0.625rem;
+}
+
+.funnel-logos {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.funnel-logo {
+  flex: 1;
+  height: 2rem;
+  width: 0;
+  object-fit: contain;
+  filter: brightness(0) saturate(100%) invert(30%) sepia(20%) saturate(800%) hue-rotate(180deg) brightness(100%);
+  opacity: 0.5;
+}
+
+.funnel-term-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.funnel-term-pill {
+  padding: 0.375rem 0.625rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.funnel-term-pill:hover {
+  border-color: var(--color-turquoise);
+}
+
+.funnel-term-pill-active {
+  border-color: var(--color-turquoise);
+  background: var(--color-turquoise);
+  color: #fff;
 }
 
 /* Dropdown */

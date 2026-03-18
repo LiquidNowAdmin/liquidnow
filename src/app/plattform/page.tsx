@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2 } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -211,6 +212,7 @@ const FUNNEL_STEPS = [
   { title: "Ihr Umsatz", sub: "Durchschnittlicher Monatsumsatz" },
   { title: "Ihr Unternehmen", sub: "Website eingeben – wir füllen den Rest aus." },
   { title: "Persönliche Daten", sub: "Wer stellt den Antrag?" },
+  { title: "Zusammenfassung", sub: "Prüfen und absenden" },
 ];
 
 const TERM_OPTIONS = [3, 6, 9, 12, 18, 24];
@@ -271,12 +273,13 @@ type PersonalData = {
 
 const PERSONAL_KEY = "funnel_personal";
 
-function PersonalDataForm({ defaults, onSubmit, onBack, submitting, submitError }: {
+function PersonalDataForm({ defaults, onSubmit, onBack, submitting, submitError, submitLabel }: {
   defaults: Partial<PersonalData>;
   onSubmit: (data: PersonalData) => void;
   onBack: () => void;
   submitting?: boolean;
   submitError?: string | null;
+  submitLabel?: string;
 }) {
   // Merge: OAuth defaults > localStorage > empty
   const stored: Partial<PersonalData> = typeof window !== "undefined"
@@ -347,7 +350,7 @@ function PersonalDataForm({ defaults, onSubmit, onBack, submitting, submitError 
           <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
         </button>
         <button type="submit" className="btn btn-primary btn-md" disabled={submitting} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
-          {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird eingereicht…</> : <>Antrag einreichen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
+          {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird eingereicht…</> : <>{submitLabel || "Antrag einreichen"} <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
         </button>
       </div>
     </form>
@@ -394,7 +397,7 @@ function MicrosoftIcon() {
 }
 
 function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; amount: number; term: number; initialPurpose?: string }) {
-  const productUrl = `/plattform`;
+  const productUrl = `/plattform?offer=${offer.product_id}&amount=${amount}&term=${term}`;
   const supabase = createClient();
 
   const [user, setUser] = useState<User | null>(null);
@@ -402,6 +405,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
   const [authEmail, setAuthEmail] = useState("");
   const [authSent, setAuthSent] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [schufaConsent, setSchufaConsent] = useState(false);
+  const [agbConsent, setAgbConsent] = useState(false);
 
   const [step, setStep] = useState(0);
   const [bedarfPhase, setBedarfPhase] = useState(0);
@@ -438,6 +443,10 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Refs for deferred redirect after auth
+  const pendingReturnRef = useRef(false);
+  const pendingPersonalDataRef = useRef(false);
 
   // Draft persistence
   const DRAFT_KEY = `funnel_draft_${offer.product_id}`;
@@ -491,11 +500,12 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       if (d.orgStreet)   setOrgStreet(d.orgStreet);
       if (d.orgZip)      setOrgZip(d.orgZip);
       if (d.orgCity)     setOrgCity(d.orgCity);
-      // If user just returned from OAuth, jump to personal data step
+      // If user just returned from OAuth or magic link, mark for redirect (handled in user effect)
       const returnId = localStorage.getItem("funnel_return_product_id");
-      if (returnId === offer.product_id) {
+      const urlOffer = new URLSearchParams(window.location.search).get("offer");
+      if (returnId === offer.product_id || urlOffer === offer.product_id) {
         localStorage.removeItem("funnel_return_product_id");
-        setStep(3);
+        pendingReturnRef.current = true;
       }
     } catch { /* ignore */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -563,7 +573,17 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
         if (d.first_name) setFirstName(d.first_name);
         if (d.last_name)  setLastName(d.last_name);
         if (d.email)      setApplicantEmail(d.email);
-        if (d.phone && !applicantPhone) setApplicantPhone(d.phone);
+        if (d.phone && !applicantPhone) {
+          // Strip country code prefix if present
+          const phoneStr = d.phone as string;
+          const matchedCode = COUNTRY_CODES.find(c => phoneStr.startsWith(c.code));
+          if (matchedCode) {
+            setPhoneCountry(matchedCode.code);
+            setApplicantPhone(phoneStr.slice(matchedCode.code.length));
+          } else {
+            setApplicantPhone(phoneStr);
+          }
+        }
         if (m.date_of_birth && !dateOfBirth) setDateOfBirth(m.date_of_birth);
         if (m.street && !applicantStreet)    setApplicantStreet(m.street);
         if (m.zip && !applicantZip)          setApplicantZip(m.zip);
@@ -588,8 +608,20 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
           if (co.annual_revenue && !orgTurnover) setOrgTurnover(Math.round(co.annual_revenue / 12));
         }
       }
+      return profileRes.data;
     }
-    fetchProfile();
+    fetchProfile().then((profileData) => {
+      // Handle deferred redirect after auth return (magic link / OAuth)
+      if (pendingReturnRef.current) {
+        pendingReturnRef.current = false;
+        const hasPersonalData = !!(profileData?.first_name && profileData?.last_name && profileData?.email);
+        if (hasPersonalData) {
+          setStep(4); // Go to summary
+        } else {
+          setStep(3); // Go to personal data form
+        }
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -928,7 +960,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                       <FunnelField label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer" required />
                                       <FunnelField label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" />
                                       <div style={{ borderTop: "1px solid var(--color-light-bg)", paddingTop: "0.875rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                                        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>Unternehmensanschrift</p>
+                                        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-subtle)", margin: 0 }}>Unternehmensanschrift</p>
                                         <FunnelField label="Straße und Hausnummer" value={orgStreet} onChange={setOrgStreet} placeholder="Beispielstraße 123" required />
                                         <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "0.75rem" }}>
                                           <FunnelField label="PLZ" value={orgZip} onChange={setOrgZip} placeholder="10115" required />
@@ -948,14 +980,19 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                               <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Konto erstellen oder anmelden</p>
                               <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.25rem" }}>Zum Absenden ist ein Konto erforderlich.</p>
                               {authSent ? (
-                                <div>
-                                  <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+                                  <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
                                   </div>
-                                  <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.6, marginBottom: "0.5rem" }}>
-                                    Wir haben einen Link an <strong>{authEmail}</strong> geschickt.
-                                  </p>
-                                  <button type="button" onClick={() => setAuthSent(false)} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Andere E-Mail</button>
+                                  <div>
+                                    <p style={{ fontSize: "0.875rem", color: "var(--color-dark)", lineHeight: 1.5, marginBottom: "0.25rem" }}>
+                                      Wir haben einen Link an <strong>{authEmail}</strong> geschickt.
+                                    </p>
+                                    <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "0.5rem" }}>
+                                      Bestätigen Sie die E-Mail, um fortzufahren.
+                                    </p>
+                                    <button type="button" onClick={() => setAuthSent(false)} style={{ fontSize: "0.8125rem", color: "var(--color-turquoise)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Andere E-Mail</button>
+                                  </div>
                                 </div>
                               ) : (
                                 <>
@@ -971,9 +1008,12 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                   <form onSubmit={handleMagicLink} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                                     <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="ihre@email.de" required className="admin-input" style={{ flex: 1, minWidth: "180px" }} />
                                     <button type="submit" className="btn btn-primary btn-md" disabled={oauthLoading !== null || !authEmail} style={{ whiteSpace: "nowrap" }}>
-                                      {oauthLoading === "email" ? "…" : "Magic Link"}
+                                      {oauthLoading === "email" ? "…" : "Weiter"}
                                     </button>
                                   </form>
+                                  <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginTop: "1rem", textAlign: "left" }}>
+                                    Mit der Anmeldung bestätige ich, dass ich die <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzbestimmungen</a> zur Kenntnis genommen habe.
+                                  </p>
                                 </>
                               )}
                               <div style={{ marginTop: "0.75rem" }}>
@@ -993,15 +1033,75 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                 setDateOfBirth(data.dateOfBirth); setApplicantEmail(data.email);
                                 setApplicantPhone(data.phone); setPhoneCountry(data.phoneCountry);
                                 setApplicantStreet(data.street); setApplicantZip(data.zip); setApplicantCity(data.city);
-                                doSubmit(data);
+                                setStep(4);
                               }}
                               onBack={() => setStep(s => s - 1)}
-                              submitting={submitting}
-                              submitError={submitError}
+                              submitting={false}
+                              submitError={null}
+                              submitLabel="Weiter"
                             />
                           )}
 
-                          {i === 3 && submitted && (
+                          {i === 4 && !submitted && (
+                            <div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
+                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Anfrage</p>
+                                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)" }}>
+                                    {formatCurrency(bedarfVolume)} · {bedarfTerm} Monate · {PURPOSE_OPTIONS.find(p => p.value === purpose)?.label ?? "–"}
+                                  </p>
+                                </div>
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
+                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Unternehmen</p>
+                                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)" }}>
+                                    {orgName || "–"}{orgCity ? ` · ${orgCity}` : ""}{orgTurnover ? ` · ${formatCurrency(orgTurnover)}/Mon.` : ""}
+                                  </p>
+                                </div>
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
+                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Persönliche Daten</p>
+                                  <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)" }}>
+                                    {firstName} {lastName} · {applicantEmail}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div style={{ marginTop: "1.25rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
+                                  <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
+                                    <input type="checkbox" checked={agbConsent} onChange={e => setAgbConsent(e.target.checked)}
+                                      style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
+                                    <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                      Ich akzeptiere die <a href="/agb" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und habe die <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzerklärung</a> zur Kenntnis genommen.
+                                    </span>
+                                  </label>
+                                </div>
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
+                                  <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
+                                    <input type="checkbox" checked={schufaConsent} onChange={e => setSchufaConsent(e.target.checked)}
+                                      style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
+                                    <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                      Ich willige ein, dass eine SCHUFA-Auskunft zur Bonitätsprüfung eingeholt werden darf.
+                                    </span>
+                                  </label>
+                                </div>
+                              </div>
+
+                              {submitError && <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.8)", marginTop: "0.5rem" }}>{submitError}</p>}
+
+                              <div style={{ display: "flex", gap: "0.625rem", marginTop: "1.25rem" }}>
+                                <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button" onClick={() => doSubmit({ firstName, lastName, dateOfBirth, email: applicantEmail, phone: applicantPhone, phoneCountry, street: applicantStreet, zip: applicantZip, city: applicantCity })}
+                                  disabled={!agbConsent || !schufaConsent || submitting}
+                                  className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird eingereicht…</> : <>Antrag einreichen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {i === 4 && submitted && (
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0" }}>
                               <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
@@ -1044,10 +1144,17 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
 }
 
 export default function PlattformPage() {
+  const searchParams = useSearchParams();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [termMonths, setTermMonths] = useState(12);
-  const [volume, setVolume] = useState(50000);
+  const [termMonths, setTermMonths] = useState(() => {
+    const t = Number(searchParams.get("term"));
+    return t >= 1 && t <= 60 ? t : 12;
+  });
+  const [volume, setVolume] = useState(() => {
+    const amt = Number(searchParams.get("amount"));
+    return amt >= 10000 && amt <= 500000 ? amt : 50000;
+  });
   const [sortBy, setSortBy] = useState<SortKey>("speed");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [filterTopUp, setFilterTopUp] = useState(false);
@@ -1105,14 +1212,15 @@ export default function PlattformPage() {
 
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
-  // After offers load, re-open the funnel if user just returned from OAuth
+  // After offers load, re-open the funnel if user just returned from OAuth or magic link
   useEffect(() => {
     if (offers.length === 0) return;
-    const returnId = localStorage.getItem("funnel_return_product_id");
+    const returnId = localStorage.getItem("funnel_return_product_id") || searchParams.get("offer");
     if (!returnId) return;
     const match = offers.find(o => o.product_id === returnId);
     if (match) {
       setSelectedOffer({ offer: match, amount: volume, term: termMonths });
+      localStorage.removeItem("funnel_return_product_id");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1759,6 +1867,26 @@ export default function PlattformPage() {
             {/* Results */}
             <div className="platform-results">
 
+              {/* Compact sliders (mobile only) */}
+              {!selectedOffer && (
+                <div className="compact-sliders">
+                  <div className="compact-slider-row">
+                    <span className="compact-slider-title"><Banknote className="h-3 w-3" /> Volumen</span>
+                    <input type="range" min={5000} max={500000} step={5000} value={volume}
+                      onChange={e => setVolume(+e.target.value)}
+                      className="funnel-slider compact-slider-input" style={{ background: sliderBg(volume, 5000, 500000) }} />
+                    <span className="compact-slider-label">{formatCurrency(volume)}</span>
+                  </div>
+                  <div className="compact-slider-row">
+                    <span className="compact-slider-title"><Clock className="h-3 w-3" /> Laufzeit</span>
+                    <input type="range" min={1} max={60} step={1} value={termMonths}
+                      onChange={e => setTermMonths(+e.target.value)}
+                      className="funnel-slider compact-slider-input" style={{ background: sliderBg(termMonths, 1, 60) }} />
+                    <span className="compact-slider-label">{termMonths} Monate</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                 {loading ? (
                   Array.from({ length: skeletonStartCount }).map((_, i) => <SkeletonCard key={i} />)
@@ -1932,14 +2060,14 @@ export default function PlattformPage() {
                         {selectedOffer ? "Wir helfen Ihnen gerne weiter." : "Wir beraten Sie gerne persönlich."}
                       </p>
                     </div>
-                    <a href="mailto:hallo@liquidnow.de" className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap", flexShrink: 0 }}>Kontakt aufnehmen</a>
+                    <a href="mailto:hallo@liqinow.de" className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap", flexShrink: 0 }}>Kontakt aufnehmen</a>
                   </div>
                 )}
               </div>
 
               {!loading && sortedOffers.length > 0 && (
                 <p className="text-xs text-subtle text-center mt-3">
-                  Konditionen sind indikativ und koennen je nach Bonitaet abweichen.
+                  Konditionen sind indikativ und können je nach Bonität abweichen.
                 </p>
               )}
             </div>
