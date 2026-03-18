@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2 } from "lucide-react";
@@ -1144,6 +1144,14 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
 }
 
 export default function PlattformPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 className="animate-spin" style={{ width: "2rem", height: "2rem", color: "var(--color-subtle)" }} /></div>}>
+      <PlattformContent />
+    </Suspense>
+  );
+}
+
+function PlattformContent() {
   const searchParams = useSearchParams();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
