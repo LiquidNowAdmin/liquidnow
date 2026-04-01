@@ -203,7 +203,7 @@ function mapToQredPayload(data: SubmissionData) {
       lastName: user.last_name || undefined,
       dateOfBirth: (userMeta as any).date_of_birth || (userMeta as any).dob || undefined,
       email: (userMeta as any).applicant_email || user.email,
-      phone: user.phone || undefined,
+      phone: user.phone ? user.phone.replace(/^(\+\d{2,3})\1+/, '$1') : undefined,
       address: strip({
         street: (userMeta as any).street,
         zipCode: (userMeta as any).zip,
@@ -213,7 +213,7 @@ function mapToQredPayload(data: SubmissionData) {
     organization: {
       ...strip({
         nationalOrganizationNumber: company.hrb,
-        uniqueCompanyIdentifier: company.crefo,
+        uniqueCompanyIdentifier: company.crefo ? company.crefo.replace(/\D/g, '').slice(-10).padStart(10, '0') : undefined,
       }),
       name: company.name,
       address: strip({

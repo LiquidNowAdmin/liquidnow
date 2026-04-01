@@ -396,7 +396,7 @@ function MicrosoftIcon() {
   );
 }
 
-function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; amount: number; term: number; initialPurpose?: string }) {
+function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { offer: Offer; amount: number; term: number; initialPurpose?: string; onSubmitted?: (app: { id: string; product_id: string; provider_name: string; product_name: string; volume: number; term_months: number; status: string; metadata: Record<string, unknown>; created_at: string }) => void }) {
   const productUrl = `/plattform?offer=${offer.product_id}&amount=${amount}&term=${term}`;
   const supabase = createClient();
 
@@ -720,7 +720,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     try {
       await supabase.rpc("upsert_user_profile", {
         p_first_name: data.firstName, p_last_name: data.lastName,
-        p_phone: `${data.phoneCountry}${data.phone}`,
+        p_phone: data.phone?.startsWith("+") ? data.phone : `${data.phoneCountry}${data.phone}`,
         p_dob: data.dateOfBirth,
         p_street: data.street, p_zip: data.zip, p_city: data.city,
         p_applicant_email: data.email,
@@ -756,6 +756,17 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       }
 
       trackStep(supabase, "submit", { product_id: offer.product_id });
+      onSubmitted?.({
+        id: applicationId as string,
+        product_id: offer.product_id,
+        provider_name: offer.provider_name,
+        product_name: offer.product_name,
+        volume: bedarfVolume,
+        term_months: bedarfTerm,
+        status: "new",
+        metadata: {},
+        created_at: new Date().toISOString(),
+      });
       setSubmitted(true);
     } catch (err) {
       console.error("[doSubmit]", err);
@@ -1282,6 +1293,7 @@ function PlattformContent() {
   const [showUseCaseFilter, setShowUseCaseFilter] = useState(false);
   const [skeletonStartCount, setSkeletonStartCount] = useState(25);
   const [selectedOffer, setSelectedOffer] = useState<{ offer: Offer; amount: number; term: number } | null>(null);
+  const [myApplications, setMyApplications] = useState<Array<{ id: string; product_id: string; provider_name: string; product_name: string; volume: number; term_months: number; status: string; metadata: Record<string, unknown>; created_at: string }>>([]);
 
   // "Mein Unternehmen" bar state
   const [companyType, setCompanyType] = useState<"" | "kapitalgesellschaft" | "personengesellschaft">("");
@@ -1327,6 +1339,42 @@ function PlattformContent() {
 
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
+  // Load user's existing applications + poll status for open ones
+  useEffect(() => {
+    async function loadApplications() {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from("applications")
+        .select("id, product_id, provider_name, product_name, volume, term_months, status, metadata, created_at")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+      if (data) {
+        setMyApplications(data);
+        // Poll status for open applications with external_ref
+        const openApps = data.filter(a =>
+          !["signed", "rejected", "closed"].includes(a.status) &&
+          (a.metadata as Record<string, unknown>)?.external_ref
+        );
+        for (const app of openApps) {
+          const slug = PROVIDER_SLUGS[app.provider_name];
+          if (!slug) continue;
+          supabase.functions.invoke(`provider-${slug}`, {
+            body: { action: "status", application_id: app.id },
+          }).then(({ data: result }) => {
+            if (result?.success && result.data?.changed) {
+              setMyApplications(prev => prev.map(a =>
+                a.id === app.id ? { ...a, status: result.data.internal_status } : a
+              ));
+            }
+          }).catch(() => { /* silent */ });
+        }
+      }
+    }
+    loadApplications();
+  }, []);
+
   // After offers load, re-open the funnel if user just returned from OAuth or magic link
   useEffect(() => {
     if (offers.length === 0) return;
@@ -1339,6 +1387,16 @@ function PlattformContent() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offers]);
+
+  const appliedProductIds = new Set(myApplications.map(a => a.product_id));
+
+  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    new: { label: "Eingereicht", color: "var(--color-turquoise)" },
+    inquired: { label: "In Prüfung", color: "var(--color-olive)" },
+    signed: { label: "Genehmigt", color: "#16a34a" },
+    rejected: { label: "Abgelehnt", color: "rgba(220,38,38,0.8)" },
+    closed: { label: "Abgeschlossen", color: "var(--color-subtle)" },
+  };
 
   const matchesTerm = (offer: Offer) => offer.min_term_months <= termMonths && offer.max_term_months >= termMonths;
 
@@ -1981,6 +2039,46 @@ function PlattformContent() {
             {/* Results */}
             <div className="platform-results">
 
+              {/* My Applications */}
+              {myApplications.length > 0 && !selectedOffer && (
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Meine Anfragen</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    {myApplications.map(app => {
+                      const s = STATUS_LABELS[app.status] || STATUS_LABELS.new;
+                      const offer = offers.find(o => o.product_id === app.product_id);
+                      return (
+                        <div key={app.id} style={{
+                          background: "#fff", borderRadius: "0.75rem", border: "1px solid var(--color-border)",
+                          padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem",
+                        }}>
+                          <div className="offer-provider-logo" style={{ width: "2rem", height: "2rem", flexShrink: 0 }}>
+                            {offer?.provider_logo_url
+                              ? <img src={offer.provider_logo_url} alt={app.provider_name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                              : <span style={{ fontSize: "0.625rem" }}>{app.provider_name.slice(0, 2).toUpperCase()}</span>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {app.provider_name} — {app.product_name}
+                            </p>
+                            <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                              {formatCurrency(app.volume)} · {app.term_months} Mon.
+                            </p>
+                          </div>
+                          <span style={{
+                            fontSize: "0.6875rem", fontWeight: 700, color: s.color,
+                            padding: "0.25rem 0.625rem", borderRadius: "999px",
+                            background: `${s.color}14`, whiteSpace: "nowrap",
+                          }}>
+                            {s.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Compact sliders (mobile only) */}
               {!selectedOffer && (
                 <div className="compact-sliders">
@@ -2102,12 +2200,22 @@ function PlattformContent() {
                                 )}
                                 <div className="offer-terms-laufzeit">{laufzeit}</div>
                               </div>
-                              <button
-                                className="offer-cta"
-                                onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
-                              >
-                                {ctaPrimary ?? "Jetzt anfragen"} <ArrowRight className="h-3 w-3" />
-                              </button>
+                              {appliedProductIds.has(offer.product_id) ? (
+                                <span style={{
+                                  fontSize: "0.75rem", fontWeight: 700, color: "var(--color-turquoise)",
+                                  padding: "0.5rem 1rem", borderRadius: "0.5rem",
+                                  background: "rgba(80,122,166,0.08)", display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                                }}>
+                                  <Check className="h-3 w-3" /> Angefragt
+                                </span>
+                              ) : (
+                                <button
+                                  className="offer-cta"
+                                  onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
+                                >
+                                  {ctaPrimary ?? "Jetzt anfragen"} <ArrowRight className="h-3 w-3" />
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -2155,7 +2263,7 @@ function PlattformContent() {
                         )}
                         {/* Inline funnel */}
                         {isSelected && selectedOffer && (
-                          <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} />
+                          <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} onSubmitted={(app) => setMyApplications(prev => [app, ...prev])} />
                         )}
                       </div>
                       </motion.div>
