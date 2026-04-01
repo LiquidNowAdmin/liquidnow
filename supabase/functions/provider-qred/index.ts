@@ -36,8 +36,14 @@ serve(async (req) => {
 
   const origin = req.headers.get('origin')
 
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', origin, 405)
+  }
+
   try {
-    const { action, application_id } = await req.json()
+    const body = await req.text()
+    if (!body) return errorResponse('Empty request body', origin)
+    const { action, application_id } = JSON.parse(body)
 
     if (!application_id) {
       return errorResponse('application_id is required', origin)
@@ -186,28 +192,35 @@ function mapToQredPayload(data: SubmissionData) {
     ? String(inquiry.metadata.purpose_manual)
     : undefined
 
+  // Strip undefined values from an object (Qred rejects explicit undefined/null in JSON)
+  function strip<T extends Record<string, unknown>>(obj: T): Partial<T> {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Partial<T>
+  }
+
   return {
     applicant: {
       firstName: user.first_name || undefined,
       lastName: user.last_name || undefined,
-      dateOfBirth: (userMeta as any).dob || undefined,
-      email: user.email,
+      dateOfBirth: (userMeta as any).date_of_birth || (userMeta as any).dob || undefined,
+      email: (userMeta as any).applicant_email || user.email,
       phone: user.phone || undefined,
-      address: {
-        street: (userMeta as any).street || undefined,
-        zipCode: (userMeta as any).zip || undefined,
-        city: (userMeta as any).city || undefined,
-      },
+      address: strip({
+        street: (userMeta as any).street,
+        zipCode: (userMeta as any).zip,
+        city: (userMeta as any).city,
+      }),
     },
     organization: {
-      nationalOrganizationNumber: company.hrb || undefined,
-      uniqueCompanyIdentifier: company.crefo || undefined,
+      ...strip({
+        nationalOrganizationNumber: company.hrb,
+        uniqueCompanyIdentifier: company.crefo,
+      }),
       name: company.name,
-      address: {
-        street: address.street || undefined,
-        zipCode: address.zip || undefined,
-        city: address.city || undefined,
-      },
+      address: strip({
+        street: address.street,
+        zipCode: address.zip,
+        city: address.city,
+      }),
       turnover: company.annual_revenue
         ? Math.round(company.annual_revenue / 12)
         : undefined,

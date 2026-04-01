@@ -215,7 +215,12 @@ const FUNNEL_STEPS = [
   { title: "Zusammenfassung", sub: "Prüfen und absenden" },
 ];
 
-const TERM_OPTIONS = [3, 6, 9, 12, 18, 24];
+const TERM_OPTIONS = [3, 6, 9, 12, 18, 24, 36];
+
+// Provider name → Edge Function slug mapping
+const PROVIDER_SLUGS: Record<string, string> = {
+  "Qred Bank": "qred",
+};
 
 function stepKeyDown(onLastEnter: () => void) {
   return function(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -281,11 +286,7 @@ function PersonalDataForm({ defaults, onSubmit, onBack, submitting, submitError,
   submitError?: string | null;
   submitLabel?: string;
 }) {
-  // Merge: OAuth defaults > localStorage > empty
-  const stored: Partial<PersonalData> = typeof window !== "undefined"
-    ? (() => { try { return JSON.parse(localStorage.getItem(PERSONAL_KEY) ?? "{}"); } catch { return {}; } })()
-    : {};
-  const merged: Partial<PersonalData> = { ...stored, ...Object.fromEntries(Object.entries(defaults).filter(([, v]) => !!v)) };
+  const merged: Partial<PersonalData> = Object.fromEntries(Object.entries(defaults).filter(([, v]) => !!v));
 
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -303,7 +304,6 @@ function PersonalDataForm({ defaults, onSubmit, onBack, submitting, submitError,
     if (!valid) return;
     const data: PersonalData = { firstName: get("given-name"), lastName: get("family-name"), dateOfBirth: get("bday"),
       email, phone, phoneCountry, street: get("street-address"), zip: get("postal-code"), city: get("address-level2") };
-    localStorage.setItem(PERSONAL_KEY, JSON.stringify(data));
     onSubmit(data);
   }
 
@@ -409,6 +409,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
   const [agbConsent, setAgbConsent] = useState(false);
 
   const [step, setStep] = useState(0);
+  const [formKey, setFormKey] = useState(0);
   const [bedarfPhase, setBedarfPhase] = useState(0);
   const [bedarfVolume, setBedarfVolume] = useState(Math.min(offer.max_volume, Math.max(offer.min_volume, amount)));
   const [bedarfTerm, setBedarfTerm] = useState(Math.min(offer.max_term_months, Math.max(offer.min_term_months, term)));
@@ -450,24 +451,6 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Refs for deferred redirect after auth
-  const pendingReturnRef = useRef(false);
-  const pendingPersonalDataRef = useRef(false);
-
-  // Draft persistence
-  const DRAFT_KEY = `funnel_draft_${offer.product_id}`;
-  type FunnelDraft = {
-    volume?: number; term?: number; purpose?: string; bedarfPhase?: number;
-    turnover?: number;
-    orgWebpage?: string; orgName?: string; orgHrb?: string; orgUstId?: string;
-    orgStreet?: string; orgZip?: string; orgCity?: string;
-  };
-  function saveDraft(patch: Partial<FunnelDraft>) {
-    try {
-      const cur: FunnelDraft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}");
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...cur, ...patch }));
-    } catch { /* ignore */ }
-  }
 
   const isLastStep = step === FUNNEL_STEPS.length - 1;
 
@@ -490,31 +473,6 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     return () => subscription.unsubscribe();
   }, []);
 
-  // Restore draft from localStorage on mount
-  useEffect(() => {
-    try {
-      const d: FunnelDraft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "{}");
-      if (d.volume)      setBedarfVolume(Math.min(offer.max_volume, Math.max(offer.min_volume, d.volume)));
-      if (d.term)        setBedarfTerm(Math.min(offer.max_term_months, Math.max(offer.min_term_months, d.term)));
-      if (d.purpose)     setPurpose(d.purpose);
-      if (d.bedarfPhase) setBedarfPhase(d.bedarfPhase);
-      if (d.turnover)    setOrgTurnover(d.turnover ?? null);
-      if (d.orgWebpage)  setOrgWebpage(d.orgWebpage);
-      if (d.orgName)     { setOrgName(d.orgName); setShowOrgFields(true); setCompanyMode("manual"); }
-      if (d.orgHrb)      setOrgHrb(d.orgHrb);
-      if (d.orgUstId)    setOrgUstId(d.orgUstId);
-      if (d.orgStreet)   setOrgStreet(d.orgStreet);
-      if (d.orgZip)      setOrgZip(d.orgZip);
-      if (d.orgCity)     setOrgCity(d.orgCity);
-      // If user just returned from OAuth or magic link, mark for redirect (handled in user effect)
-      const returnId = localStorage.getItem("funnel_return_product_id");
-      const urlOffer = new URLSearchParams(window.location.search).get("offer");
-      if (returnId === offer.product_id || urlOffer === offer.product_id) {
-        localStorage.removeItem("funnel_return_product_id");
-        pendingReturnRef.current = true;
-      }
-    } catch { /* ignore */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Marketing event tracking (fire-and-forget, anonymous-safe)
   function trackStep(supabase: ReturnType<typeof createClient>, stepName: string, properties: Record<string, unknown>) {
@@ -617,26 +575,14 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       }
       return profileRes.data;
     }
-    fetchProfile().then((profileData) => {
-      // Handle deferred redirect after auth return (magic link / OAuth)
-      if (pendingReturnRef.current) {
-        pendingReturnRef.current = false;
-        const hasPersonalData = !!(profileData?.first_name && profileData?.last_name && profileData?.email);
-        if (hasPersonalData) {
-          setStep(4); // Go to summary
-        } else {
-          setStep(3); // Go to personal data form
-        }
-      }
-    });
+    fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  async function handleOAuth(provider: "google" | "azure") {
-    setOauthLoading(provider);
-    localStorage.setItem("funnel_return_product_id", offer.product_id);
+  async function handleOAuth() {
+    setOauthLoading("google");
     await supabase.auth.signInWithOAuth({
-      provider,
+      provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(productUrl)}` },
     });
   }
@@ -645,7 +591,6 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
     e.preventDefault();
     if (!authEmail) return;
     setOauthLoading("email");
-    localStorage.setItem("funnel_return_product_id", offer.product_id);
     await supabase.auth.signInWithOtp({
       email: authEmail,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(productUrl)}` },
@@ -762,7 +707,6 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       return;
     }
     if (step === 2) {
-      saveDraft({ orgWebpage, orgName, orgHrb, orgUstId, orgStreet, orgZip, orgCity });
       trackStep(supabase, "unternehmen", { orgName, orgCity });
       syncOrg({ withTurnover: true });
     }
@@ -779,6 +723,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
         p_phone: `${data.phoneCountry}${data.phone}`,
         p_dob: data.dateOfBirth,
         p_street: data.street, p_zip: data.zip, p_city: data.city,
+        p_applicant_email: data.email,
       });
 
       const { data: companyId, error: e1 } = await supabase.rpc("get_or_create_company", {
@@ -795,13 +740,22 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       });
       if (e2) throw e2;
 
-      const { error: e3 } = await supabase.rpc("submit_application", {
+      const { data: applicationId, error: e3 } = await supabase.rpc("submit_application", {
         p_inquiry_id: inquiryId, p_product_id: offer.product_id,
       });
       if (e3) throw e3;
 
+      // Call provider Edge Function if available
+      const providerSlug = PROVIDER_SLUGS[offer.provider_name];
+      if (providerSlug && applicationId) {
+        const { data: fnResult, error: fnError } = await supabase.functions.invoke(`provider-${providerSlug}`, {
+          body: { action: "submit", application_id: applicationId },
+        });
+        if (fnError) console.error(`[provider-${providerSlug}]`, fnError);
+        else if (fnResult && !fnResult.success) console.error(`[provider-${providerSlug}]`, fnResult.error);
+      }
+
       trackStep(supabase, "submit", { product_id: offer.product_id });
-      localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
     } catch (err) {
       console.error("[doSubmit]", err);
@@ -818,8 +772,48 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
       transition={{ duration: 0.35, ease: "easeOut" }}
       style={{ borderTop: "2px solid var(--color-light-bg)" }}
     >
-      {/* Accordion steps */}
-      {!authLoading && (
+      {/* Auth gate — shown before funnel if not logged in */}
+      {!authLoading && !user && (
+        <div style={{ padding: "1.5rem 1.25rem" }}>
+          <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Anmelden oder Konto erstellen</p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.25rem" }}>Um einen Antrag einzureichen, benötigen Sie ein Konto.</p>
+          {authSent ? (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
+              </div>
+              <div>
+                <p style={{ fontSize: "0.875rem", color: "var(--color-dark)", lineHeight: 1.5, marginBottom: "0.25rem" }}>
+                  Wir haben einen Link an <strong>{authEmail}</strong> geschickt.
+                </p>
+                <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "0.5rem" }}>
+                  Bestätigen Sie die E-Mail, um fortzufahren.
+                </p>
+                <button type="button" onClick={() => setAuthSent(false)} style={{ fontSize: "0.8125rem", color: "var(--color-turquoise)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Andere E-Mail</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button type="button" className="auth-oauth-btn" style={{ width: "100%", marginBottom: "0.75rem" }} onClick={handleOAuth} disabled={oauthLoading !== null}>
+                <GoogleIcon />{oauthLoading === "google" ? "Weiterleitung…" : "Mit Google anmelden"}
+              </button>
+              <div className="auth-divider">oder</div>
+              <form onSubmit={handleMagicLink} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="ihre@email.de" required className="admin-input" style={{ flex: 1, minWidth: "180px" }} />
+                <button type="submit" className="btn btn-primary btn-md" disabled={oauthLoading !== null || !authEmail} style={{ whiteSpace: "nowrap" }}>
+                  {oauthLoading === "email" ? "…" : "Weiter"}
+                </button>
+              </form>
+              <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginTop: "1rem" }}>
+                Mit der Anmeldung bestätige ich, dass ich die <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzbestimmungen</a> zur Kenntnis genommen habe.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Accordion steps — only shown when logged in */}
+      {!authLoading && user && (
         <div>
           {FUNNEL_STEPS.map((s, i) => {
             const isActive = i === step;
@@ -830,7 +824,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                 {/* Step header */}
                 <button
                   type="button"
-                  onClick={() => isDone ? setStep(i) : undefined}
+                  onClick={() => { if (isDone) { setStep(i); setFormKey(k => k + 1); } }}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: "0.875rem",
                     padding: "0.875rem 1.25rem", background: "none", border: "none",
@@ -901,7 +895,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                     <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", fontSize: "0.875rem", color: "var(--color-subtle)", pointerEvents: "none" }}>€</span>
                                   </div>
                                   <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.25rem" }}>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</p>
-                                  <button type="button" onClick={() => { saveDraft({ volume: bedarfVolume, bedarfPhase: 1 }); setBedarfPhase(1); }} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
+                                  <button type="button" onClick={() => { setBedarfPhase(1); }} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
                                     Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                   </button>
                                 </motion.div>
@@ -927,7 +921,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                             </button>
                                           ))}
                                         </div>
-                                        <button type="button" onClick={() => { saveDraft({ term: bedarfTerm, bedarfPhase: 2 }); setBedarfPhase(2); }} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
+                                        <button type="button" onClick={() => { setBedarfPhase(2); }} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
                                           Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                         </button>
                                       </div>
@@ -954,7 +948,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                         <textarea value={purposeManual} onChange={e => setPurposeManual(e.target.value)} placeholder="Beschreiben Sie den Verwendungszweck…" maxLength={200} rows={3} style={{ marginTop: "0.25rem", padding: "0.625rem 0.875rem", border: "1.5px solid var(--color-border)", borderRadius: "0.625rem", fontSize: "0.875rem", resize: "vertical", outline: "none", width: "100%", fontFamily: "inherit" }} />
                                       )}
                                     </div>
-                                    <button type="button" onClick={() => { saveDraft({ purpose, bedarfPhase: 2 }); trackStep(supabase, "anfrage", { volume: bedarfVolume, term: bedarfTerm, purpose }); setStep(s => s + 1); }} disabled={!purpose} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
+                                    <button type="button" onClick={() => { trackStep(supabase, "anfrage", { volume: bedarfVolume, term: bedarfTerm, purpose }); setStep(s => s + 1); }} disabled={!purpose} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
                                       Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                     </button>
                                   </motion.div>
@@ -974,7 +968,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                   <GermanNumberInput
                                     value={orgTurnover} min={1} max={10_000_000} step={1000}
                                     onChange={setOrgTurnover}
-                                    onEnter={() => { if (orgTurnover) { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); } }}
+                                    onEnter={() => { if (orgTurnover) { trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); } }}
                                     placeholder="20.000"
                                     className="admin-input" style={{ width: "100%", paddingRight: "2rem" }}
                                   />
@@ -985,7 +979,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                 <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
-                                <button type="button" onClick={() => { saveDraft({ turnover: orgTurnover ?? undefined }); trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                <button type="button" onClick={() => { trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                 </button>
                               </div>
@@ -1115,7 +1109,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                                       )}
                                     </div>
                                     <FunnelField label="Crefo-Nummer" value={orgCrefo} onChange={setOrgCrefo} placeholder="3XXXXXXXX9" hint="Creditreform-Nummer" />
-                                    <FunnelField label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer" required />
+                                    <FunnelField label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer (optional)" />
                                     <FunnelField label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" />
                                     <div style={{ borderTop: "1px solid var(--color-light-bg)", paddingTop: "0.875rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
                                       <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-subtle)", margin: 0 }}>Unternehmensanschrift</p>
@@ -1136,58 +1130,9 @@ function FunnelPanel({ offer, amount, term, initialPurpose }: { offer: Offer; am
                           )}
 
                           {/* Step 3: Persönliche Daten + Anschrift */}
-                          {i === 3 && !user && (
-                            <div style={{ padding: "0.25rem 0 0.5rem" }}>
-                              <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Konto erstellen oder anmelden</p>
-                              <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.25rem" }}>Zum Absenden ist ein Konto erforderlich.</p>
-                              {authSent ? (
-                                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
-                                  <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                    <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
-                                  </div>
-                                  <div>
-                                    <p style={{ fontSize: "0.875rem", color: "var(--color-dark)", lineHeight: 1.5, marginBottom: "0.25rem" }}>
-                                      Wir haben einen Link an <strong>{authEmail}</strong> geschickt.
-                                    </p>
-                                    <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "0.5rem" }}>
-                                      Bestätigen Sie die E-Mail, um fortzufahren.
-                                    </p>
-                                    <button type="button" onClick={() => setAuthSent(false)} style={{ fontSize: "0.8125rem", color: "var(--color-turquoise)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Andere E-Mail</button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
-                                    <button type="button" className="auth-oauth-btn" style={{ flex: 1, minWidth: "140px" }} onClick={() => handleOAuth("google")} disabled={oauthLoading !== null}>
-                                      <GoogleIcon />{oauthLoading === "google" ? "…" : "Google"}
-                                    </button>
-                                    <button type="button" className="auth-oauth-btn" style={{ flex: 1, minWidth: "140px" }} onClick={() => handleOAuth("azure")} disabled={oauthLoading !== null}>
-                                      <MicrosoftIcon />{oauthLoading === "azure" ? "…" : "Microsoft"}
-                                    </button>
-                                  </div>
-                                  <div className="auth-divider">oder</div>
-                                  <form onSubmit={handleMagicLink} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                                    <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="ihre@email.de" required className="admin-input" style={{ flex: 1, minWidth: "180px" }} />
-                                    <button type="submit" className="btn btn-primary btn-md" disabled={oauthLoading !== null || !authEmail} style={{ whiteSpace: "nowrap" }}>
-                                      {oauthLoading === "email" ? "…" : "Weiter"}
-                                    </button>
-                                  </form>
-                                  <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginTop: "1rem", textAlign: "left" }}>
-                                    Mit der Anmeldung bestätige ich, dass ich die <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzbestimmungen</a> zur Kenntnis genommen habe.
-                                  </p>
-                                </>
-                              )}
-                              <div style={{ marginTop: "0.75rem" }}>
-                                <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-sm" style={{ fontSize: "0.8125rem" }}>
-                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {i === 3 && user && !submitted && (
+                          {i === 3 && !submitted && (
                             <PersonalDataForm
-                              key={`${firstName}|${applicantEmail}`}
+                              key={`personal-${formKey}`}
                               defaults={{ firstName, lastName, email: applicantEmail, phone: applicantPhone, phoneCountry, dateOfBirth, street: applicantStreet, zip: applicantZip, city: applicantCity }}
                               onSubmit={(data) => {
                                 setFirstName(data.firstName); setLastName(data.lastName);
@@ -1385,12 +1330,11 @@ function PlattformContent() {
   // After offers load, re-open the funnel if user just returned from OAuth or magic link
   useEffect(() => {
     if (offers.length === 0) return;
-    const returnId = localStorage.getItem("funnel_return_product_id") || searchParams.get("offer");
+    const returnId = searchParams.get("offer");
     if (!returnId) return;
     const match = offers.find(o => o.product_id === returnId);
     if (match) {
       setSelectedOffer({ offer: match, amount: volume, term: termMonths });
-      localStorage.removeItem("funnel_return_product_id");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
