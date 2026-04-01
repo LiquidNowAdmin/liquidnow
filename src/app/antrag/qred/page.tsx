@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowLeft, Check, Loader2, Search } from "lucide-react";
 import Logo from "@/components/Logo";
@@ -138,6 +138,7 @@ function QredFunnelContent() {
   const [orgName,         setOrgName]         = useState("");
   const [orgHrb,          setOrgHrb]          = useState("");
   const [orgUstId,        setOrgUstId]        = useState("");
+  const [orgCrefo,        setOrgCrefo]        = useState("");
   const [orgTurnover,     setOrgTurnover]     = useState("");
   const [orgWebpage,      setOrgWebpage]      = useState("");
   const [orgStreet,       setOrgStreet]       = useState("");
@@ -147,8 +148,93 @@ function QredFunnelContent() {
   const [purposeManual,   setPurposeManual]   = useState("");
   const [searchLoading,   setSearchLoading]   = useState(false);
   const [searchStatus,    setSearchStatus]    = useState<"idle" | "ok" | "error">("idle");
+  const [companyMode,     setCompanyMode]     = useState<"search" | "url" | "manual">("search");
+  const [submitting,      setSubmitting]      = useState(false);
+  const [submitted,       setSubmitted]       = useState(false);
+  const [submitError,     setSubmitError]     = useState<string | null>(null);
+  const [companySuggestions, setCompanySuggestions] = useState<Array<{ name: string; long_crefo_number: string; street_address: string; house_number: string; zip_code: string; city: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const isLastStep = step === STEPS.length - 1;
+
+  function handleOrgNameChange(value: string) {
+    setOrgName(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.length < 3) {
+      setCompanySuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/crefo-lookup`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ query: value }),
+          }
+        );
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setCompanySuggestions(json.data.slice(0, 5));
+          setShowSuggestions(json.data.length > 0);
+        }
+      } catch {
+        setCompanySuggestions([]);
+      }
+    }, 300);
+  }
+
+  function selectCompany(c: typeof companySuggestions[0]) {
+    setOrgName(c.name);
+    if (c.long_crefo_number) setOrgCrefo(c.long_crefo_number);
+    const street = [c.street_address, c.house_number].filter(Boolean).join(" ");
+    if (street) setOrgStreet(street);
+    if (c.zip_code) setOrgZip(c.zip_code);
+    if (c.city) setOrgCity(c.city);
+    setCompanySuggestions([]);
+    setShowSuggestions(false);
+  }
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  async function lookupCrefo(companyName: string) {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/crefo-lookup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ query: companyName }),
+        }
+      );
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const match = json.data[0];
+        if (match.long_crefo_number) setOrgCrefo(match.long_crefo_number);
+      }
+    } catch {
+      // Crefo lookup is best-effort — don't block the flow
+    }
+  }
 
   async function handleCompanySearch() {
     if (!orgWebpage) return;
@@ -176,6 +262,7 @@ function QredFunnelContent() {
         if (d.address?.zip)    setOrgZip(d.address.zip);
         if (d.address?.city)   setOrgCity(d.address.city);
         setSearchStatus("ok");
+        setCompanyMode("manual");
       } else {
         setSearchStatus("error");
       }
@@ -186,31 +273,84 @@ function QredFunnelContent() {
     }
   }
 
-  function buildPayload() {
-    return {
-      applicant: {
-        firstName, lastName, dateOfBirth,
-        email: applicantEmail,
-        phone: applicantPhone || undefined,
-        address: { street: applicantStreet, zipCode: applicantZip, city: applicantCity },
-      },
-      organization: {
-        nationalOrganizationNumber: orgHrb,
-        uniqueCompanyIdentifier: orgUstId || undefined,
-        name: orgName,
-        address: { street: orgStreet, zipCode: orgZip, city: orgCity },
-        turnover: orgTurnover ? parseInt(orgTurnover) : undefined,
-        webpage: orgWebpage || undefined,
-      },
-      amount, term, purpose,
-      purposeManual: purpose === "OTHER" && purposeManual ? purposeManual : undefined,
-    };
+  const QRED_PRODUCT_ID = "20000000-0000-0000-0000-000000000006";
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const supabase = createClient();
+
+      // 1. Save user profile
+      await supabase.rpc("upsert_user_profile", {
+        p_first_name: firstName,
+        p_last_name: lastName,
+        p_phone: applicantPhone,
+        p_dob: dateOfBirth,
+        p_street: applicantStreet,
+        p_zip: applicantZip,
+        p_city: applicantCity,
+      });
+
+      // 2. Get or create company
+      const { data: companyId, error: e1 } = await supabase.rpc("get_or_create_company", {
+        p_name: orgName,
+        p_hrb: orgHrb,
+        p_ust_id: orgUstId,
+        p_crefo: orgCrefo,
+        p_website: orgWebpage,
+        p_street: orgStreet,
+        p_zip: orgZip,
+        p_city: orgCity,
+        p_monthly_revenue: orgTurnover ? parseInt(orgTurnover) : null,
+      });
+      if (e1) throw e1;
+
+      // 3. Create inquiry
+      const { data: inquiryId, error: e2 } = await supabase.rpc("create_inquiry", {
+        p_company_id: companyId,
+        p_volume: amount,
+        p_term_months: term,
+        p_purpose: purpose,
+        p_metadata: { purpose_manual: purpose === "OTHER" ? purposeManual : null },
+      });
+      if (e2) throw e2;
+
+      // 4. Create application
+      const { data: applicationId, error: e3 } = await supabase.rpc("submit_application", {
+        p_inquiry_id: inquiryId,
+        p_product_id: QRED_PRODUCT_ID,
+      });
+      if (e3) throw e3;
+
+      // 5. Call Qred Edge Function
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/provider-qred`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ action: "submit", application_id: applicationId }),
+        }
+      );
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || "Qred submission failed");
+
+      console.log("[Qred] Submitted:", result.data);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("[Qred] Submit error:", err);
+      setSubmitError("Fehler beim Einreichen. Bitte versuchen Sie es erneut.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleNext() {
     if (isLastStep) {
-      console.log("[Qred] Payload:", buildPayload());
-      // TODO: call Edge Function qred-apply
+      handleSubmit();
     } else {
       setStep(s => s + 1);
     }
@@ -332,7 +472,7 @@ function QredFunnelContent() {
           )}
 
           {/* ── Funnel steps ── */}
-          {!authLoading && user && (
+          {!authLoading && user && !submitted && (
             <>
               {chips}
 
@@ -346,44 +486,168 @@ function QredFunnelContent() {
               {/* Step 0: Unternehmen */}
               {step === 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  {/* Website + Autofill */}
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>
-                      Website
-                    </label>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <input
-                        type="url"
-                        value={orgWebpage}
-                        onChange={e => { setOrgWebpage(e.target.value); setSearchStatus("idle"); }}
-                        placeholder="https://example.de"
-                        className="admin-input"
-                        style={{ flex: 1 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCompanySearch}
-                        disabled={!orgWebpage || searchLoading}
-                        className="btn btn-secondary btn-md"
-                        style={{ whiteSpace: "nowrap", gap: "0.375rem", flexShrink: 0 }}
-                      >
-                        {searchLoading
-                          ? <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} />
-                          : <Search style={{ width: "1rem", height: "1rem" }} />}
-                        {searchLoading ? "Suche…" : "Ausfüllen"}
+
+                  {/* Mode: Search by name */}
+                  {companyMode === "search" && (
+                    <>
+                      <div ref={suggestionsRef} style={{ position: "relative" }}>
+                        <Field label="Firmenname" value={orgName} onChange={handleOrgNameChange} placeholder="Firmenname eingeben…" required />
+                        {showSuggestions && companySuggestions.length > 0 && (
+                          <div style={{
+                            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+                            background: "#fff", border: "1px solid var(--color-border)", borderRadius: "0.75rem",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", marginTop: "0.25rem", overflow: "hidden",
+                          }}>
+                            {companySuggestions.map((c, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => { selectCompany(c); setCompanyMode("manual"); }}
+                                style={{
+                                  width: "100%", textAlign: "left", padding: "0.625rem 0.875rem",
+                                  background: "none", border: "none", cursor: "pointer",
+                                  borderBottom: i < companySuggestions.length - 1 ? "1px solid var(--color-border)" : "none",
+                                  fontSize: "0.875rem", color: "var(--color-dark)",
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "var(--color-light-bg)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                              >
+                                <span style={{ fontWeight: 600 }}>{c.name}</span>
+                                <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>
+                                  {[c.street_address, c.house_number].filter(Boolean).join(" ")}{c.zip_code || c.city ? ", " : ""}{[c.zip_code, c.city].filter(Boolean).join(" ")}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                        <button type="button" onClick={() => setCompanyMode("url")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                          Per Website suchen
+                        </button>
+                        <button type="button" onClick={() => setCompanyMode("manual")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                          Manuell anlegen
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Mode: Search by URL */}
+                  {companyMode === "url" && (
+                    <>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>
+                          Website
+                        </label>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <input
+                            type="url"
+                            value={orgWebpage}
+                            onChange={e => { setOrgWebpage(e.target.value); setSearchStatus("idle"); }}
+                            placeholder="https://example.de"
+                            className="admin-input"
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCompanySearch}
+                            disabled={!orgWebpage || searchLoading}
+                            className="btn btn-secondary btn-md"
+                            style={{ whiteSpace: "nowrap", gap: "0.375rem", flexShrink: 0 }}
+                          >
+                            {searchLoading
+                              ? <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} />
+                              : <Search style={{ width: "1rem", height: "1rem" }} />}
+                            {searchLoading ? "Suche…" : "Ausfüllen"}
+                          </button>
+                        </div>
+                        {searchStatus === "ok" && (
+                          <p style={{ fontSize: "0.6875rem", color: "var(--color-turquoise)", marginTop: "0.25rem" }}>Firmendaten gefunden und eingetragen.</p>
+                        )}
+                        {searchStatus === "error" && (
+                          <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Keine Daten gefunden. Bitte manuell ausfüllen.</p>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                        <button type="button" onClick={() => setCompanyMode("search")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                          Per Name suchen
+                        </button>
+                        <button type="button" onClick={() => setCompanyMode("manual")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                          Manuell anlegen
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Mode: Manual — show all fields */}
+                  {companyMode === "manual" && (
+                    <>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Website</label>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <input
+                            type="text"
+                            value={orgWebpage}
+                            onChange={e => { setOrgWebpage(e.target.value); setSearchStatus("idle"); }}
+                            placeholder="example.de"
+                            className="admin-input"
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCompanySearch}
+                            disabled={!orgWebpage || searchLoading}
+                            className="btn btn-secondary btn-md"
+                            style={{ whiteSpace: "nowrap", gap: "0.375rem", flexShrink: 0 }}
+                          >
+                            {searchLoading ? <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} /> : <Search style={{ width: "1rem", height: "1rem" }} />}
+                            {searchLoading ? "Suche…" : "Ausfüllen"}
+                          </button>
+                        </div>
+                        {searchStatus === "ok" && <p style={{ fontSize: "0.6875rem", color: "var(--color-turquoise)", marginTop: "0.25rem" }}>Firmendaten eingetragen.</p>}
+                        {searchStatus === "error" && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Keine Daten gefunden.</p>}
+                      </div>
+                      <div ref={suggestionsRef} style={{ position: "relative" }}>
+                        <Field label="Firmenname" value={orgName} onChange={handleOrgNameChange} placeholder="Example GmbH" required />
+                        {showSuggestions && companySuggestions.length > 0 && (
+                          <div style={{
+                            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+                            background: "#fff", border: "1px solid var(--color-border)", borderRadius: "0.75rem",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", marginTop: "0.25rem", overflow: "hidden",
+                          }}>
+                            {companySuggestions.map((c, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => { selectCompany(c); setCompanyMode("manual"); }}
+                                style={{
+                                  width: "100%", textAlign: "left", padding: "0.625rem 0.875rem",
+                                  background: "none", border: "none", cursor: "pointer",
+                                  borderBottom: i < companySuggestions.length - 1 ? "1px solid var(--color-border)" : "none",
+                                  fontSize: "0.875rem", color: "var(--color-dark)",
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "var(--color-light-bg)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                              >
+                                <span style={{ fontWeight: 600 }}>{c.name}</span>
+                                <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>
+                                  {[c.street_address, c.house_number].filter(Boolean).join(" ")}{c.zip_code || c.city ? ", " : ""}{[c.zip_code, c.city].filter(Boolean).join(" ")}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Field label="Crefo-Nummer" value={orgCrefo} onChange={setOrgCrefo} placeholder="3XXXXXXXX9" hint="Creditreform-Nummer (10-stellig)" required />
+                      <Field label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer" required />
+                      <Field label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" hint="Umsatzsteuer-Identifikationsnummer" />
+                      <Field label="Ø Monatsumsatz – letzte 3 Monate (EUR)" value={orgTurnover} onChange={setOrgTurnover} type="number" placeholder="20000" required />
+                      <button type="button" onClick={() => setCompanyMode("search")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textAlign: "center" }}>
+                        Stattdessen suchen
                       </button>
-                    </div>
-                    {searchStatus === "ok" && (
-                      <p style={{ fontSize: "0.6875rem", color: "var(--color-turquoise)", marginTop: "0.25rem" }}>✓ Firmendaten gefunden und eingetragen.</p>
-                    )}
-                    {searchStatus === "error" && (
-                      <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Keine Daten gefunden. Bitte manuell ausfüllen.</p>
-                    )}
-                  </div>
-                  <Field label="Firmenname" value={orgName} onChange={setOrgName} placeholder="Example GmbH" required />
-                  <Field label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer" required />
-                  <Field label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" hint="Umsatzsteuer-Identifikationsnummer" />
-                  <Field label="Ø Monatsumsatz – letzte 3 Monate (EUR)" value={orgTurnover} onChange={setOrgTurnover} type="number" placeholder="20000" required />
+                    </>
+                  )}
+
                 </div>
               )}
 
@@ -458,17 +722,27 @@ function QredFunnelContent() {
                 </div>
               )}
 
+              {/* Submit error */}
+              {submitError && (
+                <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.9)", marginTop: "1rem" }}>{submitError}</p>
+              )}
+
               {/* Navigation */}
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "2rem" }}>
                 {step > 0 && (
-                  <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-lg" style={{ gap: "0.375rem" }}>
+                  <button type="button" onClick={() => setStep(s => s - 1)} disabled={submitting} className="btn btn-secondary btn-lg" style={{ gap: "0.375rem" }}>
                     <ArrowLeft style={{ width: "1rem", height: "1rem" }} />
                     Zurück
                   </button>
                 )}
-                <button type="button" onClick={handleNext} className="btn btn-primary btn-lg" style={{ flex: 1, justifyContent: "center", gap: "0.375rem" }}>
-                  {isLastStep ? "Antrag einreichen" : "Weiter"}
-                  {!isLastStep && <ArrowRight style={{ width: "1rem", height: "1rem" }} />}
+                <button type="button" onClick={handleNext} disabled={submitting} className="btn btn-primary btn-lg" style={{ flex: 1, justifyContent: "center", gap: "0.375rem" }}>
+                  {submitting ? (
+                    <><Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} /> Wird eingereicht…</>
+                  ) : isLastStep ? (
+                    "Antrag einreichen"
+                  ) : (
+                    <>Weiter <ArrowRight style={{ width: "1rem", height: "1rem" }} /></>
+                  )}
                 </button>
               </div>
 
@@ -478,6 +752,21 @@ function QredFunnelContent() {
                 </p>
               )}
             </>
+          )}
+
+          {/* ── Success state ── */}
+          {submitted && (
+            <div style={{ textAlign: "center", padding: "2rem 0" }}>
+              <div style={{ width: "3.5rem", height: "3.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.25rem" }}>
+                <Check style={{ width: "1.75rem", height: "1.75rem", color: "var(--color-turquoise)" }} />
+              </div>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>
+                Antrag eingereicht!
+              </h1>
+              <p style={{ fontSize: "0.9375rem", color: "var(--color-subtle)", lineHeight: 1.6, maxWidth: "360px", margin: "0 auto" }}>
+                Ihr Antrag wurde erfolgreich an die Qred Bank übermittelt. Sie werden in Kürze per E-Mail über den Status informiert.
+              </p>
+            </div>
           )}
 
         </div>

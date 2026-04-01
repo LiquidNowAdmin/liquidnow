@@ -41,6 +41,17 @@
 - **provider**: providers, products (global with tenant filter)
 - **document**: documents (attached to company, selectable per application)
 
+### Provider Integration Conventions
+- Edge Function pro Provider: `provider-{slug}/index.ts` (z.B. `provider-qred`, `provider-youlend`)
+- Provider-Slug: lowercase, keine Bindestriche im Firmennamen (z.B. `qred`, `youlend`, `iwoca`, `deutschebank`)
+- Shared Utilities: `supabase/functions/_shared/` — gemeinsamer Code für alle Provider
+- Env-Variablen pro Provider: `{SLUG}_API_KEY`, `{SLUG}_API_BASE_URL` (z.B. `QRED_API_KEY`)
+- Funnel-Seiten pro Provider: `/antrag/{slug}/` (z.B. `/antrag/qred`)
+- Status-Mapping: Plain Object `{SLUG}_STATUS_MAP` in der jeweiligen Edge Function
+- Externe Referenz in `applications.metadata`: `{ external_ref, external_url, provider_slug, submitted_at }`
+- Action-Parameter: `"submit"` | `"status"` | `"upload"` — einheitlich über alle Provider
+- Keine PostgreSQL-Funktionen für Provider-Logik — alles in Edge Functions + `_shared/`
+
 ## UI/UX Rules
 
 ### Component System

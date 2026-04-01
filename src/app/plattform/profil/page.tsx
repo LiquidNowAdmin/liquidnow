@@ -18,6 +18,7 @@ interface UserProfile {
 interface Company {
   id: string;
   name: string;
+  crefo: string;
   hrb: string;
   ust_id: string;
   website: string;
@@ -28,7 +29,7 @@ interface Company {
 }
 
 const EMPTY: UserProfile = { first_name: "", last_name: "", phone: "", email: "", dob: "", street: "", zip: "", city: "" };
-const EMPTY_COMPANY: Company = { id: "", name: "", hrb: "", ust_id: "", website: "", street: "", zip: "", city: "", monthly_revenue: "" };
+const EMPTY_COMPANY: Company = { id: "", name: "", crefo: "", hrb: "", ust_id: "", website: "", street: "", zip: "", city: "", monthly_revenue: "" };
 
 function InlineField({
   label,
@@ -44,7 +45,7 @@ function InlineField({
   onSave?: (val: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(value ?? "");
   const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -145,7 +146,7 @@ export default function ProfilPage() {
       if (memberRes.data?.company_id) {
         const { data: co } = await supabase
           .from("companies")
-          .select("id, name, hrb, ust_id, website, address, annual_revenue")
+          .select("id, name, crefo, hrb, ust_id, website, address, annual_revenue")
           .eq("id", memberRes.data.company_id)
           .maybeSingle();
         if (co) {
@@ -153,6 +154,7 @@ export default function ProfilPage() {
           setCompany({
             id: co.id,
             name: co.name ?? "",
+            crefo: co.crefo ?? "",
             hrb: co.hrb ?? "",
             ust_id: co.ust_id ?? "",
             website: co.website ?? "",
@@ -191,6 +193,7 @@ export default function ProfilPage() {
       const monthly = updated.monthly_revenue ? Number(updated.monthly_revenue) : null;
       await supabase.from("companies").update({
         name: updated.name || null,
+        crefo: updated.crefo || null,
         hrb: updated.hrb || null,
         ust_id: updated.ust_id || null,
         website: updated.website || null,
@@ -202,6 +205,7 @@ export default function ProfilPage() {
       // No company yet — create one
       const { data: newId } = await supabase.rpc("get_or_create_company", {
         p_name: updated.name,
+        p_crefo: updated.crefo,
         p_hrb: updated.hrb,
         p_ust_id: updated.ust_id,
         p_website: updated.website,
@@ -254,6 +258,7 @@ export default function ProfilPage() {
           <SectionHeader icon={Building2} title="Unternehmen" />
           <div style={GRID}>
             <InlineField label="Firmenname" value={company.name} onSave={v => saveCompany({ name: v })} />
+            <InlineField label="Crefo-Nr." value={company.crefo} onSave={v => saveCompany({ crefo: v })} />
             <InlineField label="HRB" value={company.hrb} onSave={v => saveCompany({ hrb: v })} />
             <InlineField label="USt-ID" value={company.ust_id} onSave={v => saveCompany({ ust_id: v })} />
             <InlineField label="Website" value={company.website} onSave={v => saveCompany({ website: v })} />
