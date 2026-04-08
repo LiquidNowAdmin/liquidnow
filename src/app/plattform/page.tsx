@@ -857,7 +857,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      style={{ borderTop: "2px solid var(--color-light-bg)", maxWidth: "640px", margin: "0 auto", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", borderRadius: "1rem", background: "#fff" }}
+      style={{ borderTop: "2px solid var(--color-light-bg)" }}
     >
       {/* Auth gate — shown before funnel if not logged in */}
       {!authLoading && !user && (
@@ -899,69 +899,68 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
         </div>
       )}
 
-      {/* Accordion steps — only shown when logged in */}
+      {/* Funnel steps — only shown when logged in */}
       {!authLoading && user && (
-        <div>
-          {(() => { let visibleIdx = 0; return FUNNEL_STEPS.map((s, i) => {
-            // YouLend: skip Umsatz (1)
-            if (isYouLend && i === 1) return null;
-            const stepNum = ++visibleIdx;
-            const isActive = i === step;
-            const isDone = i < step;
-            const isFuture = i > step;
-            return (
-              <div key={i} style={{ borderBottom: i < FUNNEL_STEPS.length - 1 ? "1px solid var(--color-light-bg)" : "none" }}>
-                {/* Step header */}
+        <div className="funnel-two-col">
+          {/* Left: step navigation */}
+          <div className="funnel-nav">
+            {(() => { let visibleIdx = 0; return FUNNEL_STEPS.map((s, i) => {
+              if (isYouLend && i === 1) return null;
+              const stepNum = ++visibleIdx;
+              const isActive = i === step;
+              const isDone = i < step;
+              const isFuture = i > step;
+              return (
                 <button
+                  key={i}
                   type="button"
                   onClick={() => { if (isDone) { setStep(i); setFormKey(k => k + 1); } }}
                   style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: "0.875rem",
-                    padding: "0.875rem 1.25rem", background: "none", border: "none",
+                    width: "100%", display: "flex", alignItems: "center", gap: "0.75rem",
+                    padding: "0.75rem 1rem", background: isActive ? "#fff" : "none",
+                    border: "none", borderRadius: "0.625rem",
                     cursor: isDone ? "pointer" : "default", textAlign: "left",
-                    opacity: isFuture ? 0.45 : 1, transition: "opacity 0.2s",
+                    opacity: isFuture ? 0.45 : 1, transition: "all 0.25s",
+                    boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                   }}
                 >
                   <span style={{
                     width: "1.75rem", height: "1.75rem", borderRadius: "50%", flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "0.75rem", fontWeight: 700,
-                    background: isDone ? "var(--color-turquoise)" : isActive ? "var(--color-dark)" : "var(--color-light-bg)",
+                    background: isDone ? "var(--color-turquoise)" : isActive ? "var(--color-dark)" : "var(--color-border)",
                     color: isDone || isActive ? "#fff" : "var(--color-subtle)",
                     transition: "background 0.3s",
                   }}>
                     {isDone ? <Check style={{ width: "0.875rem", height: "0.875rem" }} /> : stepNum}
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", fontSize: "0.875rem", fontWeight: isActive ? 700 : 600, color: "var(--color-dark)" }}>{s.title}</span>
+                    <span style={{ display: "block", fontSize: "0.8125rem", fontWeight: isActive ? 700 : 600, color: "var(--color-dark)" }}>{s.title}</span>
                     {isDone && stepSummaries[i] && (
-                      <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "260px" }}>{stepSummaries[i]}</span>
+                      <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--color-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stepSummaries[i]}</span>
                     )}
-                    {isActive && !isDone && (
-                      <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)" }}>{s.sub}</span>
+                    {isActive && (
+                      <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>{s.sub}</span>
                     )}
                   </span>
-                  {isDone && <span style={{ fontSize: "0.6875rem", color: "var(--color-turquoise)", fontWeight: 600, whiteSpace: "nowrap" }}>Ändern</span>}
                 </button>
+              );
+            }); })()}
+          </div>
 
-                {/* Step body */}
-                <AnimatePresence initial={false}>
-                  {isActive && (
-                    <motion.div
-                      key={i}
-                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-                      animate={{ height: "auto", opacity: 1, overflow: "visible", transitionEnd: { overflow: "visible" } }}
-                      exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-                      transition={{ duration: 0.28, ease: "easeInOut" }}
-                    >
-                      <div style={{ padding: "0 1.25rem 1.25rem" }}>
-                        <motion.div
-                          key={`content-${i}`}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.22, delay: 0.08 }}
-                        >
-
+          {/* Right: active step content */}
+          <div className="funnel-content">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              >
+                {(() => {
+                  const i = step;
+                  return (<>
                           {/* Step 0: Ihre Anfrage — sequential reveal */}
                           {i === 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -1518,14 +1517,11 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                               </button>
                             </div>
                           )}
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          }); })()}
+                </>);
+                })()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       )}
     </motion.div>
@@ -1849,7 +1845,7 @@ function PlattformContent() {
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="relative z-10 bg-white border-b border-border">
-        <div className="mx-auto px-[5%] py-3">
+        <div className="mx-auto px-4 max-w-[1400px] mx-auto py-3">
           <div className="flex items-center justify-between">
             <Logo size="md" />
             <UserMenu />
@@ -1860,7 +1856,7 @@ function PlattformContent() {
 
       {/* Main */}
       <main className="flex-1 py-6 bg-white">
-        <div className="mx-auto px-[5%]">
+        <div className="mx-auto px-4 max-w-[1400px] mx-auto">
 
           {/* Back button when product is selected */}
           <AnimatePresence>

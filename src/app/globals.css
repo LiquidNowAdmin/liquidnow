@@ -4609,3 +4609,42 @@ button, .btn, label, .badge, .trust-item {
   margin-top: 0.125rem;
 }
 
+/* ── Funnel: 2-column layout ── */
+.funnel-two-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.funnel-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+}
+
+.funnel-content {
+  padding: 0.5rem 1.25rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .funnel-two-col {
+    flex-direction: row;
+  }
+
+  .funnel-nav {
+    flex: 0 0 33%;
+    max-width: 280px;
+    padding: 1.25rem;
+    border-right: 1px solid var(--color-light-bg);
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+  }
+
+  .funnel-content {
+    flex: 1;
+    padding: 1.25rem 1.75rem;
+    min-width: 0;
+  }
+}
+
