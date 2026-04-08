@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2 } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, Shield, RefreshCw, FileText } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
@@ -217,6 +217,47 @@ const FUNNEL_STEPS = [
 
 const TERM_OPTIONS = [3, 6, 9, 12, 18, 24, 36];
 
+// YouLend: estimated financing based on monthly revenue + trading history
+// Base values for 10k/month revenue
+const YOULEND_TABLE: [number, number][] = [
+  [3, 9000], [4, 9250], [5, 9500], [6, 10000], [7, 10500],
+  [8, 11000], [9, 11500], [12, 13000], [15, 15000], [18, 18000],
+  [24, 19000], [36, 19250], [48, 19500], [60, 20000],
+];
+function youlendEstimate(monthlyRevenue: number, tradingMonths: number): number {
+  // Interpolate from table, scale linearly with revenue
+  let base = YOULEND_TABLE[0][1];
+  for (const [m, v] of YOULEND_TABLE) {
+    if (tradingMonths >= m) base = v;
+    else break;
+  }
+  return Math.round(base * (monthlyRevenue / 10000));
+}
+
+function buildPhone(phone: string, countryCode: string): string {
+  const full = phone.startsWith("+") ? phone : `${countryCode}${phone}`;
+  return full.replace(/^(\+\d{2,3})\1+/, "$1");
+}
+
+// YouLend company type options + mapping
+const YL_COMPANY_TYPES = [
+  { value: "GmbH", label: "GmbH", yl: "GmbhUg", needsHrb: true },
+  { value: "UG", label: "UG (haftungsbeschränkt)", yl: "GmbhUg", needsHrb: true },
+  { value: "AG", label: "AG", yl: "GmbhUg", needsHrb: true },
+  { value: "GmbH & Co. KG", label: "GmbH & Co. KG", yl: "GmbhUg", needsHrb: true },
+  { value: "UG & Co. KG", label: "UG & Co. KG", yl: "GmbhUg", needsHrb: true },
+  { value: "e.K.", label: "e.K. (eingetragener Kaufmann)", yl: "EK", needsHrb: true },
+  { value: "KG", label: "KG", yl: "KG", needsHrb: true },
+  { value: "OHG", label: "OHG", yl: "OHG", needsHrb: true },
+  { value: "GbR", label: "GbR", yl: "Gbr", needsHrb: false },
+  { value: "Einzelunternehmen", label: "Einzelunternehmen / Gewerbetreibende", yl: "Gewerbebetrieb", needsHrb: false },
+  { value: "Freiberufler", label: "Freiberufler", yl: "Gewerbebetrieb", needsHrb: false },
+  { value: "Ltd", label: "Ltd", yl: "GmbhUg", needsHrb: true },
+  { value: "SE", label: "SE (Europäische AG)", yl: "GmbhUg", needsHrb: true },
+  { value: "PartG", label: "Partnerschaftsgesellschaft", yl: "GbrOhg", needsHrb: false },
+  { value: "eG", label: "eG (eingetragene Genossenschaft)", yl: "eGbR", needsHrb: true },
+];
+
 // Provider name → Edge Function slug mapping
 const PROVIDER_SLUGS: Record<string, string> = {
   "Qred Bank": "qred",
@@ -396,7 +437,7 @@ function MicrosoftIcon() {
   );
 }
 
-function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { offer: Offer; amount: number; term: number; initialPurpose?: string; onSubmitted?: (app: { id: string; product_id: string; provider_name: string; product_name: string; volume: number; term_months: number; status: string; metadata: Record<string, unknown>; created_at: string }) => void }) {
+function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstimateChange }: { offer: Offer; amount: number; term: number; initialPurpose?: string; onSubmitted?: (app: { id: string; product_id: string; provider_name: string; product_name: string; volume: number; term_months: number; status: string; metadata: Record<string, unknown>; created_at: string }) => void; onEstimateChange?: (estimate: number) => void }) {
   const productUrl = `/plattform?offer=${offer.product_id}&amount=${amount}&term=${term}`;
   const supabase = createClient();
 
@@ -601,6 +642,10 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
 
   function handleOrgNameChange(value: string) {
     setOrgName(value);
+    if (isYouLend) {
+      const detected = detectLegalForm(value);
+      if (detected) setYlCompanyType(detected);
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.length < 3) { setCompanySuggestions([]); setShowSuggestions(false); return; }
     debounceRef.current = setTimeout(async () => {
@@ -619,6 +664,26 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     }, 300);
   }
 
+  function detectLegalForm(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes("gmbh & co. kg") || n.includes("gmbh & co kg")) return "GmbH & Co. KG";
+    if (n.includes("ug & co. kg") || n.includes("ug & co kg")) return "UG & Co. KG";
+    if (n.includes("ug ")) return "UG";
+    if (n.includes("gmbh") || n.includes("mbh")) return "GmbH";
+    if (n.includes("e.k.") || n.includes("e. k.") || n.includes("e.kfm") || n.includes("e.kfr")) return "e.K.";
+    if (n.includes("kgaa") || n.includes("kgaa")) return "KG";
+    if (n.includes(" kg")) return "KG";
+    if (n.includes(" ohg")) return "OHG";
+    if (n.includes(" gbr") || n.includes("g.b.r.")) return "GbR";
+    if (n.includes(" ag") || n.endsWith(" ag")) return "AG";
+    if (n.includes(" se") || n.endsWith(" se")) return "SE";
+    if (n.includes("partg") || n.includes("partnerschaft")) return "PartG";
+    if (n.includes(" eg") || n.includes("e.g.") || n.includes("genossenschaft")) return "eG";
+    if (n.includes(" ltd")) return "Ltd";
+    if (n.includes("e.v.") || n.includes("e. v.")) return "";
+    return "";
+  }
+
   function selectCompany(c: typeof companySuggestions[0]) {
     setOrgName(c.name);
     if (c.long_crefo_number) setOrgCrefo(c.long_crefo_number);
@@ -626,6 +691,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     if (street) setOrgStreet(street);
     if (c.zip_code) setOrgZip(c.zip_code);
     if (c.city) setOrgCity(c.city);
+    const detected = detectLegalForm(c.name);
+    if (detected) setYlCompanyType(detected);
     setCompanySuggestions([]); setShowSuggestions(false);
     setCompanyMode("manual"); setShowOrgFields(true);
   }
@@ -690,6 +757,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     if (!user || !orgName) return;
     await supabase.rpc("get_or_create_company", {
       p_name: orgName,
+      p_legal_form: ylCompanyType || null,
       p_crefo: orgCrefo || null,
       p_hrb: orgHrb || null,
       p_ust_id: orgUstId || null,
@@ -701,6 +769,9 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     });
   }
 
+  const isYouLend = offer.provider_name === "YouLend";
+  const [ylCompanyType, setYlCompanyType] = useState("");
+
   function handleNext() {
     if (step === 2 && companyMode === "url" && orgWebpage && !showOrgFields) {
       handleCompanySearch();
@@ -709,6 +780,11 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     if (step === 2) {
       trackStep(supabase, "unternehmen", { orgName, orgCity });
       syncOrg({ withTurnover: true });
+    }
+    // YouLend: skip Umsatz step (step 1), calculator already captures revenue
+    if (isYouLend && step === 0) {
+      setStep(2);
+      return;
     }
     setStep(s => s + 1);
   }
@@ -720,14 +796,14 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
     try {
       await supabase.rpc("upsert_user_profile", {
         p_first_name: data.firstName, p_last_name: data.lastName,
-        p_phone: data.phone?.startsWith("+") ? data.phone : `${data.phoneCountry}${data.phone}`,
+        p_phone: buildPhone(data.phone, data.phoneCountry),
         p_dob: data.dateOfBirth,
         p_street: data.street, p_zip: data.zip, p_city: data.city,
         p_applicant_email: data.email,
       });
 
       const { data: companyId, error: e1 } = await supabase.rpc("get_or_create_company", {
-        p_name: orgName, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
+        p_name: orgName, p_legal_form: ylCompanyType || null, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
         p_website: orgWebpage, p_street: orgStreet, p_zip: orgZip, p_city: orgCity,
         p_monthly_revenue: orgTurnover,
       });
@@ -781,7 +857,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      style={{ borderTop: "2px solid var(--color-light-bg)" }}
+      style={{ borderTop: "2px solid var(--color-light-bg)", maxWidth: "640px", margin: "0 auto", boxShadow: "0 4px 24px rgba(0,0,0,0.07)", borderRadius: "1rem", background: "#fff" }}
     >
       {/* Auth gate — shown before funnel if not logged in */}
       {!authLoading && !user && (
@@ -826,7 +902,10 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
       {/* Accordion steps — only shown when logged in */}
       {!authLoading && user && (
         <div>
-          {FUNNEL_STEPS.map((s, i) => {
+          {(() => { let visibleIdx = 0; return FUNNEL_STEPS.map((s, i) => {
+            // YouLend: skip Umsatz (1)
+            if (isYouLend && i === 1) return null;
+            const stepNum = ++visibleIdx;
             const isActive = i === step;
             const isDone = i < step;
             const isFuture = i > step;
@@ -851,7 +930,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                     color: isDone || isActive ? "#fff" : "var(--color-subtle)",
                     transition: "background 0.3s",
                   }}>
-                    {isDone ? <Check style={{ width: "0.875rem", height: "0.875rem" }} /> : i + 1}
+                    {isDone ? <Check style={{ width: "0.875rem", height: "0.875rem" }} /> : stepNum}
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "block", fontSize: "0.875rem", fontWeight: isActive ? 700 : 600, color: "var(--color-dark)" }}>{s.title}</span>
@@ -887,12 +966,19 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                           {i === 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
-                              {/* Phase 0: Volumen */}
+                              {/* Phase 0: Volumen (YouLend: calculator, others: number input) */}
                               {bedarfPhase > 0 ? (
                                 <button type="button" onClick={() => setBedarfPhase(0)} style={{ textAlign: "left", padding: "0.5rem 0.875rem", borderRadius: "0.625rem", border: "1.5px solid var(--color-border)", background: "var(--color-light-bg)", fontSize: "0.875rem", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                                   <span style={{ fontWeight: 600 }}>{formatCurrency(bedarfVolume)}</span>
                                   <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Ändern</span>
                                 </button>
+                              ) : offer.provider_name === "YouLend" ? (
+                                <YouLendCalculator
+                                  initialRevenue={bedarfVolume > 0 ? Math.round(bedarfVolume / 10) : 10000}
+                                  maxVolume={offer.max_volume}
+                                  onContinue={(estimate) => { setBedarfVolume(estimate); setStep(2); }}
+                                  onEstimateChange={onEstimateChange}
+                                />
                               ) : (
                                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                                   <label style={LABEL_STYLE}>Wie viel Kapital benötigen Sie?</label>
@@ -997,8 +1083,53 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                             </div>
                           )}
 
-                          {/* Step 2: Ihr Unternehmen */}
-                          {i === 2 && (
+                          {/* Step 2: Ihr Unternehmen — YouLend: name + type + optional HRB */}
+                          {i === 2 && isYouLend && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                              <div ref={suggestionsRef} style={{ position: "relative" }}>
+                                <FunnelField label="Firmenname" value={orgName} onChange={handleOrgNameChange} placeholder="Firmenname eingeben…" required />
+                                {showSuggestions && companySuggestions.length > 0 && (
+                                  <div style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+                                    background: "#fff", border: "1px solid var(--color-border)", borderRadius: "0.75rem",
+                                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)", marginTop: "0.25rem", overflow: "hidden",
+                                  }}>
+                                    {companySuggestions.map((c, idx) => (
+                                      <button key={idx} type="button" onClick={() => selectCompany(c)}
+                                        style={{ width: "100%", textAlign: "left", padding: "0.625rem 0.875rem", background: "none", border: "none", cursor: "pointer", borderBottom: idx < companySuggestions.length - 1 ? "1px solid var(--color-border)" : "none", fontSize: "0.875rem", color: "var(--color-dark)" }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = "var(--color-light-bg)")}
+                                        onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                                        <span style={{ fontWeight: 600 }}>{c.name}</span>
+                                        <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>
+                                          {[c.street_address, c.house_number].filter(Boolean).join(" ")}{c.zip_code || c.city ? ", " : ""}{[c.zip_code, c.city].filter(Boolean).join(" ")}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <label style={LABEL_STYLE}>Rechtsform<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
+                                <select value={ylCompanyType} onChange={e => setYlCompanyType(e.target.value)} className="admin-input" style={{ width: "100%" }}>
+                                  <option value="">Bitte wählen…</option>
+                                  {YL_COMPANY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                              </div>
+                              <div style={{ display: "flex", gap: "0.625rem" }}>
+                                <button type="button" onClick={() => setStep(0)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button" onClick={() => setStep(3)}
+                                  disabled={!orgName || !ylCompanyType}
+                                  className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 2: Ihr Unternehmen — full version */}
+                          {i === 2 && !isYouLend && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
                               {/* Mode: Search by name */}
@@ -1140,16 +1271,37 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                             </div>
                           )}
 
-                          {/* Step 3: Persönliche Daten + Anschrift */}
-                          {i === 3 && !submitted && (
+                          {/* Step 3: YouLend — slim version (name + email + phone) */}
+                          {i === 3 && !submitted && isYouLend && (
+                            <div onKeyDown={stepKeyDown(() => { if (firstName && lastName && applicantEmail) setStep(4); })} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                <FunnelField label="Vorname" name="given-name" autoComplete="given-name" value={firstName} onChange={setFirstName} placeholder="Hans" required />
+                                <FunnelField label="Nachname" name="family-name" autoComplete="family-name" value={lastName} onChange={setLastName} placeholder="Schmidt" required />
+                              </div>
+                              <FunnelField label="E-Mail" name="email" autoComplete="email" value={applicantEmail} onChange={setApplicantEmail} placeholder="hans@example.de" required />
+                              <FunnelField label="Telefon" name="tel" autoComplete="tel" value={applicantPhone} onChange={setApplicantPhone} placeholder="+49 170 1234567" required />
+                              <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.5rem" }}>
+                                <button type="button" onClick={() => setStep(2)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button" onClick={() => { if (firstName && lastName && applicantEmail && applicantPhone) setStep(4); }} disabled={!firstName || !lastName || !applicantEmail || !applicantPhone} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 3: Full version — Persönliche Daten + Anschrift */}
+                          {i === 3 && !submitted && !isYouLend && (
                             <PersonalDataForm
                               key={`personal-${formKey}`}
                               defaults={{ firstName, lastName, email: applicantEmail, phone: applicantPhone, phoneCountry, dateOfBirth, street: applicantStreet, zip: applicantZip, city: applicantCity }}
-                              onSubmit={(data) => {
+                              onSubmit={async (data) => {
                                 setFirstName(data.firstName); setLastName(data.lastName);
                                 setDateOfBirth(data.dateOfBirth); setApplicantEmail(data.email);
                                 setApplicantPhone(data.phone); setPhoneCountry(data.phoneCountry);
                                 setApplicantStreet(data.street); setApplicantZip(data.zip); setApplicantCity(data.city);
+
                                 setStep(4);
                               }}
                               onBack={() => setStep(s => s - 1)}
@@ -1159,7 +1311,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                             />
                           )}
 
-                          {i === 4 && !submitted && (
+                          {i === 4 && !submitted && !isYouLend && (
                             <div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                                 <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
@@ -1182,22 +1334,13 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                                 </div>
                               </div>
 
-                              <div style={{ marginTop: "1.25rem", display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                              <div style={{ marginTop: "1.25rem" }}>
                                 <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
                                   <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
                                     <input type="checkbox" checked={agbConsent} onChange={e => setAgbConsent(e.target.checked)}
                                       style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
                                     <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
                                       Ich akzeptiere die <a href="/agb" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und habe die <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzerklärung</a> zur Kenntnis genommen.
-                                    </span>
-                                  </label>
-                                </div>
-                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
-                                  <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
-                                    <input type="checkbox" checked={schufaConsent} onChange={e => setSchufaConsent(e.target.checked)}
-                                      style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
-                                    <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
-                                      Ich willige ein, dass eine SCHUFA-Auskunft zur Bonitätsprüfung eingeholt werden darf.
                                     </span>
                                   </label>
                                 </div>
@@ -1210,10 +1353,139 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
                                 <button type="button" onClick={() => doSubmit({ firstName, lastName, dateOfBirth, email: applicantEmail, phone: applicantPhone, phoneCountry, street: applicantStreet, zip: applicantZip, city: applicantCity })}
-                                  disabled={!agbConsent || !schufaConsent || submitting}
+                                  disabled={!agbConsent || submitting}
                                   className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird eingereicht…</> : <>Antrag einreichen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
                                 </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 4: YouLend Summary + Redirect */}
+                          {i === 4 && !submitted && isYouLend && (
+                            <div>
+                              {/* Hero amount card */}
+                              <div style={{ textAlign: "center", padding: "1.5rem 1rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%)", marginBottom: "1.25rem" }}>
+                                <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Geschätzter Finanzierungsbetrag</p>
+                                <p style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", lineHeight: 1, marginBottom: "0.375rem" }}>{formatCurrency(bedarfVolume)}</p>
+                                <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>für {orgName}</p>
+                                <a href="https://de.trustpilot.com/review/youlend.com?utm_medium=trustbox&utm_source=MicroStar" target="_blank" rel="noopener noreferrer" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.375rem", marginTop: "0.75rem", textDecoration: "none" }}>
+                                  <svg width="72" height="14" viewBox="0 0 72 14" fill="none">
+                                    {[0,1,2,3,4].map(i => (
+                                      <g key={i} transform={`translate(${i * 15}, 0)`}>
+                                        <rect width="13.5" height="13.5" rx="1.5" fill="#00b67a" />
+                                        <path d="M6.75 2.5l1.5 3.1 3.4.3-2.6 2.2.8 3.3-2.85-1.7L4.15 11.4l.8-3.3-2.6-2.2 3.4-.3z" fill="#fff" />
+                                      </g>
+                                    ))}
+                                  </svg>
+                                  <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>4,8 / 5 Trustpilot</span>
+                                </a>
+                              </div>
+
+                              {/* Next steps — horizontal */}
+                              <div style={{ marginBottom: "1.25rem" }}>
+                                <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, textAlign: "center", marginBottom: "1rem", background: "linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>So geht es weiter</h2>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
+                                  {([
+                                    { Icon: FileText, title: "1. Konto erstellen", sub: "Kostenlos bei YouLend" },
+                                    { Icon: Check, title: "2. Antrag abschließen", sub: "Unterlagen hochladen" },
+                                    { Icon: Zap, title: "3. Auszahlung", sub: "Innerhalb von 24h" },
+                                  ] as const).map(({ Icon, title, sub }) => (
+                                    <div key={title} style={{ textAlign: "center", padding: "0.625rem 0.375rem" }}>
+                                      <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem", background: "var(--color-light-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem" }}>
+                                        <Icon style={{ width: "1.125rem", height: "1.125rem", color: "var(--color-turquoise)" }} />
+                                      </div>
+                                      <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", lineHeight: 1.3 }}>{title}</p>
+                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.1875rem" }}>{sub}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* AGB */}
+                              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", marginBottom: "1rem" }}>
+                                <input type="checkbox" checked={agbConsent} onChange={e => setAgbConsent(e.target.checked)}
+                                  style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
+                                <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
+                                  Ich akzeptiere die <a href="/agb" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzerklärung</a>.
+                                </span>
+                              </label>
+
+                              {submitError && <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.8)", marginBottom: "0.5rem" }}>{submitError}</p>}
+
+                              <div style={{ display: "flex", gap: "0.625rem" }}>
+                                <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button"
+                                  disabled={!agbConsent || submitting}
+                                  onClick={async () => {
+                                    setSubmitting(true); setSubmitError(null);
+                                    try {
+                                      await supabase.rpc("upsert_user_profile", {
+                                        p_first_name: firstName, p_last_name: lastName,
+                                        p_phone: buildPhone(applicantPhone, phoneCountry),
+                                        p_dob: dateOfBirth, p_street: applicantStreet, p_zip: applicantZip, p_city: applicantCity,
+                                        p_applicant_email: applicantEmail,
+                                      });
+                                      syncOrg({ withTurnover: false });
+                                      const ylType = YL_COMPANY_TYPES.find(t => t.value === ylCompanyType);
+                                      const params = new URLSearchParams({
+                                        partner: "32dfe244-eed4-43b3-81fa-ad616dc393cd",
+                                        companyName: orgName.toUpperCase(),
+                                        keyContactName: `${firstName} ${lastName}`,
+                                        email: applicantEmail,
+                                        mobilePhoneNumber: buildPhone(applicantPhone, phoneCountry),
+                                        fundingAmount: String(bedarfVolume),
+                                        country: "germany",
+                                        countryISOCode: "DEU",
+                                        loanCurrencyISOCode: "EUR",
+                                        ...(ylType ? { companyType: ylType.yl } : {}),
+                                        ...(orgHrb ? { companyNumber: orgHrb } : {}),
+                                      });
+                                      const { data: companyId } = await supabase.rpc("get_or_create_company", {
+                                        p_name: orgName, p_legal_form: ylCompanyType || null, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
+                                        p_website: orgWebpage, p_street: orgStreet, p_zip: orgZip, p_city: orgCity,
+                                        p_monthly_revenue: orgTurnover,
+                                      });
+                                      if (companyId) {
+                                        const { data: inquiryId } = await supabase.rpc("create_inquiry", {
+                                          p_company_id: companyId, p_volume: bedarfVolume, p_purpose: "WORKING_CAPITAL",
+                                        });
+                                        if (inquiryId) {
+                                          const { data: appId } = await supabase.rpc("submit_application", {
+                                            p_inquiry_id: inquiryId, p_product_id: offer.product_id,
+                                          });
+                                          if (appId) {
+                                            params.set("tpci", appId as string);
+                                            onSubmitted?.({
+                                              id: appId as string, product_id: offer.product_id,
+                                              provider_name: offer.provider_name, product_name: offer.product_name,
+                                              volume: bedarfVolume, term_months: 0, status: "inquired",
+                                              metadata: {}, created_at: new Date().toISOString(),
+                                            });
+                                          }
+                                        }
+                                      }
+                                      window.open(`https://youlend.com/apply/dashboard/de/signup?${params.toString()}`, "_blank");
+                                      setSubmitted(true);
+                                    } catch (err) {
+                                      console.error("[YouLend submit]", err);
+                                      setSubmitError("Fehler. Bitte versuchen Sie es erneut.");
+                                    } finally {
+                                      setSubmitting(false);
+                                    }
+                                  }}
+                                  className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird weitergeleitet…</> : <>Weiter zu YouLend <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
+                                </button>
+                              </div>
+
+                              {/* Trust stats */}
+                              <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginTop: "1rem", paddingTop: "0.75rem", borderTop: "1px solid var(--color-border)" }}>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>300.000+</strong> finanzierte Unternehmen</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>6 Min.</strong> Antragsdauer</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>85 %</strong> Zusagequote</span>
                               </div>
                             </div>
                           )}
@@ -1233,7 +1505,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                           )}
 
                           {/* Navigation: nur Step 2 (Unternehmen) */}
-                          {i === 2 && (
+                          {i === 2 && !isYouLend && (
                             <div style={{ display: "flex", gap: "0.625rem", marginTop: "1.25rem" }}>
                               <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                 <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
@@ -1253,7 +1525,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted }: { off
                 </AnimatePresence>
               </div>
             );
-          })}
+          }); })()}
         </div>
       )}
     </motion.div>
@@ -1265,6 +1537,65 @@ export default function PlattformPage() {
     <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 className="animate-spin" style={{ width: "2rem", height: "2rem", color: "var(--color-subtle)" }} /></div>}>
       <PlattformContent />
     </Suspense>
+  );
+}
+
+const YL_REVENUE_STEPS = [
+  1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 12500, 15000,
+  20000, 25000, 30000, 35000, 40000, 45000, 50000,
+  60000, 70000, 80000, 90000, 100000,
+  125000, 150000, 175000, 200000, 225000, 250000,
+  300000, 350000, 400000, 450000, 500000,
+];
+
+function YouLendCalculator({ initialRevenue, maxVolume, onContinue, onEstimateChange }: { initialRevenue: number; maxVolume: number; onContinue?: (estimate: number) => void; onEstimateChange?: (estimate: number) => void }) {
+  // Find closest step index for initial value
+  const closestIdx = YL_REVENUE_STEPS.reduce((best, v, i) => Math.abs(v - initialRevenue) < Math.abs(YL_REVENUE_STEPS[best] - initialRevenue) ? i : best, 0);
+  const [revenueIdx, setRevenueIdx] = useState(closestIdx);
+  const revenue = YL_REVENUE_STEPS[revenueIdx];
+  const [months, setMonths] = useState(12);
+  const estimate = Math.min(youlendEstimate(revenue, months), maxVolume);
+
+  useEffect(() => { onEstimateChange?.(estimate); }, [estimate]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div style={{ background: onContinue ? "none" : "var(--color-light-bg)", borderRadius: "0.75rem", padding: onContinue ? 0 : "1.25rem", marginBottom: onContinue ? 0 : "1rem" }}>
+      {!onContinue && <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Finanzierungsrechner</p>}
+      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", marginBottom: "1rem" }}>
+        {onContinue ? "Schätzen Sie Ihren möglichen Finanzierungsbetrag." : "Schätzen Sie Ihren möglichen Kreditbetrag."}
+      </p>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "1.25rem" }}>
+        <span style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-dark)" }}>
+          {estimate.toLocaleString("de-DE")} €
+        </span>
+        <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>geschätzt*</span>
+      </div>
+      <div style={{ marginBottom: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-subtle)" }}>Monatlicher Umsatz</span>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{revenue.toLocaleString("de-DE")} €</span>
+        </div>
+        <input type="range" min={0} max={YL_REVENUE_STEPS.length - 1} step={1} value={revenueIdx}
+          onChange={e => setRevenueIdx(+e.target.value)}
+          className="funnel-slider" style={{ width: "100%", background: `linear-gradient(to right, var(--color-turquoise) ${(revenueIdx / (YL_REVENUE_STEPS.length - 1)) * 100}%, var(--color-border) 0%)` }} />
+      </div>
+      <div style={{ marginBottom: "0.75rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
+          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-subtle)" }}>Handelshistorie</span>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{months} Monate</span>
+        </div>
+        <input type="range" min={3} max={60} step={1} value={months}
+          onChange={e => setMonths(+e.target.value)}
+          className="funnel-slider" style={{ width: "100%", background: `linear-gradient(to right, var(--color-turquoise) ${((months - 3) / (60 - 3)) * 100}%, var(--color-border) 0%)` }} />
+      </div>
+      <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: onContinue ? "0.75rem" : 0 }}>
+        *Grobe Schätzung — der finale Betrag hängt von Ihrer Bonität und Geschäftsdaten ab.
+      </p>
+      {onContinue && (
+        <button type="button" onClick={() => onContinue(estimate)} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
+          Mit {estimate.toLocaleString("de-DE")} € anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1293,6 +1624,7 @@ function PlattformContent() {
   const [showUseCaseFilter, setShowUseCaseFilter] = useState(false);
   const [skeletonStartCount, setSkeletonStartCount] = useState(25);
   const [selectedOffer, setSelectedOffer] = useState<{ offer: Offer; amount: number; term: number } | null>(null);
+  const [funnelEstimate, setFunnelEstimate] = useState<number | null>(null);
   const [myApplications, setMyApplications] = useState<Array<{ id: string; product_id: string; provider_name: string; product_name: string; volume: number; term_months: number; status: string; metadata: Record<string, unknown>; created_at: string }>>([]);
 
   // "Mein Unternehmen" bar state
@@ -2120,7 +2452,8 @@ function PlattformContent() {
                     const approvalPct = m.approval_rate_pct as number | undefined;
                     const hasFeeModel = !!m.fee_model && (m.fee_pct_from as number | undefined) != null;
                     const feePctFrom = m.fee_pct_from as number | undefined;
-                    const effectiveVolume = Math.min(Math.max(volume, offer.min_volume), offer.max_volume);
+                    const isSel = selectedOffer?.offer.product_id === offer.product_id;
+                    const effectiveVolume = (isSel && funnelEstimate != null) ? funnelEstimate : Math.min(Math.max(volume, offer.min_volume), offer.max_volume);
                     const effectiveTerm = Math.min(Math.max(termMonths, offer.min_term_months), offer.max_term_months);
                     const volumeClamped = volume < offer.min_volume ? "min" : volume > offer.max_volume ? "max" : null;
                     const termClamped = termMonths < offer.min_term_months ? "min" : termMonths > offer.max_term_months ? "max" : null;
@@ -2167,6 +2500,19 @@ function PlattformContent() {
                               <div className="offer-provider-info">
                                 <div className="offer-provider-name">{offer.provider_name}</div>
                                 <div className="offer-product-name">{offer.product_name}</div>
+                                {(m.trustpilot as number) > 0 && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.25rem" }}>
+                                    <svg width="58" height="11" viewBox="0 0 58 11" fill="none">
+                                      {[0,1,2,3,4].map(j => (
+                                        <g key={j} transform={`translate(${j * 12}, 0)`}>
+                                          <rect width="11" height="11" rx="1.2" fill="#00b67a" />
+                                          <path d="M5.5 2l1.2 2.5 2.7.2-2.1 1.8.6 2.7L5.5 7.8 3.1 9.2l.6-2.7L1.6 4.7l2.7-.2z" fill="#fff" />
+                                        </g>
+                                      ))}
+                                    </svg>
+                                    <span style={{ fontSize: "0.5625rem", fontWeight: 600, color: "var(--color-subtle)" }}>{(m.trustpilot as number).toLocaleString("de-DE", { minimumFractionDigits: 1 })}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -2235,6 +2581,7 @@ function PlattformContent() {
                             {description && (
                               <p className="offer-accordion-desc">{description}</p>
                             )}
+
                             <div className="offer-accordion-grid">
                               <div className="offer-accordion-col">
                                 <p className="offer-accordion-col-title">Konditionen</p>
@@ -2263,7 +2610,7 @@ function PlattformContent() {
                         )}
                         {/* Inline funnel */}
                         {isSelected && selectedOffer && (
-                          <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} onSubmitted={(app) => setMyApplications(prev => [app, ...prev])} />
+                          <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} onSubmitted={(app) => setMyApplications(prev => [app, ...prev])} onEstimateChange={setFunnelEstimate} />
                         )}
                       </div>
                       </motion.div>

@@ -53,6 +53,7 @@ function ProduktEditForm() {
 
   // Meta: Kennzahlen
   const [approvalRatePct, setApprovalRatePct] = useState("");
+  const [trustpilotScore, setTrustpilotScore] = useState("");
 
   // Meta: Bewertung (explizite Scores)
   const [speedScoreVal, setSpeedScoreVal] = useState("");
@@ -110,6 +111,7 @@ function ProduktEditForm() {
         setRepayment((m.repayment as string) ?? "");
         setProcessingTimeDays(m.processing_time_days != null ? String(m.processing_time_days) : "");
         setApprovalRatePct(m.approval_rate_pct != null ? String(m.approval_rate_pct) : "");
+        setTrustpilotScore(m.trustpilot != null ? String(m.trustpilot) : "");
         setSpeedScoreVal(m.speed_score != null ? String(m.speed_score) : "");
         setApprovalScoreVal(m.approval_score != null ? String(m.approval_score) : "");
         setPriceScoreVal(m.price_score != null ? String(m.price_score) : "");
@@ -143,6 +145,7 @@ function ProduktEditForm() {
     if (repayment) meta.repayment = repayment;
     if (processingTimeDays) meta.processing_time_days = parseInt(processingTimeDays);
     if (approvalRatePct) meta.approval_rate_pct = parseInt(approvalRatePct);
+    if (trustpilotScore) meta.trustpilot = parseFloat(trustpilotScore);
     if (speedScoreVal)    meta.speed_score       = parseFloat(speedScoreVal);
     if (approvalScoreVal) meta.approval_score    = parseFloat(approvalScoreVal);
     if (priceScoreVal)    meta.price_score       = parseFloat(priceScoreVal);
@@ -315,9 +318,15 @@ function ProduktEditForm() {
         {/* ── Kennzahlen ── */}
         <SectionHeader title="Kennzahlen" />
 
-        <div className="admin-field">
-          <label htmlFor="approval_rate" className="admin-label">Annahmequote (%)</label>
-          <input id="approval_rate" type="number" value={approvalRatePct} onChange={(e) => setApprovalRatePct(e.target.value)} className="admin-input" placeholder="z.B. 75" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="admin-field">
+            <label htmlFor="approval_rate" className="admin-label">Annahmequote (%)</label>
+            <input id="approval_rate" type="number" value={approvalRatePct} onChange={(e) => setApprovalRatePct(e.target.value)} className="admin-input" placeholder="z.B. 75" />
+          </div>
+          <div className="admin-field">
+            <label htmlFor="trustpilot" className="admin-label">Trustpilot-Score</label>
+            <input id="trustpilot" type="number" step="0.1" min="0" max="5" value={trustpilotScore} onChange={(e) => setTrustpilotScore(e.target.value)} className="admin-input" placeholder="z.B. 4.8" />
+          </div>
         </div>
 
         {/* ── Bewertung ── */}
