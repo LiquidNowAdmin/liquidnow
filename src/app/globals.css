@@ -2425,8 +2425,8 @@ button, .btn, label, .badge, .trust-item {
   width: 100%;
   padding: 0.375rem 1.5rem 0.75rem;
   font-size: 0.6875rem;
-  font-weight: 400;
-  color: var(--color-border);
+  font-weight: 600;
+  color: var(--color-subtle);
   background: none;
   border: none;
   cursor: pointer;
@@ -2435,7 +2435,7 @@ button, .btn, label, .badge, .trust-item {
 }
 
 .offer-accordion-toggle:hover {
-  color: var(--color-subtle);
+  color: var(--color-dark);
 }
 
 .offer-accordion-chevron {

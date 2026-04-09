@@ -43,6 +43,8 @@ function ProduktEditForm() {
 
   // Meta: Allgemein
   const [description, setDescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
+  const [processSteps, setProcessSteps] = useState("");
   const [ctaPrimary, setCtaPrimary] = useState("");
 
   // Meta: Konditionen
@@ -67,6 +69,10 @@ function ProduktEditForm() {
   const [flexibleRepayment, setFlexibleRepayment] = useState(false);
   const [gracePeriod, setGracePeriod] = useState(false);
   const [negativeSchufa, setNegativeSchufa] = useState(false);
+  const [revenueBasedRepayment, setRevenueBasedRepayment] = useState(false);
+  const [fixedFeeNoInterest, setFixedFeeNoInterest] = useState(false);
+  const [highApprovalRate, setHighApprovalRate] = useState(false);
+  const [upTo2xRevenue, setUpTo2xRevenue] = useState(false);
 
   // Meta: Verwendungszwecke
   const [useCases, setUseCases] = useState<string[]>([]);
@@ -105,6 +111,8 @@ function ProduktEditForm() {
 
         const m = (product.metadata ?? {}) as Record<string, unknown>;
         setDescription((m.description as string) ?? "");
+        setLongDescription((m.long_description as string) ?? "");
+        setProcessSteps(((m.process_steps as string[] | undefined) ?? []).join("\n"));
         setCtaPrimary((m.cta_primary as string) ?? "");
         setFeeModel((m.fee_model as string) ?? "");
         setFeePctFrom(m.fee_pct_from != null ? String(m.fee_pct_from) : "");
@@ -121,6 +129,10 @@ function ProduktEditForm() {
         setFlexibleRepayment(!!m.flexible_repayment);
         setGracePeriod(!!m.grace_period);
         setNegativeSchufa(!!m.negative_schufa);
+        setRevenueBasedRepayment(!!m.revenue_based_repayment);
+        setFixedFeeNoInterest(!!m.fixed_fee_no_interest);
+        setHighApprovalRate(!!m.high_approval_rate);
+        setUpTo2xRevenue(!!m.up_to_2x_revenue);
         setUseCases((m.use_cases as string[]) ?? []);
         setEligibleLegalForms((m.eligible_legal_forms as string[]) ?? []);
         setEligibleIndustries((m.eligible_industries as string[]) ?? []);
@@ -139,6 +151,9 @@ function ProduktEditForm() {
     const meta: Record<string, unknown> = {};
 
     if (description) meta.description = description;
+    if (longDescription) meta.long_description = longDescription;
+    const steps = processSteps.split("\n").map(s => s.trim()).filter(Boolean);
+    if (steps.length) meta.process_steps = steps;
     if (ctaPrimary) meta.cta_primary = ctaPrimary;
     if (feeModel) meta.fee_model = feeModel;
     if (feePctFrom) meta.fee_pct_from = parseFloat(feePctFrom);
@@ -155,6 +170,10 @@ function ProduktEditForm() {
     if (flexibleRepayment) meta.flexible_repayment = true;
     if (gracePeriod) meta.grace_period = true;
     if (negativeSchufa) meta.negative_schufa = true;
+    if (revenueBasedRepayment) meta.revenue_based_repayment = true;
+    if (fixedFeeNoInterest) meta.fixed_fee_no_interest = true;
+    if (highApprovalRate) meta.high_approval_rate = true;
+    if (upTo2xRevenue) meta.up_to_2x_revenue = true;
     if (useCases.length) meta.use_cases = useCases;
     if (eligibleLegalForms.length) meta.eligible_legal_forms = eligibleLegalForms;
     if (eligibleIndustries.length) meta.eligible_industries = eligibleIndustries;
@@ -283,8 +302,19 @@ function ProduktEditForm() {
         <SectionHeader title="Allgemein" />
 
         <div className="admin-field">
-          <label htmlFor="description" className="admin-label">Beschreibung</label>
-          <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="admin-input" rows={3} style={{ resize: "vertical" }} />
+          <label htmlFor="description" className="admin-label">Kurzbeschreibung</label>
+          <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="admin-input" rows={2} style={{ resize: "vertical" }} placeholder="Kurzer Pitch für die Offer-Card" />
+        </div>
+
+        <div className="admin-field">
+          <label htmlFor="long_description" className="admin-label">Produktbeschreibung (Tab)</label>
+          <textarea id="long_description" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} className="admin-input" rows={5} style={{ resize: "vertical" }} placeholder="Ausführliche Beschreibung für den Details-Tab" />
+        </div>
+
+        <div className="admin-field">
+          <label htmlFor="process_steps" className="admin-label">Antragsprozess (Tab)</label>
+          <textarea id="process_steps" value={processSteps} onChange={(e) => setProcessSteps(e.target.value)} className="admin-input" rows={5} style={{ resize: "vertical" }} placeholder="Ein Schritt pro Zeile, z.B.&#10;Antrag online ausfüllen&#10;Unterlagen hochladen&#10;Entscheidung in 24h" />
+          <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.25rem" }}>Ein Schritt pro Zeile</p>
         </div>
 
         <div className="admin-field">
@@ -365,6 +395,10 @@ function ProduktEditForm() {
               { label: "Flexible Rückzahlung", value: flexibleRepayment, set: setFlexibleRepayment },
               { label: "Tilgungsfreie Zeit", value: gracePeriod, set: setGracePeriod },
               { label: "Negative Schufa/Crefo möglich", value: negativeSchufa, set: setNegativeSchufa },
+              { label: "Umsatzbasierte Rückzahlung", value: revenueBasedRepayment, set: setRevenueBasedRepayment },
+              { label: "Feste Gebühr statt Zinsen", value: fixedFeeNoInterest, set: setFixedFeeNoInterest },
+              { label: "Hohe Zusagequote", value: highApprovalRate, set: setHighApprovalRate },
+              { label: "Bis zu 2× Monatsumsatz", value: upTo2xRevenue, set: setUpTo2xRevenue },
             ] as { label: string; value: boolean; set: (v: boolean) => void }[]).map(({ label, value, set }) => (
               <label key={label} className="flex items-center gap-2 cursor-pointer text-sm">
                 <input type="checkbox" checked={value} onChange={(e) => set(e.target.checked)} className="admin-checkbox" />

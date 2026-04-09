@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, Shield, RefreshCw, FileText } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, ReceiptText, Shield, RefreshCw, Sparkles } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
@@ -1271,24 +1271,35 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                           )}
 
                           {/* Step 3: YouLend — slim version (name + email + phone) */}
-                          {i === 3 && !submitted && isYouLend && (
-                            <div onKeyDown={stepKeyDown(() => { if (firstName && lastName && applicantEmail) setStep(4); })} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                          {i === 3 && !submitted && isYouLend && (() => {
+                            const phoneDigits = applicantPhone.replace(/\D/g, "");
+                            const phoneValid = phoneDigits.length >= 8 && phoneDigits.length <= 15;
+                            const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(applicantEmail);
+                            const ylStep3Valid = firstName && lastName && emailValid && phoneValid;
+                            return (
+                            <div onKeyDown={stepKeyDown(() => { if (ylStep3Valid) setStep(4); })} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                                 <FunnelField label="Vorname" name="given-name" autoComplete="given-name" value={firstName} onChange={setFirstName} placeholder="Hans" required />
                                 <FunnelField label="Nachname" name="family-name" autoComplete="family-name" value={lastName} onChange={setLastName} placeholder="Schmidt" required />
                               </div>
-                              <FunnelField label="E-Mail" name="email" autoComplete="email" value={applicantEmail} onChange={setApplicantEmail} placeholder="hans@example.de" required />
-                              <FunnelField label="Telefon" name="tel" autoComplete="tel" value={applicantPhone} onChange={setApplicantPhone} placeholder="+49 170 1234567" required />
+                              <div>
+                                <FunnelField label="E-Mail" name="email" autoComplete="email" value={applicantEmail} onChange={setApplicantEmail} placeholder="hans@example.de" required />
+                                {applicantEmail && !emailValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige E-Mail eingeben</p>}
+                              </div>
+                              <div>
+                                <FunnelField label="Telefon" name="tel" autoComplete="tel" value={applicantPhone} onChange={setApplicantPhone} placeholder="+49 170 1234567" hint="Internationales Format mit Ländervorwahl" required />
+                                {applicantPhone && !phoneValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige Telefonnummer eingeben (8-15 Ziffern)</p>}
+                              </div>
                               <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.5rem" }}>
                                 <button type="button" onClick={() => setStep(2)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
-                                <button type="button" onClick={() => { if (firstName && lastName && applicantEmail && applicantPhone) setStep(4); }} disabled={!firstName || !lastName || !applicantEmail || !applicantPhone} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                <button type="button" onClick={() => { if (ylStep3Valid) setStep(4); }} disabled={!ylStep3Valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                 </button>
                               </div>
                             </div>
-                          )}
+                            ); })()}
 
                           {/* Step 3: Full version — Persönliche Daten + Anschrift */}
                           {i === 3 && !submitted && !isYouLend && (
@@ -1362,134 +1373,140 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
 
                           {/* Step 4: YouLend Summary + Redirect */}
                           {i === 4 && !submitted && isYouLend && (
-                            <div>
-                              {/* Hero amount card */}
-                              <div style={{ textAlign: "center", padding: "1.5rem 1rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%)", marginBottom: "1.25rem" }}>
-                                <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Geschätzter Finanzierungsbetrag</p>
-                                <p style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", lineHeight: 1, marginBottom: "0.375rem" }}>{formatCurrency(bedarfVolume)}</p>
-                                <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)" }}>für {orgName}</p>
-                                <a href="https://de.trustpilot.com/review/youlend.com?utm_medium=trustbox&utm_source=MicroStar" target="_blank" rel="noopener noreferrer" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.375rem", marginTop: "0.75rem", textDecoration: "none" }}>
-                                  <svg width="72" height="14" viewBox="0 0 72 14" fill="none">
-                                    {[0,1,2,3,4].map(i => (
-                                      <g key={i} transform={`translate(${i * 15}, 0)`}>
-                                        <rect width="13.5" height="13.5" rx="1.5" fill="#00b67a" />
-                                        <path d="M6.75 2.5l1.5 3.1 3.4.3-2.6 2.2.8 3.3-2.85-1.7L4.15 11.4l.8-3.3-2.6-2.2 3.4-.3z" fill="#fff" />
-                                      </g>
-                                    ))}
-                                  </svg>
-                                  <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>4,8 / 5 Trustpilot</span>
-                                </a>
-                              </div>
-
-                              {/* Next steps — horizontal */}
-                              <div style={{ marginBottom: "1.25rem" }}>
-                                <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, textAlign: "center", marginBottom: "1rem", background: "linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>So geht es weiter</h2>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
-                                  {([
-                                    { Icon: FileText, title: "1. Konto erstellen", sub: "Kostenlos bei YouLend" },
-                                    { Icon: Check, title: "2. Antrag abschließen", sub: "Unterlagen hochladen" },
-                                    { Icon: Zap, title: "3. Auszahlung", sub: "Innerhalb von 24h" },
-                                  ] as const).map(({ Icon, title, sub }) => (
-                                    <div key={title} style={{ textAlign: "center", padding: "0.625rem 0.375rem" }}>
-                                      <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem", background: "var(--color-light-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem" }}>
-                                        <Icon style={{ width: "1.125rem", height: "1.125rem", color: "var(--color-turquoise)" }} />
-                                      </div>
-                                      <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", lineHeight: 1.3 }}>{title}</p>
-                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.1875rem" }}>{sub}</p>
-                                    </div>
-                                  ))}
+                            <div style={{ maxWidth: "540px", margin: "0 auto", textAlign: "center" }}>
+                              {/* Personal greeting + amount */}
+                              <div style={{ padding: "2rem 1.5rem 1.5rem", background: "var(--color-light-bg)", borderRadius: "1rem", marginBottom: "3.5rem" }}>
+                                <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "0.75rem" }}><strong style={{ color: "var(--color-dark)" }}>{firstName}</strong>, Ihr Finanzierungsangebot steht bereit</p>
+                                <p style={{ fontSize: "2.75rem", fontWeight: 800, color: "var(--color-dark)", lineHeight: 1, marginBottom: "1.25rem" }}>{formatCurrency(bedarfVolume)}</p>
+                                <div style={{ display: "flex", justifyContent: "center", gap: "1.25rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><ReceiptText style={{ width: "0.8125rem", height: "0.8125rem", color: "var(--color-turquoise)" }} /> Feste Gebühr statt Zinsen</span>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><Shield style={{ width: "0.8125rem", height: "0.8125rem", color: "var(--color-turquoise)" }} /> Keine Sicherheiten</span>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><Zap style={{ width: "0.8125rem", height: "0.8125rem", color: "var(--color-turquoise)" }} /> 24h Auszahlung</span>
                                 </div>
                               </div>
 
+                              {/* 3 Steps */}
+                              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.875rem" }}>So geht es weiter</p>
+                              <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginBottom: "4rem" }}>
+                                {([
+                                  { num: "1", title: "Konto erstellen" },
+                                  { num: "2", title: "Antrag abschließen" },
+                                  { num: "3", title: "Geld erhalten" },
+                                ]).map(({ num, title }) => (
+                                  <div key={num} style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                                    <span style={{ width: "1.5rem", height: "1.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.625rem", fontWeight: 700, flexShrink: 0 }}>{num}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-dark)" }}>{title}</span>
+                                  </div>
+                                ))}
+                              </div>
+
                               {/* AGB */}
-                              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", marginBottom: "1rem" }}>
+                              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", marginBottom: "1.5rem", textAlign: "left" }}>
                                 <input type="checkbox" checked={agbConsent} onChange={e => setAgbConsent(e.target.checked)}
                                   style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
-                                <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
+                                <span style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
                                   Ich akzeptiere die <a href="/agb" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und <a href="/datenschutz" target="_blank" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzerklärung</a>.
                                 </span>
                               </label>
 
                               {submitError && <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.8)", marginBottom: "0.5rem" }}>{submitError}</p>}
 
-                              <div style={{ display: "flex", gap: "0.625rem" }}>
-                                <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
-                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
-                                </button>
-                                <button type="button"
-                                  disabled={!agbConsent || submitting}
-                                  onClick={async () => {
-                                    setSubmitting(true); setSubmitError(null);
-                                    try {
-                                      await supabase.rpc("upsert_user_profile", {
-                                        p_first_name: firstName, p_last_name: lastName,
-                                        p_phone: buildPhone(applicantPhone, phoneCountry),
-                                        p_dob: dateOfBirth, p_street: applicantStreet, p_zip: applicantZip, p_city: applicantCity,
-                                        p_applicant_email: applicantEmail,
+                              {/* CTA */}
+                              <button type="button"
+                                disabled={!agbConsent || submitting}
+                                onClick={async () => {
+                                  setSubmitting(true); setSubmitError(null);
+                                  try {
+                                    await supabase.rpc("upsert_user_profile", {
+                                      p_first_name: firstName, p_last_name: lastName,
+                                      p_phone: buildPhone(applicantPhone, phoneCountry),
+                                      p_dob: dateOfBirth, p_street: applicantStreet, p_zip: applicantZip, p_city: applicantCity,
+                                      p_applicant_email: applicantEmail,
+                                    });
+                                    syncOrg({ withTurnover: false });
+                                    const ylType = YL_COMPANY_TYPES.find(t => t.value === ylCompanyType);
+                                    const phone = buildPhone(applicantPhone, phoneCountry);
+                                    const params = new URLSearchParams({
+                                      partner: "32dfe244-eed4-43b3-81fa-ad616dc393cd",
+                                      companyName: orgName.toUpperCase(),
+                                      keyContactName: `${firstName} ${lastName}`,
+                                      email: applicantEmail,
+                                      emailAddress: applicantEmail,
+                                      phoneNumber: phone,
+                                      mobilePhoneNumber: phone,
+                                      fundingAmount: String(bedarfVolume),
+                                      country: "germany",
+                                      countryISOCode: "DEU",
+                                      loanCurrencyISOCode: "EUR",
+                                      ...(ylType ? { companyType: ylType.yl } : {}),
+                                      ...(orgHrb ? { companyNumber: orgHrb } : {}),
+                                    });
+                                    const { data: companyId } = await supabase.rpc("get_or_create_company", {
+                                      p_name: orgName, p_legal_form: ylCompanyType || null, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
+                                      p_website: orgWebpage, p_street: orgStreet, p_zip: orgZip, p_city: orgCity,
+                                      p_monthly_revenue: orgTurnover,
+                                    });
+                                    if (companyId) {
+                                      const { data: inquiryId } = await supabase.rpc("create_inquiry", {
+                                        p_company_id: companyId, p_volume: bedarfVolume, p_purpose: "WORKING_CAPITAL",
                                       });
-                                      syncOrg({ withTurnover: false });
-                                      const ylType = YL_COMPANY_TYPES.find(t => t.value === ylCompanyType);
-                                      const params = new URLSearchParams({
-                                        partner: "32dfe244-eed4-43b3-81fa-ad616dc393cd",
-                                        companyName: orgName.toUpperCase(),
-                                        keyContactName: `${firstName} ${lastName}`,
-                                        email: applicantEmail,
-                                        mobilePhoneNumber: buildPhone(applicantPhone, phoneCountry),
-                                        fundingAmount: String(bedarfVolume),
-                                        country: "germany",
-                                        countryISOCode: "DEU",
-                                        loanCurrencyISOCode: "EUR",
-                                        ...(ylType ? { companyType: ylType.yl } : {}),
-                                        ...(orgHrb ? { companyNumber: orgHrb } : {}),
-                                      });
-                                      const { data: companyId } = await supabase.rpc("get_or_create_company", {
-                                        p_name: orgName, p_legal_form: ylCompanyType || null, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
-                                        p_website: orgWebpage, p_street: orgStreet, p_zip: orgZip, p_city: orgCity,
-                                        p_monthly_revenue: orgTurnover,
-                                      });
-                                      if (companyId) {
-                                        const { data: inquiryId } = await supabase.rpc("create_inquiry", {
-                                          p_company_id: companyId, p_volume: bedarfVolume, p_purpose: "WORKING_CAPITAL",
+                                      if (inquiryId) {
+                                        const { data: appId } = await supabase.rpc("submit_application", {
+                                          p_inquiry_id: inquiryId, p_product_id: offer.product_id,
                                         });
-                                        if (inquiryId) {
-                                          const { data: appId } = await supabase.rpc("submit_application", {
-                                            p_inquiry_id: inquiryId, p_product_id: offer.product_id,
+                                        if (appId) {
+                                          params.set("tpci", appId as string);
+                                          onSubmitted?.({
+                                            id: appId as string, product_id: offer.product_id,
+                                            provider_name: offer.provider_name, product_name: offer.product_name,
+                                            volume: bedarfVolume, term_months: 0, status: "inquired",
+                                            metadata: {}, created_at: new Date().toISOString(),
                                           });
-                                          if (appId) {
-                                            params.set("tpci", appId as string);
-                                            onSubmitted?.({
-                                              id: appId as string, product_id: offer.product_id,
-                                              provider_name: offer.provider_name, product_name: offer.product_name,
-                                              volume: bedarfVolume, term_months: 0, status: "inquired",
-                                              metadata: {}, created_at: new Date().toISOString(),
-                                            });
-                                          }
                                         }
                                       }
-                                      window.open(`https://youlend.com/apply/dashboard/de/signup?${params.toString()}`, "_blank");
-                                      setSubmitted(true);
-                                    } catch (err) {
-                                      console.error("[YouLend submit]", err);
-                                      setSubmitError("Fehler. Bitte versuchen Sie es erneut.");
-                                    } finally {
-                                      setSubmitting(false);
                                     }
-                                  }}
-                                  className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
-                                  {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird weitergeleitet…</> : <>Weiter zu YouLend <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
-                                </button>
+                                    window.open(`https://youlend.com/apply/dashboard/de/signup?${params.toString()}`, "_blank");
+                                    setSubmitted(true);
+                                  } catch (err) {
+                                    console.error("[YouLend submit]", err);
+                                    setSubmitError("Fehler. Bitte versuchen Sie es erneut.");
+                                  } finally {
+                                    setSubmitting(false);
+                                  }
+                                }}
+                                className="btn btn-primary btn-lg" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", fontSize: "1rem", padding: "0.875rem" }}>
+                                {submitting ? <><Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} /> Wird weitergeleitet…</> : <>Weiter zur Kontoerstellung <ArrowRight style={{ width: "1rem", height: "1rem" }} /></>}
+                              </button>
+
+                              {/* Trust line */}
+                              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginTop: "1rem", flexWrap: "wrap" }}>
+                                <a href="https://de.trustpilot.com/review/youlend.com?utm_medium=trustbox&utm_source=MicroStar" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "0.25rem", textDecoration: "none" }}>
+                                  <svg width="58" height="11" viewBox="0 0 58 11" fill="none">
+                                    {[0,1,2,3,4].map(j => (
+                                      <g key={j} transform={`translate(${j * 12}, 0)`}>
+                                        <rect width="11" height="11" rx="1.2" fill="#00b67a" />
+                                        <path d="M5.5 2l1.2 2.5 2.7.2-2.1 1.8.6 2.7L5.5 7.8 3.1 9.2l.6-2.7L1.6 4.7l2.7-.2z" fill="#fff" />
+                                      </g>
+                                    ))}
+                                  </svg>
+                                  <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)" }}>4,8</span>
+                                </a>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-border)" }}>|</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong>300.000+</strong> Unternehmen</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-border)" }}>|</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong>85 %</strong> Zusagequote</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-border)" }}>|</span>
+                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong>6 Min.</strong> Antrag</span>
                               </div>
 
-                              {/* Trust stats */}
-                              <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginTop: "1rem", paddingTop: "0.75rem", borderTop: "1px solid var(--color-border)" }}>
-                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>300.000+</strong> finanzierte Unternehmen</span>
-                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>6 Min.</strong> Antragsdauer</span>
-                                <span style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}><strong style={{ color: "var(--color-dark)" }}>85 %</strong> Zusagequote</span>
-                              </div>
+                              {/* Back button */}
+                              <button type="button" onClick={() => setStep(3)} style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer" }}>
+                                <ArrowLeft style={{ width: "0.75rem", height: "0.75rem", display: "inline", verticalAlign: "middle", marginRight: "0.25rem" }} />Zurück
+                              </button>
                             </div>
                           )}
 
-                          {i === 4 && submitted && (
+                          {i === 4 && submitted && !isYouLend && (
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0" }}>
                               <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
@@ -1500,6 +1517,30 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   Wir prüfen Ihren Antrag und melden uns in Kürze.
                                 </p>
                               </div>
+                            </div>
+                          )}
+
+                          {i === 4 && submitted && isYouLend && (
+                            <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                              <div style={{ width: "3rem", height: "3rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                                <Check style={{ width: "1.5rem", height: "1.5rem", color: "var(--color-turquoise)" }} />
+                              </div>
+                              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Fast geschafft!</p>
+                              <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.6, marginBottom: "1.25rem", maxWidth: "380px", margin: "0 auto 1.25rem" }}>
+                                Schließen Sie Ihren Antrag direkt bei YouLend ab. Erstellen Sie dort ein Konto und laden Sie Ihre Unterlagen hoch.
+                              </p>
+                              <a
+                                href="https://youlend.com/apply/dashboard/de/signup?partner=32dfe244-eed4-43b3-81fa-ad616dc393cd"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-primary btn-md"
+                                style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                              >
+                                Antrag bei YouLend abschließen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                              </a>
+                              <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "1.25rem", lineHeight: 1.5 }}>
+                                Updates zu Ihrem Antrag finden Sie jederzeit in Ihrem <a href="/plattform" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Loginbereich</a>.
+                              </p>
                             </div>
                           )}
 
@@ -1609,6 +1650,7 @@ function PlattformContent() {
   });
   const [sortBy, setSortBy] = useState<SortKey>("speed");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<Record<string, "description" | "process" | "conditions">>({});
   const [filterTopUp, setFilterTopUp] = useState(false);
   const [filter48h, setFilter48h] = useState(false);
   const [filterFlexRepayment, setFilterFlexRepayment] = useState(false);
@@ -2458,6 +2500,10 @@ function PlattformContent() {
                       ? (feeEur != null ? Math.round((effectiveVolume + feeEur) / effectiveTerm) : null)
                       : Math.round(calculateMonthlyRate(effectiveVolume, offer.interest_rate_from ?? 0, effectiveTerm));
                     const merkmale: string[] = [];
+                    if (m.revenue_based_repayment) merkmale.push("Umsatzbasierte Rückzahlung");
+                    if (m.fixed_fee_no_interest) merkmale.push("Feste Gebühr statt Zinsen");
+                    if (m.high_approval_rate) merkmale.push("Hohe Zusagequote");
+                    if (m.up_to_2x_revenue) merkmale.push("Bis zu 2× Monatsumsatz");
                     if (m.top_up) merkmale.push("Aufstockung möglich");
                     if (m.payout_48h) merkmale.push("48h Auszahlung");
                     if (m.flexible_repayment) merkmale.push("Flexible Rückzahlung");
@@ -2486,30 +2532,35 @@ function PlattformContent() {
                       <div className="offer-card" style={!matchesAll(offer) && !isSelected ? { opacity: 0.45 } : undefined}>
                         <div className="offer-card-body">
                           <div className="offer-card-grid">
-                            {/* Col 1: Logo + Name */}
-                            <div className="offer-card-provider">
-                              <div className="offer-provider-logo">
-                                {offer.provider_logo_url
-                                  ? <img src={offer.provider_logo_url} alt={offer.provider_name} />
-                                  : <span>{getProviderInitials(offer.provider_name)}</span>}
+                            {/* Col 1: Logo + Name + Description */}
+                            <div className="offer-card-provider" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.75rem" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
+                                <div className="offer-provider-logo">
+                                  {offer.provider_logo_url
+                                    ? <img src={offer.provider_logo_url} alt={offer.provider_name} />
+                                    : <span>{getProviderInitials(offer.provider_name)}</span>}
+                                </div>
+                                <div className="offer-provider-info">
+                                  <div className="offer-provider-name">{offer.provider_name}</div>
+                                  <div className="offer-product-name">{offer.product_name}</div>
+                                  {(m.trustpilot as number) > 0 && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.25rem" }}>
+                                      <svg width="58" height="11" viewBox="0 0 58 11" fill="none">
+                                        {[0,1,2,3,4].map(j => (
+                                          <g key={j} transform={`translate(${j * 12}, 0)`}>
+                                            <rect width="11" height="11" rx="1.2" fill="#00b67a" />
+                                            <path d="M5.5 2l1.2 2.5 2.7.2-2.1 1.8.6 2.7L5.5 7.8 3.1 9.2l.6-2.7L1.6 4.7l2.7-.2z" fill="#fff" />
+                                          </g>
+                                        ))}
+                                      </svg>
+                                      <span style={{ fontSize: "0.5625rem", fontWeight: 600, color: "var(--color-subtle)" }}>{(m.trustpilot as number).toLocaleString("de-DE", { minimumFractionDigits: 1 })}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="offer-provider-info">
-                                <div className="offer-provider-name">{offer.provider_name}</div>
-                                <div className="offer-product-name">{offer.product_name}</div>
-                                {(m.trustpilot as number) > 0 && (
-                                  <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.25rem" }}>
-                                    <svg width="58" height="11" viewBox="0 0 58 11" fill="none">
-                                      {[0,1,2,3,4].map(j => (
-                                        <g key={j} transform={`translate(${j * 12}, 0)`}>
-                                          <rect width="11" height="11" rx="1.2" fill="#00b67a" />
-                                          <path d="M5.5 2l1.2 2.5 2.7.2-2.1 1.8.6 2.7L5.5 7.8 3.1 9.2l.6-2.7L1.6 4.7l2.7-.2z" fill="#fff" />
-                                        </g>
-                                      ))}
-                                    </svg>
-                                    <span style={{ fontSize: "0.5625rem", fontWeight: 600, color: "var(--color-subtle)" }}>{(m.trustpilot as number).toLocaleString("de-DE", { minimumFractionDigits: 1 })}</span>
-                                  </div>
-                                )}
-                              </div>
+                              {description && (
+                                <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{description}</p>
+                              )}
                             </div>
 
                             {/* Col 2: Signal bars */}
@@ -2571,16 +2622,164 @@ function PlattformContent() {
                           </button>
                         </div>
 
-                        {/* Accordion panel */}
-                        {isExpanded && (
-                          <div className="offer-accordion-panel">
-                            {description && (
-                              <p className="offer-accordion-desc">{description}</p>
-                            )}
+                        {/* Accordion panel with tabs */}
+                        {isExpanded && (() => {
+                          const currentTab = activeTab[offer.product_id] ?? "description";
+                          const longDescription = (m.long_description as string) ?? description;
+                          const processSteps = (m.process_steps as string[] | undefined) ?? [];
+                          return (
+                            <div className="offer-accordion-panel">
+                              {/* Tab headers */}
+                              <div style={{ display: "flex", gap: "1.5rem", borderBottom: "1px solid var(--color-light-bg)", marginBottom: "1rem" }}>
+                                {([
+                                  { id: "description" as const, label: "Produktbeschreibung" },
+                                  { id: "process" as const, label: "Antragsprozess" },
+                                  { id: "conditions" as const, label: "Konditionen" },
+                                ]).map(({ id, label }) => {
+                                  const isActiveTab = currentTab === id;
+                                  return (
+                                    <button
+                                      key={id}
+                                      type="button"
+                                      onClick={() => setActiveTab(prev => ({ ...prev, [offer.product_id]: id }))}
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        padding: "0.5rem 0",
+                                        fontSize: "0.75rem",
+                                        fontWeight: isActiveTab ? 700 : 600,
+                                        color: isActiveTab ? "var(--color-dark)" : "var(--color-subtle)",
+                                        cursor: "pointer",
+                                        borderBottom: isActiveTab ? "2px solid var(--color-turquoise)" : "2px solid transparent",
+                                        marginBottom: "-1px",
+                                      }}
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
 
-                            <div className="offer-accordion-grid">
-                              <div className="offer-accordion-col">
-                                <p className="offer-accordion-col-title">Konditionen</p>
+                              {/* Tab content */}
+                              {currentTab === "description" && (
+                                <div>
+                                  {offer.provider_name === "YouLend" ? (
+                                    <div>
+                                      {/* Trust banner */}
+                                      <div style={{ textAlign: "center", padding: "1rem", background: "var(--color-light-bg)", borderRadius: "0.75rem", marginBottom: "1.25rem" }}>
+                                        <p style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--color-dark)", marginBottom: "0.125rem" }}>Über 300.000 zufriedene Kunden</p>
+                                        <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>aus 10 Ländern weltweit</p>
+                                      </div>
+
+                                      {/* 4 Features grid */}
+                                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+                                        {([
+                                          { Icon: Banknote, title: "Klare Preisgestaltung", text: "Keine Zinsen — Sie zahlen nur eine im Voraus vereinbarte feste Gebühr." },
+                                          { Icon: RefreshCw, title: "Keine großen monatlichen Rechnungen", text: "Sie zahlen automatisch mit einem Prozentsatz von den Auszahlungen, die Sie erhalten." },
+                                          { Icon: Zap, title: "Schneller als eine Bank", text: "Sichere Finanzierung in nur 24 Stunden." },
+                                          { Icon: Sparkles, title: "Maßgeschneiderte Angebote", text: "Bis zum 2-fachen Ihrer monatlichen Einnahmen aus Karten- oder Online-Verkäufen." },
+                                        ] as const).map(({ Icon, title, text }) => (
+                                          <div key={title} style={{ display: "flex", gap: "0.75rem", padding: "0.875rem" }}>
+                                            <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                              <Icon style={{ width: "1.125rem", height: "1.125rem", color: "var(--color-turquoise)" }} />
+                                            </div>
+                                            <div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>{title}</p>
+                                              <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{text}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Repayment visualization */}
+                                      <div style={{ marginTop: "1.5rem", padding: "1.5rem", background: "#fff", borderRadius: "0.75rem", display: "grid", gridTemplateColumns: "240px 1fr", gap: "1.5rem", alignItems: "center" }}>
+                                        <div style={{ borderRadius: "0.625rem", overflow: "hidden" }}>
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src="/img/youlend-portal.png" alt="YouLend Dashboard mit Zahlungsfortschritt" style={{ width: "100%", height: "auto", display: "block" }} />
+                                        </div>
+                                        <div>
+                                          <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-turquoise)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>So funktioniert die Rückzahlung</p>
+                                          <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", lineHeight: 1.3, marginBottom: "0.625rem" }}>Wie eine Umsatzbeteiligung — keine festen Raten</p>
+                                          <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.6, marginBottom: "0.875rem" }}>
+                                            Sie zahlen automatisch einen festen Prozentsatz Ihrer täglichen Umsätze zurück. In starken Monaten zahlen Sie mehr, in schwachen Monaten weniger. So bleibt Ihr Cashflow flexibel.
+                                          </p>
+                                          <div style={{ padding: "0.75rem 0.875rem", background: "var(--color-light-bg)", borderRadius: "0.5rem", borderLeft: "3px solid var(--color-turquoise)" }}>
+                                            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.25rem" }}>Beispiel</p>
+                                            <p style={{ fontSize: "0.75rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                              Bei <strong>18 % Rückzahlungsrate</strong> und einem Tagesumsatz von <strong>1.000 €</strong> zahlen Sie automatisch <strong>180 €</strong> zurück. An umsatzschwachen Tagen entsprechend weniger.
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : longDescription ? (
+                                    <p style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.6 }}>{longDescription}</p>
+                                  ) : (
+                                    <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Keine Produktbeschreibung hinterlegt.</p>
+                                  )}
+                                  {productUseCases.length > 0 && (
+                                    <div style={{ marginTop: "1rem" }}>
+                                      <p className="offer-accordion-col-title">Geeignet für</p>
+                                      <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {productUseCases.map((uc) => (
+                                          <span key={uc} style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "999px", background: filterUseCases.includes(uc) ? "var(--color-turquoise)" : "var(--color-light-bg)", color: filterUseCases.includes(uc) ? "#fff" : "var(--color-subtle)" }}>
+                                            {USE_CASE_LABELS[uc] ?? uc}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {currentTab === "process" && (
+                                <div>
+                                  {offer.provider_name === "YouLend" ? (
+                                    <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
+                                      <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Komplett digitaler Antrag</h3>
+                                      <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Geld auf dem Konto innerhalb von 24–48 Stunden.</p>
+                                      <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", padding: "1rem 0", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+                                        {([
+                                          { num: "1", title: "Anfrage stellen", sub: "Daten bei LiQiNow ausfüllen" },
+                                          { num: "2", title: "Antrag bestätigen", sub: "Direkt bei YouLend" },
+                                          { num: "3", title: "Antrag abschließen", sub: "Unterlagen hochladen" },
+                                          { num: "4", title: "Geld erhalten", sub: "Innerhalb von 24h" },
+                                        ]).map(({ num, title, sub }, idx, arr) => (
+                                          <div key={num} style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
+                                            <div style={{ textAlign: "center" }}>
+                                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
+                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>{sub}</p>
+                                            </div>
+                                            {idx < arr.length - 1 && <ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)", flexShrink: 0 }} />}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
+                                        className="btn btn-primary btn-md"
+                                        style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                                      >
+                                        Jetzt anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                      </button>
+                                    </div>
+                                  ) : processSteps.length > 0 ? (
+                                    <ol style={{ display: "flex", flexDirection: "column", gap: "0.625rem", padding: 0, margin: 0, listStyle: "none" }}>
+                                      {processSteps.map((s, idx) => (
+                                        <li key={idx} style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                          <span style={{ width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "var(--color-turquoise)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.625rem", fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                                          <span>{s}</span>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  ) : (
+                                    <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Kein Antragsprozess hinterlegt.</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {currentTab === "conditions" && (
                                 <div className="offer-accordion-rows">
                                   <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
                                   <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>
@@ -2588,22 +2787,10 @@ function PlattformContent() {
                                   {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
                                   {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
                                 </div>
-                              </div>
-                              {productUseCases.length > 0 && (
-                                <div className="offer-accordion-col">
-                                  <p className="offer-accordion-col-title">Geeignet für</p>
-                                  <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {productUseCases.map((uc) => (
-                                      <span key={uc} style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "999px", background: filterUseCases.includes(uc) ? "var(--color-turquoise)" : "var(--color-light-bg)", color: filterUseCases.includes(uc) ? "#fff" : "var(--color-subtle)" }}>
-                                        {USE_CASE_LABELS[uc] ?? uc}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
                               )}
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                         {/* Inline funnel */}
                         {isSelected && selectedOffer && (
                           <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} onSubmitted={(app) => setMyApplications(prev => [app, ...prev])} onEstimateChange={setFunnelEstimate} />
