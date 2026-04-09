@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, ReceiptText, Shield, RefreshCw, Sparkles } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, ReceiptText, Shield, RefreshCw, Sparkles, Users, Headphones } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
@@ -2566,7 +2566,12 @@ function PlattformContent() {
                             {/* Col 2: Signal bars */}
                             <div className="offer-signals">
                               <SignalBar label="Geschwindigkeit" metric={speedScore(days, m.speed_score as number | undefined)} />
-                              <SignalBar label="Annahmequote" metric={approvalScore(approvalPct, m.approval_score as number | undefined)} />
+                              <SignalBar label="Annahmequote" metric={approvalScore(approvalPct, (() => {
+                                const explicit = m.approval_score as number | undefined;
+                                const above = m.approval_score_above_60k as number | undefined;
+                                if (above != null && effectiveVolume > 60000) return above;
+                                return explicit;
+                              })())} />
                               <SignalBar label="Preis" metric={priceScore(offer.interest_rate_from, hasFeeModel, m.price_score as number | undefined)} />
                               <SignalBar label="Flexibilität" metric={flexibilityScore(offer.product_type, m)} />
                             </div>
@@ -2663,7 +2668,36 @@ function PlattformContent() {
                               {/* Tab content */}
                               {currentTab === "description" && (
                                 <div>
-                                  {offer.provider_name === "YouLend" ? (
+                                  {offer.provider_name === "iwoca" ? (
+                                    <div>
+                                      {/* Hero box */}
+                                      <div style={{ textAlign: "center", padding: "1rem", background: "var(--color-light-bg)", borderRadius: "0.75rem", marginBottom: "1.25rem" }}>
+                                        <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Firmenkredite zugeschnitten auf Ihre Bedürfnisse</p>
+                                        <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>Nehmen Sie zwischen 1.000 € und 500.000 € auf — finanzieren Sie Wachstum, überbrücken Sie Liquiditätsengpässe oder kaufen Sie Waren ein.</p>
+                                      </div>
+                                      {/* 6 Features grid 3x2 */}
+                                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
+                                        {([
+                                          { Icon: Users, title: "Für alle Branchen und Rechtsformen", text: "Zur freien geschäftlichen Verwendung." },
+                                          { Icon: Zap, title: "Schneller papierloser Antrag", text: "In nur 5 Minuten, komplett ohne Papierkram." },
+                                          { Icon: Banknote, title: "Entscheidung und Auszahlung in 48 Std.", text: "Sie bestimmen die Auszahlungssumme selbst." },
+                                          { Icon: Headphones, title: "Persönlicher Kundenservice", text: "Ihre Ansprechperson unterstützt Sie auf Wunsch bei jedem Schritt." },
+                                          { Icon: SlidersHorizontal, title: "Flexible Laufzeit und Rückzahlung", text: "Laufzeit von 1 Tag bis 5 Jahre — jederzeit kostenlos tilgen." },
+                                          { Icon: ReceiptText, title: "Transparente Kosten", text: "Zinsen von 1 % bis 2,99 % p.M., ohne versteckte Gebühren." },
+                                        ] as const).map(({ Icon, title, text }) => (
+                                          <div key={title} style={{ display: "flex", gap: "0.75rem", padding: "0.875rem" }}>
+                                            <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                              <Icon style={{ width: "1.125rem", height: "1.125rem", color: "var(--color-turquoise)" }} />
+                                            </div>
+                                            <div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>{title}</p>
+                                              <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{text}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : offer.provider_name === "YouLend" ? (
                                     <div>
                                       {/* Trust banner */}
                                       <div style={{ textAlign: "center", padding: "1rem", background: "var(--color-light-bg)", borderRadius: "0.75rem", marginBottom: "1.25rem" }}>
@@ -2734,7 +2768,36 @@ function PlattformContent() {
 
                               {currentTab === "process" && (
                                 <div>
-                                  {offer.provider_name === "YouLend" ? (
+                                  {offer.provider_name === "iwoca" ? (
+                                    <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
+                                      <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Wie funktionieren Kredite von iwoca?</h3>
+                                      <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Wir zeigen Ihnen, wie Sie Ihre Finanzierung in nur 3 schnellen Schritten erhalten.</p>
+                                      <div style={{ display: "flex", justifyContent: "center", gap: "2rem", padding: "1rem 0", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+                                        {([
+                                          { num: "1", title: "Antrag in 5 Minuten stellen", sub: "Wunschbetrag wählen, Firmen- und Kontodaten eingeben, Dokumente hochladen" },
+                                          { num: "2", title: "In 48 Stunden auf dem Konto", sub: "Kreditentscheidung in 24 Stunden, dann direkt aufs Konto" },
+                                          { num: "3", title: "Flexible Aufstockung & Tilgung", sub: "Kostenlose Sondertilgungen jederzeit möglich" },
+                                        ]).map(({ num, title, sub }, idx, arr) => (
+                                          <div key={num} style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+                                            <div style={{ textAlign: "center" }}>
+                                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
+                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>{sub}</p>
+                                            </div>
+                                            {idx < arr.length - 1 && <ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)", flexShrink: 0 }} />}
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
+                                        className="btn btn-primary btn-md"
+                                        style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                                      >
+                                        Jetzt anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                      </button>
+                                    </div>
+                                  ) : offer.provider_name === "YouLend" ? (
                                     <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
                                       <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Komplett digitaler Antrag</h3>
                                       <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Geld auf dem Konto innerhalb von 24–48 Stunden.</p>
@@ -2780,12 +2843,80 @@ function PlattformContent() {
                               )}
 
                               {currentTab === "conditions" && (
-                                <div className="offer-accordion-rows">
-                                  <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
-                                  <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>
-                                  <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `${rateStr}% p.a.`}</span></div>
-                                  {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
-                                  {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
+                                <div>
+                                  <div className="offer-accordion-rows">
+                                    <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
+                                    <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>
+                                    <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `${rateStr}% p.a.`}</span></div>
+                                    {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
+                                    {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
+                                  </div>
+
+                                  {/* iwoca: required documents table */}
+                                  {offer.provider_name === "iwoca" && (
+                                    <div style={{ marginTop: "1.75rem" }}>
+                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
+                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "1rem" }}>
+                                        Ihre Kontoumsätze können Sie direkt per Open Banking an uns übermitteln. Das sind die richtigen Geschäftsdokumente für Ihre Finanzierung:
+                                      </p>
+                                      <div style={{ overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "0.75rem" }}>
+                                          <thead>
+                                            <tr>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "left", padding: "0.75rem 0.875rem", fontWeight: 700, borderTopLeftRadius: "0.5rem" }}></th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700 }}>1.000 € – 15.000 €</th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700 }}>15.001 € – 50.000 €</th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700, borderTopRightRadius: "0.5rem" }}>50.001 € – 500.000 €</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {([
+                                              {
+                                                title: "Geschäftliche Kontoumsätze",
+                                                sub: "Letzten 90 Tage über Open Banking oder im PDF-Format aus dem Online Banking gespeichert",
+                                                cells: ["check-auto", "check", "check"],
+                                              },
+                                              {
+                                                title: "BWA",
+                                                sub: "Der letzten 2 Geschäftsjahre und aktuelle BWA (nicht älter als 4 Monate)",
+                                                cells: ["no", "no", "check"],
+                                              },
+                                              {
+                                                title: "Summen- und Saldenliste",
+                                                sub: "Der letzten 2 Geschäftsjahre und aktuelle SuSa (nicht älter als 4 Monate)",
+                                                cells: ["no", "no", "check"],
+                                              },
+                                            ] as { title: string; sub: string; cells: ("check" | "no" | "check-auto")[] }[]).map(({ title, sub, cells }, rowIdx, rows) => (
+                                              <tr key={title} style={{ borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--color-light-bg)" : "none" }}>
+                                                <td style={{ padding: "1rem 0.875rem", verticalAlign: "top", background: "var(--color-light-bg)" }}>
+                                                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>{title}</p>
+                                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{sub}</p>
+                                                </td>
+                                                {cells.map((cell, ci) => (
+                                                  <td key={ci} style={{ padding: "1rem 0.875rem", textAlign: "center", verticalAlign: "middle" }}>
+                                                    {cell === "check" || cell === "check-auto" ? (
+                                                      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "0.375rem" }}>
+                                                        <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", background: "var(--color-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                          <Check style={{ width: "0.875rem", height: "0.875rem", color: "#fff" }} />
+                                                        </div>
+                                                        {cell === "check-auto" && (
+                                                          <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)", textAlign: "center", lineHeight: 1.3 }}>Teils automatisiert ganz ohne Unterlagen</span>
+                                                        )}
+                                                      </div>
+                                                    ) : (
+                                                      <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", border: "1.5px solid #16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                        <div style={{ width: "0.75rem", height: "1.5px", background: "#16a34a", transform: "rotate(-45deg)" }} />
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                ))}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
