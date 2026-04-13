@@ -65,9 +65,9 @@ interface MetricScore { score: number; label: string; }
 function speedScore(days: number | undefined, explicit?: number): MetricScore {
   if (explicit) {
     const s = Math.min(4, Math.max(1, explicit));
-    return { score: s, label: ["", "Langsam", "Mittel", "Schnell", "Sehr schnell"][Math.round(s)] };
+    return { score: s, label: ["", "Langsam", "Mittel", "Schnell", "Top"][Math.round(s)] };
   }
-  if (!days || days <= 1) return { score: 4, label: "Sehr schnell" };
+  if (!days || days <= 1) return { score: 4, label: "Top" };
   if (days <= 2)          return { score: 3, label: "Schnell" };
   if (days <= 5)          return { score: 2, label: "Mittel" };
   return                         { score: 1, label: "Langsam" };
@@ -76,10 +76,10 @@ function speedScore(days: number | undefined, explicit?: number): MetricScore {
 function approvalScore(pct: number | undefined, explicit?: number): MetricScore {
   if (explicit) {
     const s = Math.min(4, Math.max(1, explicit));
-    return { score: s, label: ["", "Niedrig", "Mittel", "Hoch", "Sehr hoch"][Math.round(s)] };
+    return { score: s, label: ["", "Niedrig", "Mittel", "Hoch", "Top"][Math.round(s)] };
   }
   if (!pct)       return { score: 2, label: "k. A." };
-  if (pct >= 70)  return { score: 4, label: "Sehr hoch" };
+  if (pct >= 70)  return { score: 4, label: "Top" };
   if (pct >= 50)  return { score: 3, label: "Hoch" };
   if (pct >= 30)  return { score: 2, label: "Mittel" };
   return                 { score: 1, label: "Niedrig" };
@@ -88,10 +88,10 @@ function approvalScore(pct: number | undefined, explicit?: number): MetricScore 
 function priceScore(rate: number, hasFeeModel: boolean, explicit?: number): MetricScore {
   if (explicit) {
     const s = Math.min(4, Math.max(1, explicit));
-    return { score: s, label: ["", "Teuer", "Mittel", "Günstig", "Sehr günstig"][Math.round(s)] };
+    return { score: s, label: ["", "Teuer", "Mittel", "Günstig", "Top"][Math.round(s)] };
   }
-  if (hasFeeModel)  return { score: 2, label: "Gebührenbasiert" };
-  if (rate <= 3)    return { score: 4, label: "Sehr günstig" };
+  if (hasFeeModel)  return { score: 2, label: "Gebühr" };
+  if (rate <= 3)    return { score: 4, label: "Top" };
   if (rate <= 6)    return { score: 3, label: "Günstig" };
   if (rate <= 12)   return { score: 2, label: "Mittel" };
   return                   { score: 1, label: "Teuer" };
@@ -100,12 +100,12 @@ function priceScore(rate: number, hasFeeModel: boolean, explicit?: number): Metr
 function flexibilityScore(productType: string, m: Record<string, unknown>): MetricScore {
   const explicit = m.flexibility_score as number | undefined;
   if (explicit) {
-    const labels = ["", "Fest", "Standard", "Flexibel", "Sehr flexibel"];
+    const labels = ["", "Fest", "Standard", "Flexibel", "Top"];
     const s = Math.min(4, Math.max(1, explicit));
     return { score: s, label: labels[s] };
   }
   const t = (productType ?? "").toLowerCase();
-  if (t.includes("linie") || t.includes("revolv"))      return { score: 4, label: "Sehr flexibel" };
+  if (t.includes("linie") || t.includes("revolv"))      return { score: 4, label: "Top" };
   if (t.includes("flexi") || t.includes("merchant") || t.includes("cash advance")) return { score: 3, label: "Flexibel" };
   if (t.includes("kredit") || t.includes("darlehen"))   return { score: 2, label: "Standard" };
   return { score: 2, label: "Standard" };
@@ -113,7 +113,7 @@ function flexibilityScore(productType: string, m: Record<string, unknown>): Metr
 
 function SignalBar({ label, metric }: { label: string; metric: MetricScore }) {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3" title={`${label}: ${metric.label}`}>
       <span style={{ width: "5rem", fontSize: "0.6875rem", color: "var(--color-subtle)", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
       <div className="flex gap-0.5 items-center shrink-0">
         {[1, 2, 3, 4].map(i => (
@@ -129,7 +129,7 @@ function SignalBar({ label, metric }: { label: string; metric: MetricScore }) {
           />
         ))}
       </div>
-      <span className="text-xs font-semibold" style={{ color: "var(--color-dark)" }}>{metric.label}</span>
+      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-dark)", whiteSpace: "nowrap" }}>{metric.label}</span>
     </div>
   );
 }
