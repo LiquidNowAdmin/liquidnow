@@ -4612,6 +4612,11 @@ button, .btn, label, .badge, .trust-item {
 }
 
 @media (max-width: 768px) {
+  .usecase-sticky {
+    justify-content: flex-start;
+    padding-top: 2.5rem;
+    gap: 1rem;
+  }
   .usecase-sticky-heading {
     font-size: 1.125rem;
     padding: 0 1rem;
