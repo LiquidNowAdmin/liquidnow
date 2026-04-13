@@ -62,14 +62,17 @@ const useCases: UseCase[] = [
 ];
 
 const N = useCases.length;
-const SCROLL_PER_SLIDE = 400; // px of vertical scroll per horizontal step
+const SCROLL_PER_SLIDE_DESKTOP = 400;
+const SCROLL_PER_SLIDE_MOBILE = 700;
 
 export default function UseCaseSlider() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
   const trackWrapRef = useRef<HTMLDivElement>(null);
   const cardWidthRef = useRef(0);
+  const scrollPerSlideRef = useRef(SCROLL_PER_SLIDE_DESKTOP);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [wrapperHeight, setWrapperHeight] = useState(`calc(100vh + ${(N - 1) * SCROLL_PER_SLIDE_DESKTOP}px)`);
 
   // Raw scroll progress: 0 → N-1
   const rawProgress = useMotionValue(0);
@@ -89,6 +92,8 @@ export default function UseCaseSlider() {
         cardWidthRef.current = isMobile
           ? trackWrapRef.current.offsetWidth * 0.8
           : trackWrapRef.current.offsetWidth / 3;
+        scrollPerSlideRef.current = isMobile ? SCROLL_PER_SLIDE_MOBILE : SCROLL_PER_SLIDE_DESKTOP;
+        setWrapperHeight(`calc(100vh + ${(N - 1) * scrollPerSlideRef.current}px)`);
       }
     };
     measure();
@@ -107,13 +112,14 @@ export default function UseCaseSlider() {
         setActiveIndex(0);
         return;
       }
-      const maxScroll = (N - 1) * SCROLL_PER_SLIDE;
+      const sps = scrollPerSlideRef.current;
+      const maxScroll = (N - 1) * sps;
       if (scrolled >= maxScroll) {
         rawProgress.set(N - 1);
         setActiveIndex(N - 1);
         return;
       }
-      const p = scrolled / SCROLL_PER_SLIDE;
+      const p = scrolled / sps;
       rawProgress.set(p);
       setActiveIndex(Math.round(p));
     };
@@ -139,7 +145,7 @@ export default function UseCaseSlider() {
   const goToSlide = (i: number) => {
     if (!wrapperRef.current) return;
     window.scrollTo({
-      top: wrapperRef.current.offsetTop + i * SCROLL_PER_SLIDE,
+      top: wrapperRef.current.offsetTop + i * scrollPerSlideRef.current,
       behavior: "smooth",
     });
   };
@@ -148,7 +154,7 @@ export default function UseCaseSlider() {
     <div
       ref={wrapperRef}
       className="usecase-scroll-wrapper"
-      style={{ height: `calc(100vh + ${(N - 1) * SCROLL_PER_SLIDE}px)` }}
+      style={{ height: wrapperHeight }}
     >
       <div ref={stickyRef} className="usecase-sticky">
         {/* Header */}
