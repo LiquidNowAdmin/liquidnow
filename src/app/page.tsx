@@ -5,6 +5,7 @@ import {
   ShoppingCart,
   Rocket,
   MousePointerClick,
+  Monitor,
 } from "lucide-react";
 import Image from "next/image";
 import Navigation from "@/components/Navigation";
@@ -65,18 +66,17 @@ export default function Home() {
               <div className="text-center lg:text-left self-end relative z-10">
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Intelligent vergleichen.
+                    Der Working Capital Marktplatz
                     <br />
                     <span className="text-turquoise">
-                      Schneller finanzieren.
+                      für den deutschen Mittelstand
                     </span>
                   </h1>
                 </AnimateOnScroll>
 
                 <AnimateOnScroll delay={0.15}>
                   <p className="text-sub mt-6 max-w-2xl">
-                    Betriebsmittelkredite von führenden Banken und Fintechs –
-                    kostenlos verglichen, für Unternehmer mit Köpfchen.
+                    LiQiNow ist Ihr digitaler Marktplatz für mehr Liquidität. Finden Sie maßgeschneiderte Working Capital Lösungen von führenden Banken und Fintechs – 100% digital, transparent und kostenlos.
                   </p>
                 </AnimateOnScroll>
 
@@ -115,8 +115,8 @@ export default function Home() {
                   <div className="usp-item">
                     <div className="usp-icon"><ShoppingCart className="h-6 w-6 text-turquoise" /></div>
                     <div>
-                      <p className="usp-title">Ein Antrag, alle Anbieter</p>
-                      <p className="usp-text">Papierlos – beste Angebote direkt vergleichen</p>
+                      <p className="usp-title">Der Marktplatz für KMU</p>
+                      <p className="usp-text">Ein Antrag, Zugang zu allen relevanten Working Capital Anbietern.</p>
                     </div>
                   </div>
                 </AnimateOnScroll>
@@ -124,8 +124,8 @@ export default function Home() {
                   <div className="usp-item">
                     <div className="usp-icon"><Zap className="h-6 w-6 text-turquoise" /></div>
                     <div>
-                      <p className="usp-title">Sofort Konditionen</p>
-                      <p className="usp-text">Zinssätze direkt einsehen</p>
+                      <p className="usp-title">Papierloser Marktplatz</p>
+                      <p className="usp-text">Alle Working Capital Angebote digital und direkt vergleichen.</p>
                     </div>
                   </div>
                 </AnimateOnScroll>
@@ -133,8 +133,8 @@ export default function Home() {
                   <div className="usp-item">
                     <div className="usp-icon"><Rocket className="h-6 w-6 text-turquoise" /></div>
                     <div>
-                      <p className="usp-title">24h Angebot · 48h Auszahlung</p>
-                      <p className="usp-text">Schnellste Abwicklung am Markt</p>
+                      <p className="usp-title">Transparente Konditionen</p>
+                      <p className="usp-text">Zinssätze und Konditionen aller Marktplatz-Partner direkt einsehen.</p>
                     </div>
                   </div>
                 </AnimateOnScroll>
@@ -142,8 +142,17 @@ export default function Home() {
                   <div className="usp-item">
                     <div className="usp-icon"><MousePointerClick className="h-6 w-6 text-turquoise" /></div>
                     <div>
-                      <p className="usp-title">100% Self-Service</p>
-                      <p className="usp-text">Digital & ohne Beratungskosten</p>
+                      <p className="usp-title">Schnellste Abwicklung</p>
+                      <p className="usp-text">24h Angebot, 48h Auszahlung – die schnellste Working Capital Lösung am Markt.</p>
+                    </div>
+                  </div>
+                </AnimateOnScroll>
+                <AnimateOnScroll delay={0.4}>
+                  <div className="usp-item">
+                    <div className="usp-icon"><Monitor className="h-6 w-6 text-turquoise" /></div>
+                    <div>
+                      <p className="usp-title">100% Digitaler Self-Service</p>
+                      <p className="usp-text">Effiziente Prozessoptimierung ohne versteckte Beratungskosten.</p>
                     </div>
                   </div>
                 </AnimateOnScroll>
@@ -160,7 +169,7 @@ export default function Home() {
           <div className="container">
             <AnimateOnScroll>
               <p className="usecase-sticky-label text-center mb-3">Voraussetzungen</p>
-              <h2 className="usecase-sticky-heading text-center mb-10">Für wen ist<br />LiQiNow?</h2>
+              <h2 className="usecase-sticky-heading text-center mb-10">Für wen ist der<br />LiQiNow Marktplatz?</h2>
             </AnimateOnScroll>
             <div className="eligibility-grid">
               <AnimateOnScroll>
@@ -178,15 +187,14 @@ export default function Home() {
 
               <AnimateOnScroll delay={0.1}>
                 <p className="text-sub mb-6 max-w-sm">
-                  Wir konzentrieren uns auf etablierte deutsche Unternehmen mit laufendem Geschäftsbetrieb – keine Startups, keine Konzerne.
+                  Unser Marktplatz richtet sich speziell an den etablierten deutschen Mittelstand. Wir bieten Working Capital Lösungen für KMUs mit laufendem Geschäftsbetrieb, die ihre Liquidität und Prozesse optimieren wollen.
                 </p>
                 <ul className="eligibility-list">
                   {[
-                    ["Deutsches Unternehmen", "GmbH, UG, GbR, Einzelunternehmen u. a."],
+                    ["Deutsches Unternehmen", "Mittelständische Rechtsformen wie GmbH, UG, GbR oder Einzelunternehmen mit Sitz in Deutschland."],
                     ["Mindestens 6 Monate Umsatzhistorie", "Keine Gründungsfinanzierung"],
-                    ["Mittelverwendung im Geschäftsbetrieb", "Betriebsmittel, Wareneinkauf, laufende Kosten"],
+                    ["Mittelverwendung im Geschäftsbetrieb", "Finanzierung von Working Capital, Einkaufsfinanzierung, Digitalisierungsprojekten und laufenden Kosten."],
                     ["Einfache Unternehmensstruktur", "Keine Holdingkonstrukte oder Sondervehikel"],
-                    ["Auch bei negativer Schufa / Crefo", "Einzelne Anbieter in unserem Netzwerk prüfen trotzdem"],
                     ["Solide Finanzkennzahlen", "Nachweisbarer Umsatz und positive Entwicklung"],
                   ].map(([title, sub]) => (
                     <li key={title} className="eligibility-item">

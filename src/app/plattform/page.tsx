@@ -2772,21 +2772,19 @@ function PlattformContent() {
                                     <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
                                       <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Wie funktionieren Kredite von iwoca?</h3>
                                       <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Wir zeigen Ihnen, wie Sie Ihre Finanzierung in nur 3 schnellen Schritten erhalten.</p>
-                                      <div style={{ display: "flex", justifyContent: "center", gap: "2rem", padding: "1rem 0", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+                                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr", gap: "1rem", alignItems: "start", padding: "1rem 0", marginBottom: "1.5rem" }}>
                                         {([
                                           { num: "1", title: "Antrag in 5 Minuten stellen", sub: "Wunschbetrag wählen, Firmen- und Kontodaten eingeben, Dokumente hochladen" },
                                           { num: "2", title: "In 48 Stunden auf dem Konto", sub: "Kreditentscheidung in 24 Stunden, dann direkt aufs Konto" },
                                           { num: "3", title: "Flexible Aufstockung & Tilgung", sub: "Kostenlose Sondertilgungen jederzeit möglich" },
-                                        ]).map(({ num, title, sub }, idx, arr) => (
-                                          <div key={num} style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                                            <div style={{ textAlign: "center" }}>
-                                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
-                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
-                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>{sub}</p>
-                                            </div>
-                                            {idx < arr.length - 1 && <ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)", flexShrink: 0 }} />}
-                                          </div>
-                                        ))}
+                                        ]).flatMap(({ num, title, sub }, idx, arr) => [
+                                          <div key={num} style={{ textAlign: "center" }}>
+                                            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
+                                            <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
+                                            <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem", lineHeight: 1.4 }}>{sub}</p>
+                                          </div>,
+                                          ...(idx < arr.length - 1 ? [<div key={`arrow-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: "0.875rem" }}><ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)" }} /></div>] : []),
+                                        ])}
                                       </div>
                                       <button
                                         type="button"
@@ -2801,22 +2799,20 @@ function PlattformContent() {
                                     <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
                                       <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Komplett digitaler Antrag</h3>
                                       <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Geld auf dem Konto innerhalb von 24–48 Stunden.</p>
-                                      <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", padding: "1rem 0", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+                                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr auto 1fr", gap: "0.875rem", alignItems: "start", padding: "1rem 0", marginBottom: "1.5rem" }}>
                                         {([
                                           { num: "1", title: "Anfrage stellen", sub: "Daten bei LiQiNow ausfüllen" },
                                           { num: "2", title: "Antrag bestätigen", sub: "Direkt bei YouLend" },
                                           { num: "3", title: "Antrag abschließen", sub: "Unterlagen hochladen" },
                                           { num: "4", title: "Geld erhalten", sub: "Innerhalb von 24h" },
-                                        ]).map(({ num, title, sub }, idx, arr) => (
-                                          <div key={num} style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-                                            <div style={{ textAlign: "center" }}>
-                                              <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
-                                              <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
-                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>{sub}</p>
-                                            </div>
-                                            {idx < arr.length - 1 && <ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)", flexShrink: 0 }} />}
-                                          </div>
-                                        ))}
+                                        ]).flatMap(({ num, title, sub }, idx, arr) => [
+                                          <div key={num} style={{ textAlign: "center" }}>
+                                            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
+                                            <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
+                                            <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem", lineHeight: 1.4 }}>{sub}</p>
+                                          </div>,
+                                          ...(idx < arr.length - 1 ? [<div key={`arrow-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: "0.875rem" }}><ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)" }} /></div>] : []),
+                                        ])}
                                       </div>
                                       <button
                                         type="button"

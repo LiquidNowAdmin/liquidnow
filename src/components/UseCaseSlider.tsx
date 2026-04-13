@@ -26,19 +26,19 @@ const useCases: UseCase[] = [
   {
     icon: Sun,
     title: "Saisonale Spitzen souverän meistern",
-    body: "Sichern Sie sich Liquidität genau dann, wenn Ihr Geschäft es braucht – flexibel, schnell und ohne Ihre Rücklagen anzutasten.",
+    body: "Sichern Sie sich kurzfristige Liquidität genau dann, wenn Ihr KMU sie benötigt. Mit unseren flexiblen Working Capital Lösungen überbrücken Sie saisonale Schwankungen, ohne Ihre Unternehmensrücklagen anzutasten.",
     image: "/category/season.png",
   },
   {
     icon: ShoppingCart,
-    title: "Wareneinkauf zum besten Preis sichern",
-    body: "Skonto verfällt, wenn die Liquidität fehlt. Mit kurzfristiger Finanzierung zahlen Sie früh und sichern den Rabatt – statt ihn einfach liegen zu lassen.",
+    title: "Einkaufsfinanzierung für optimale Margen",
+    body: "Verpassen Sie keine Skonto-Vorteile mehr. Nutzen Sie unsere smarte Einkaufsfinanzierung, um Lieferanten frühzeitig zu bezahlen, Rabatte zu sichern und die Profitabilität Ihres Mittelstandsunternehmens zu steigern.",
     image: "/category/goods.png",
   },
   {
     icon: Rocket,
-    title: "Wachstum gezielt finanzieren",
-    body: "Mehr Aufträge, mehr Umsatz – aber das Geld fehlt im Umlauf? Finanzieren Sie Ihr Wachstum über Betriebsmittel, nicht über Substanz.",
+    title: "Unternehmenswachstum gezielt finanzieren",
+    body: "Mehr Aufträge erfordern mehr Kapitalbindung. Finanzieren Sie Ihr Wachstum intelligent über Betriebsmittelkredite und schonen Sie Ihre Substanz. Der Marktplatz für Ihre Wachstumsfinanzierung.",
     image: "/category/growth.png",
   },
   {
@@ -49,8 +49,8 @@ const useCases: UseCase[] = [
   },
   {
     icon: Megaphone,
-    title: "Marketingoffensiven durchziehen",
-    body: "Skalieren Sie Ihre Kampagnen ohne Budget-Engpass – investieren Sie in Wachstum, wenn der Moment da ist.",
+    title: "Marketing & Digitalisierung vorantreiben",
+    body: "Skalieren Sie Ihre Kampagnen und treiben Sie die Digitalisierung Ihres KMU voran – ganz ohne Budget-Engpass. Investieren Sie in zukunftsweisende IT- und Marketingprojekte, wenn der richtige Moment da ist.",
     image: "/category/marketing.png",
   },
   {
@@ -151,7 +151,7 @@ export default function UseCaseSlider() {
         {/* Header */}
         <p className="usecase-sticky-label">Für Ihre Situation</p>
         <h2 className="usecase-sticky-heading">
-          Die passende Finanzierung.
+          Maßgeschneiderte Working Capital Lösungen<br />für jede Unternehmenssituation
         </h2>
 
         {/* Scrolling card track */}

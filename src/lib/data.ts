@@ -70,24 +70,24 @@ export const testimonials = [
 
 export const faqItems = [
   {
-    question: "Ist LiqiNow ein Finanzierungsvergleich?",
+    question: "Ist LiQiNow ein reiner Finanzierungsvergleich?",
     answer:
-      "LiqiNow ist ein neutrales Vergleichsportal für Unternehmensfinanzierungen. Sie erhalten in wenigen Minuten Angebote von führenden Banken und Fintechs – kostenlos und ohne versteckte Gebühren.",
+      "LiQiNow ist mehr als das: Wir sind der führende Working Capital Marktplatz für den deutschen Mittelstand. Neben dem neutralen Vergleich bauen wir unser Angebot kontinuierlich um Services wie Online-Banking, Gewerbeversicherungen und IT-Lösungen aus – alles aus einer Hand für Ihr KMU.",
   },
   {
-    question: "Welche Finanzierungsarten kann ich vergleichen?",
+    question: "Welche Working Capital Lösungen bietet der Marktplatz?",
     answer:
-      "Aktuell fokussieren wir auf Betriebsmittelkredite und kurzfristige Unternehmensfinanzierungen. Das Spektrum reicht von klassischen Bankkrediten über Fintechs bis zu spezialisierten Produkten wie Factoring und Einkaufsfinanzierung.",
+      "Aktuell fokussieren wir uns auf Betriebsmittelkredite, Einkaufsfinanzierungen und Factoring – exakt auf die Bedürfnisse mittelständischer Unternehmen zugeschnitten. Das Spektrum reicht von klassischen Bankkrediten über Fintechs bis zu spezialisierten Produkten.",
   },
   {
-    question: "Was kostet LiqiNow?",
+    question: "Welche Kosten fallen für die Nutzung des Marktplatzes an?",
     answer:
-      "Der Vergleich und die Beantragung sind vollständig kostenlos. LiqiNow finanziert sich über Vermittlungsprovisionen der Finanzierungspartner – Sie zahlen keine Zusatzgebühren und erhalten exakt dieselben Konditionen wie bei Direktabschluss.",
+      "Die Nutzung unseres Working Capital Marktplatzes ist für Ihr KMU vollständig kostenlos. Sie zahlen keine versteckten Beratungsgebühren. LiQiNow finanziert sich über Vermittlungsprovisionen der Finanzierungspartner – Sie erhalten exakt dieselben Konditionen wie bei Direktabschluss.",
   },
   {
-    question: "Wie schnell erhalte ich ein Angebot?",
+    question: "Wie schnell steht die Liquidität zur Verfügung?",
     answer:
-      "Nach dem Ausfüllen des Antrags (ca. 3 Minuten) erhalten Sie in der Regel innerhalb von 24 Stunden konkrete Angebote. Bei vielen Partnern ist eine Auszahlung bereits innerhalb von 48 Stunden möglich.",
+      "Dank 100% digitaler Prozesse erhalten Sie nach dem Online-Antrag (ca. 3 Minuten) in der Regel innerhalb von 24 Stunden konkrete Finanzierungsangebote. Auszahlung oft innerhalb von 48 Stunden.",
   },
 ];
 
