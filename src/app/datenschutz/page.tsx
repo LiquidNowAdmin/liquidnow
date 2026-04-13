@@ -159,7 +159,7 @@ export default function DatenschutzPage() {
                       <strong>OpenAI Inc.</strong> (USA) – Automatisierte Extraktion öffentlich zugänglicher Firmendaten (Impressum) zur Vereinfachung der Antragstellung. Es werden keine personenbezogenen Daten, sondern ausschließlich öffentlich verfügbare Firmendaten verarbeitet.
                     </li>
                     <li>
-                      <strong>Resend Inc.</strong> (USA) – Versand von transaktionalen E-Mails (Login-Links). Auftragsverarbeitungsvertrag geschlossen.
+                      <strong>Resend Inc.</strong> (USA) – Versand von transaktionalen E-Mails (Login-Links). Auftragsverarbeitungsvertrag geschlossen. Login-Links (Magic Links) sind einmalig verwendbar und verfallen automatisch nach 60 Minuten. Die zugehörigen Authentifizierungs-Tokens werden nach Ablauf serverseitig gelöscht.
                     </li>
                   </ul>
                   <p className="mt-2">
@@ -167,11 +167,26 @@ export default function DatenschutzPage() {
                   </p>
                 </section>
 
-                {/* 9. Firmensuche */}
+                {/* 9. Firmensuche und Creditreform */}
                 <section>
-                  <h2 className="text-xl font-semibold mb-3">9. Automatisierte Firmensuche</h2>
+                  <h2 className="text-xl font-semibold mb-3">9. Firmensuche und Bonitätsdaten</h2>
+
+                  <h3 className="text-lg font-semibold mt-4 mb-2">9.1 Automatisierte Firmensuche</h3>
                   <p>
-                    Zur Vereinfachung der Antragstellung bieten wir eine Firmensuche an, bei der öffentlich zugängliche Firmendaten (Name, Anschrift, Handelsregisternummer, Creditreform-Nummer) aus externen Quellen abgerufen werden. Es handelt sich dabei ausschließlich um öffentlich zugängliche Unternehmensdaten, nicht um personenbezogene Daten.
+                    Zur Vereinfachung der Antragstellung bieten wir eine Firmensuche an, bei der öffentlich zugängliche Firmendaten (Name, Anschrift, Handelsregisternummer) aus externen Quellen abgerufen werden.
+                  </p>
+
+                  <h3 className="text-lg font-semibold mt-4 mb-2">9.2 Creditreform</h3>
+                  <p>
+                    Im Rahmen der Finanzierungsanfrage kann die Creditreform-Nummer (Crefo-Nummer) Ihres Unternehmens erhoben und an Finanzierungspartner übermittelt werden. Die Creditreform-Nummer dient den Finanzierungspartnern zur Bonitätsprüfung und Identifikation Ihres Unternehmens.
+                  </p>
+                  <p className="mt-2">
+                    Die Verarbeitung erfolgt auf Grundlage vorvertraglicher Maßnahmen (Art. 6 Abs. 1 lit. b DSGVO) bzw. berechtigter Interessen (Art. 6 Abs. 1 lit. f DSGVO) der Finanzierungspartner an der Kreditwürdigkeitsprüfung.
+                  </p>
+                  <p className="mt-2">
+                    Die Creditreform Boniversum GmbH (Hellersbergstr. 11, 41460 Neuss) ist eigenständiger Verantwortlicher im Sinne der DSGVO. Informationen zur Datenverarbeitung durch Creditreform finden Sie unter{" "}
+                    <a href="https://www.creditreform-boniversum.de/datenschutz" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.creditreform-boniversum.de/datenschutz</a>.
+                    Creditreform kann die übermittelten Daten zur Berechnung von Bonitätsscores nutzen, die in die Kreditentscheidungen der Finanzierungspartner einfließen.
                   </p>
                 </section>
 
@@ -188,9 +203,16 @@ export default function DatenschutzPage() {
                     <li>Herkunftsquelle (UTM-Parameter, Referrer)</li>
                     <li>Funnel-Fortschritt (welche Schritte im Antragsprozess erreicht wurden)</li>
                   </ul>
-                  <p className="mt-2">
-                    Sie können Ihre Einwilligung jederzeit über den Cookie-Banner widerrufen.
+                  <h3 className="text-lg font-semibold mt-4 mb-2">10.2 Widerruf der Einwilligung</h3>
+                  <p>
+                    Sie können Ihre Einwilligung jederzeit über den Cookie-Banner widerrufen. Der Widerruf wirkt wie folgt:
                   </p>
+                  <ul className="list-disc pl-6 space-y-1 mt-2">
+                    <li>Die Tracking-Cookies und die pseudonymisierte Besucher-ID werden aus Ihrem Browser gelöscht.</li>
+                    <li>Es werden keine weiteren Nutzungsdaten mehr erhoben.</li>
+                    <li>Bereits erhobene, anonymisierte Daten bleiben als aggregierte Statistik bestehen, da ein Personenbezug nicht herstellbar ist.</li>
+                    <li>Die Rechtmäßigkeit der bis zum Widerruf erfolgten Verarbeitung bleibt unberührt (Art. 7 Abs. 3 Satz 2 DSGVO).</li>
+                  </ul>
                 </section>
 
                 {/* 11. Betroffenenrechte */}
@@ -229,7 +251,31 @@ export default function DatenschutzPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">13. Speicherdauer</h2>
                   <p>
-                    Personenbezogene Daten werden gelöscht, sobald der Zweck der Verarbeitung entfällt und keine gesetzlichen Aufbewahrungspflichten (z. B. handels- oder steuerrechtliche Aufbewahrungsfristen von 6 bzw. 10 Jahren) entgegenstehen. Nutzerkonten können jederzeit gelöscht werden.
+                    Personenbezogene Daten werden gelöscht, sobald der Zweck der Verarbeitung entfällt und keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Im Einzelnen gelten folgende Fristen:
+                  </p>
+                  <ul className="list-disc pl-6 space-y-2 mt-2">
+                    <li>
+                      <strong>Nutzerkonto (Name, E-Mail, Telefon, Anschrift)</strong> – Dauer der Kontonutzung. Bei Löschung des Kontos werden die Daten unverzüglich gelöscht, sofern keine Aufbewahrungspflichten bestehen.
+                    </li>
+                    <li>
+                      <strong>Finanzierungsanfragen (Volumen, Laufzeit, Zweck, Firmendaten)</strong> – 10 Jahre ab Erstellung (steuerrechtliche Aufbewahrungspflicht gem. § 147 AO, § 257 HGB).
+                    </li>
+                    <li>
+                      <strong>Vertragsdaten und Korrespondenz</strong> – 6 Jahre ab Ende des Vertragsjahres (handelsrechtliche Aufbewahrungspflicht gem. § 257 HGB).
+                    </li>
+                    <li>
+                      <strong>Login-Tokens (Magic Links)</strong> – 60 Minuten nach Erstellung, danach automatische Löschung.
+                    </li>
+                    <li>
+                      <strong>Tracking-Daten (anonymisierte Nutzungsdaten)</strong> – 24 Monate ab Erhebung. Diese Daten sind pseudonymisiert und lassen keinen Rückschluss auf einzelne Personen zu.
+                    </li>
+                    <li>
+                      <strong>Server-Log-Dateien</strong> – 30 Tage, danach automatische Löschung.
+                    </li>
+                  </ul>
+                  <p className="mt-2">
+                    Sie können die Löschung Ihres Nutzerkontos jederzeit per E-Mail an{" "}
+                    <a href="mailto:datenschutz@liqinow.de" className="text-turquoise hover:underline">datenschutz@liqinow.de</a> veranlassen.
                   </p>
                 </section>
 
