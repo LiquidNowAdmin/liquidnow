@@ -13,19 +13,33 @@ function CallbackContent() {
     const next = searchParams.get("next") ?? "/plattform";
 
     async function exchange() {
+      const supabase = createClient();
+
       if (code) {
-        const supabase = createClient();
+        // PKCE flow fallback (if code is present)
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          router.replace("/auth/login?error=1");
-          return;
-        }
-        // Link anonymous marketing session to authenticated user
-        const sessionId = localStorage.getItem("mkt_session_id");
-        if (sessionId) {
-          await supabase.rpc("link_marketing_session", { p_session_id: sessionId });
+          console.error("[auth/callback] Code exchange failed:", error.message);
+          // Don't redirect to error immediately — implicit flow may still work via hash
         }
       }
+
+      // Wait briefly for implicit flow to process hash fragment
+      await new Promise(r => setTimeout(r, 500));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error("[auth/callback] No session after exchange");
+        router.replace("/auth/login?error=1");
+        return;
+      }
+
+      // Link anonymous marketing session to authenticated user
+      const sessionId = localStorage.getItem("mkt_session_id");
+      if (sessionId) {
+        try { await supabase.rpc("link_marketing_session", { p_session_id: sessionId }); } catch {};
+      }
+
       window.location.href = next;
     }
 
