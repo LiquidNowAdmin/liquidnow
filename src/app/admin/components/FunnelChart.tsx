@@ -115,8 +115,12 @@ export default function FunnelChart() {
           <div style={{ position: "relative" }}>
             <button
               onClick={() => { setDateOpen((v) => !v); setCustomInput(null); }}
-              className="admin-date-filter admin-date-filter-active"
-              style={{ display: "flex", alignItems: "center", gap: "0.375rem", minWidth: "10rem", justifyContent: "space-between" }}
+              style={{
+                display: "flex", alignItems: "center", gap: "0.375rem", minWidth: "10rem", justifyContent: "space-between",
+                padding: "0.4375rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600,
+                border: "1.5px solid var(--color-dark)", borderRadius: "0.375rem",
+                background: "var(--color-dark)", color: "#ffffff", cursor: "pointer",
+              }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                 <Calendar style={{ width: "0.875rem", height: "0.875rem" }} />
@@ -126,14 +130,24 @@ export default function FunnelChart() {
             </button>
 
             {dateOpen && (
-              <div className="admin-dropdown" style={{ position: "absolute", right: 0, top: "calc(100% + 0.25rem)", zIndex: 50, minWidth: "14rem" }}>
+              <div style={{
+                position: "absolute", right: 0, top: "calc(100% + 0.25rem)", zIndex: 50, minWidth: "14rem",
+                background: "#2B2D3E", borderRadius: "0.625rem", boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                padding: "0.375rem 0", display: "flex", flexDirection: "column",
+              }}>
                 {DATE_PRESETS.map((preset) => {
                   const isActive = !("type" in preset) && preset.days === days && preset.label === dateLabel;
                   return (
                     <button
                       key={preset.label}
                       onClick={() => selectPreset(preset)}
-                      className={`admin-dropdown-item${isActive ? " admin-dropdown-item-active" : ""}`}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+                        padding: "0.625rem 1rem", fontSize: "0.875rem", color: "#ffffff",
+                        background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                     >
                       {preset.label}
                       {isActive && <Check />}
@@ -150,10 +164,9 @@ export default function FunnelChart() {
                       onChange={(e) => setCustomInput({ ...customInput, value: e.target.value })}
                       onKeyDown={(e) => e.key === "Enter" && applyCustom()}
                       placeholder={customInput.type === "custom_days" ? "Tage" : "Monate"}
-                      className="admin-input"
-                      style={{ flex: 1, fontSize: "0.8125rem", padding: "0.375rem 0.5rem" }}
+                      style={{ flex: 1, fontSize: "0.8125rem", padding: "0.375rem 0.5rem", borderRadius: "0.375rem", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", color: "#fff", outline: "none" }}
                     />
-                    <button onClick={applyCustom} className="btn btn-primary btn-sm" style={{ fontSize: "0.75rem", padding: "0.375rem 0.625rem" }}>
+                    <button onClick={applyCustom} style={{ fontSize: "0.75rem", padding: "0.375rem 0.625rem", borderRadius: "0.375rem", background: "var(--color-turquoise)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}>
                       OK
                     </button>
                   </div>
