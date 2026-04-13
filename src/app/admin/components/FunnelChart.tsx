@@ -8,11 +8,7 @@ interface FunnelRow {
   stage: string;
   stage_order: number;
   session_count: number;
-}
-
-interface RouteRow {
   route: string;
-  session_count: number;
 }
 
 type DatePreset =
@@ -32,42 +28,22 @@ const DATE_PRESETS: DatePreset[] = [
   { label: "Letzte X Monate", type: "custom_months" },
 ];
 
-const ROUTE_COLORS = ["#507AA6", "#6D9EC8", "#8AB8D8", "#A8C9DD", "#C4DAE8"];
-
-const ROUTE_LABELS: Record<string, string> = {
-  "/": "Landing Page",
-  "/plattform": "Marktplatz",
-  "/revenue-based-finance": "RBF",
-  "/faq": "FAQ",
+const ROUTE_CONFIG: Record<string, { label: string; color: string }> = {
+  "/": { label: "Landing Page", color: "#507AA6" },
+  "/plattform": { label: "Marktplatz", color: "#2DCEC1" },
+  other: { label: "Sonstige", color: "#A8C9DD" },
 };
 
-function normalizeRoute(route: string): string {
-  // Strip trailing slash for consistency
-  return route.length > 1 && route.endsWith("/") ? route.slice(0, -1) : route;
-}
-
 function routeLabel(route: string): string {
-  const normalized = normalizeRoute(route);
-  if (ROUTE_LABELS[normalized]) return ROUTE_LABELS[normalized];
-  if (normalized.startsWith("/antrag/")) return `Antrag ${normalized.split("/")[2] ?? ""}`;
-  return normalized;
+  return ROUTE_CONFIG[route]?.label ?? route;
 }
 
-/** Merge routes that differ only by trailing slash */
-function mergeRoutes(rows: RouteRow[]): RouteRow[] {
-  const map = new Map<string, number>();
-  for (const r of rows) {
-    const key = normalizeRoute(r.route);
-    map.set(key, (map.get(key) ?? 0) + r.session_count);
-  }
-  return Array.from(map.entries())
-    .map(([route, session_count]) => ({ route, session_count }))
-    .sort((a, b) => b.session_count - a.session_count);
+function routeColor(route: string): string {
+  return ROUTE_CONFIG[route]?.color ?? ROUTE_CONFIG.other.color;
 }
 
 export default function FunnelChart() {
   const [data, setData] = useState<FunnelRow[]>([]);
-  const [routes, setRoutes] = useState<RouteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30);
@@ -85,25 +61,22 @@ export default function FunnelChart() {
     });
   }, []);
 
-  // Load funnel data + routes
+  // Load funnel data
   useEffect(() => {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const params = { p_days: days, p_provider: provider };
 
-    Promise.all([
-      supabase.rpc("admin_get_funnel_waterfall", params),
-      supabase.rpc("admin_get_funnel_routes", params),
-    ]).then(([waterfallRes, routesRes]) => {
-      if (waterfallRes.error) {
-        console.error("[FunnelChart]", waterfallRes.error.message);
-        setError(waterfallRes.error.message);
-      }
-      setData(waterfallRes.data ?? []);
-      setRoutes(mergeRoutes(routesRes.data ?? []));
-      setLoading(false);
-    });
+    supabase
+      .rpc("admin_get_funnel_waterfall", { p_days: days, p_provider: provider })
+      .then(({ data: rows, error: err }) => {
+        if (err) {
+          console.error("[FunnelChart]", err.message);
+          setError(err.message);
+        }
+        setData(rows ?? []);
+        setLoading(false);
+      });
   }, [days, provider]);
 
   function selectPreset(preset: DatePreset) {
@@ -132,8 +105,22 @@ export default function FunnelChart() {
     setCustomInput(null);
   }
 
+  // Group data by stage, then by route
+  const stages = Array.from(new Set(data.map((d) => d.stage_order))).sort((a, b) => a - b);
+  const allRoutes = Array.from(new Set(data.map((d) => d.route)));
+  // Sort routes: / first, /plattform second, rest after
+  const sortedRoutes = allRoutes.sort((a, b) => {
+    const order = ["/", "/plattform", "other"];
+    return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
+  });
+
   const maxCount = data.length > 0 ? Math.max(...data.map((d) => d.session_count)) : 0;
-  const routeTotal = routes.reduce((s, r) => s + r.session_count, 0);
+
+  // Build per-stage totals for dropoff calculation
+  const stageTotals = new Map<number, number>();
+  for (const row of data) {
+    stageTotals.set(row.stage_order, (stageTotals.get(row.stage_order) ?? 0) + row.session_count);
+  }
 
   return (
     <div style={{ marginTop: "2rem" }}>
@@ -195,7 +182,7 @@ export default function FunnelChart() {
                       onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                     >
                       {preset.label}
-                      {isActive && <Check />}
+                      {isActive && <CheckIcon />}
                     </button>
                   );
                 })}
@@ -222,6 +209,18 @@ export default function FunnelChart() {
         </div>
       </div>
 
+      {/* Legend */}
+      {!loading && !error && data.length > 0 && (
+        <div style={{ display: "flex", gap: "1.25rem", marginBottom: "0.75rem", paddingLeft: "10.75rem" }}>
+          {sortedRoutes.map((r) => (
+            <span key={r} style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+              <span style={{ width: "0.625rem", height: "0.625rem", borderRadius: "0.125rem", background: routeColor(r), flexShrink: 0 }} />
+              {routeLabel(r)}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Chart */}
       <div className="admin-chart-card">
         {loading ? (
@@ -237,73 +236,67 @@ export default function FunnelChart() {
             Keine Daten für den gewählten Zeitraum
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {data.map((row, i) => {
-              const isPageView = row.stage_order === 0;
-              const pct = maxCount > 0 ? (row.session_count / maxCount) * 100 : 0;
-              const prev = i > 0 ? data[i - 1].session_count : null;
-              const dropoff =
-                prev != null && prev > 0
-                  ? Math.round(((prev - row.session_count) / prev) * 100)
-                  : null;
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            {stages.map((stageOrder, stageIdx) => {
+              const stageRows = data.filter((d) => d.stage_order === stageOrder);
+              if (stageRows.length === 0) return null;
+              const stageName = stageRows[0].stage;
+              const stageTotal = stageTotals.get(stageOrder) ?? 0;
+              const prevStageOrder = stageIdx > 0 ? stages[stageIdx - 1] : null;
+              const prevTotal = prevStageOrder != null ? (stageTotals.get(prevStageOrder) ?? 0) : null;
+              const dropoff = prevTotal != null && prevTotal > 0
+                ? Math.round(((prevTotal - stageTotal) / prevTotal) * 100)
+                : null;
 
               return (
-                <div key={row.stage_order}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <span style={{ width: "10rem", flexShrink: 0, fontSize: "0.8125rem", color: "var(--color-dark)", textAlign: "right" }}>
-                      {row.stage}
-                    </span>
-                    <div style={{ flex: 1, position: "relative", height: "2rem" }}>
-                      {/* Stacked bar for page views */}
-                      {isPageView && routes.length > 0 && routeTotal > 0 ? (
-                        <div style={{ display: "flex", width: `${pct}%`, minWidth: pct > 0 ? "2rem" : 0, height: "100%", borderRadius: "0.375rem", overflow: "hidden", transition: "width 0.4s ease" }}>
-                          {routes.map((r, ri) => {
-                            const segPct = (r.session_count / routeTotal) * 100;
-                            return (
-                              <div
-                                key={r.route}
-                                title={`${routeLabel(r.route)}: ${r.session_count}`}
-                                style={{
-                                  width: `${segPct}%`,
-                                  height: "100%",
-                                  background: ROUTE_COLORS[ri % ROUTE_COLORS.length],
-                                  transition: "width 0.4s ease",
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            width: `${pct}%`,
-                            minWidth: pct > 0 ? "2rem" : 0,
-                            height: "100%",
-                            borderRadius: "0.375rem",
-                            background: `color-mix(in srgb, var(--color-turquoise) ${100 - i * 8}%, transparent)`,
-                            transition: "width 0.4s ease",
-                          }}
-                        />
-                      )}
-                    </div>
-                    <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {row.session_count}
-                    </span>
-                    <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.75rem", color: dropoff != null ? "rgba(220,38,38,0.7)" : "transparent", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {dropoff != null ? `−${dropoff}%` : ""}
-                    </span>
-                  </div>
-                  {/* Route legend below stacked bar */}
-                  {isPageView && routes.length > 0 && (
-                    <div style={{ display: "flex", gap: "1rem", marginLeft: "10.75rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
-                      {routes.map((r, ri) => (
-                        <span key={r.route} style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
-                          <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: ROUTE_COLORS[ri % ROUTE_COLORS.length], flexShrink: 0 }} />
-                          {routeLabel(r.route)} ({r.session_count})
+                <div key={stageOrder} style={{ display: "flex", flexDirection: "column", gap: "0.125rem", marginBottom: "0.375rem" }}>
+                  {sortedRoutes.map((route) => {
+                    const row = stageRows.find((r) => r.route === route);
+                    const count = row?.session_count ?? 0;
+                    const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                    const isFirst = route === sortedRoutes[0];
+
+                    return (
+                      <div key={route} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        {/* Stage label — only on first route */}
+                        <span style={{
+                          width: "10rem", flexShrink: 0, fontSize: "0.8125rem",
+                          color: isFirst ? "var(--color-dark)" : "transparent",
+                          textAlign: "right", fontWeight: isFirst ? 600 : 400,
+                        }}>
+                          {isFirst ? stageName : ""}
                         </span>
-                      ))}
-                    </div>
-                  )}
+                        <div style={{ flex: 1, position: "relative", height: "1.375rem" }}>
+                          <div
+                            style={{
+                              width: count > 0 ? `${pct}%` : "0",
+                              minWidth: count > 0 ? "1.5rem" : 0,
+                              height: "100%",
+                              borderRadius: "0.25rem",
+                              background: routeColor(route),
+                              opacity: count > 0 ? 1 : 0.15,
+                              transition: "width 0.4s ease",
+                            }}
+                          />
+                        </div>
+                        <span style={{
+                          width: "3rem", flexShrink: 0, fontSize: "0.8125rem", fontWeight: 600,
+                          color: count > 0 ? "var(--color-dark)" : "var(--color-border)",
+                          textAlign: "right", fontVariantNumeric: "tabular-nums",
+                        }}>
+                          {count}
+                        </span>
+                        {/* Dropoff — only on first route row */}
+                        <span style={{
+                          width: "3.5rem", flexShrink: 0, fontSize: "0.75rem",
+                          color: isFirst && dropoff != null ? "rgba(220,38,38,0.7)" : "transparent",
+                          textAlign: "right", fontVariantNumeric: "tabular-nums",
+                        }}>
+                          {isFirst && dropoff != null ? `−${dropoff}%` : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -314,7 +307,7 @@ export default function FunnelChart() {
   );
 }
 
-function Check() {
+function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
       <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
