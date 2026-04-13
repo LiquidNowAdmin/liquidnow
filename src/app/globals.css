@@ -4613,7 +4613,7 @@ button, .btn, label, .badge, .trust-item {
 
 @media (max-width: 768px) {
   .usecase-sticky-heading {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
     padding: 0 1rem;
   }
   .usecase-sticky-label {
