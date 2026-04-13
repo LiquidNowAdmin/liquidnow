@@ -30,6 +30,7 @@ const DATE_PRESETS: DatePreset[] = [
 export default function FunnelChart() {
   const [data, setData] = useState<FunnelRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30);
   const [dateLabel, setDateLabel] = useState("Letzte 30 Tage");
   const [dateOpen, setDateOpen] = useState(false);
@@ -48,15 +49,19 @@ export default function FunnelChart() {
   // Load funnel data
   useEffect(() => {
     setLoading(true);
+    setError(null);
     const supabase = createClient();
-    const params: Record<string, unknown> = {};
-    if (days != null) params.p_days = days;
-    if (provider) params.p_provider = provider;
 
     supabase
-      .rpc("admin_get_funnel_waterfall", params)
-      .then(({ data: rows, error }) => {
-        if (error) console.error("[FunnelChart]", error.message);
+      .rpc("admin_get_funnel_waterfall", {
+        p_days: days,
+        p_provider: provider,
+      })
+      .then(({ data: rows, error: err }) => {
+        if (err) {
+          console.error("[FunnelChart]", err.message);
+          setError(err.message);
+        }
         setData(rows ?? []);
         setLoading(false);
       });
@@ -182,6 +187,10 @@ export default function FunnelChart() {
         {loading ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "16rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>
             Lade Funnel-Daten…
+          </div>
+        ) : error ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "16rem", color: "rgba(220,38,38,0.7)", fontSize: "0.875rem" }}>
+            Fehler: {error}
           </div>
         ) : data.length === 0 ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "16rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>
