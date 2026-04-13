@@ -110,7 +110,7 @@ export default function Home() {
 
             {/* USP Strip */}
             <div className="usp-strip-inner">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
                 <AnimateOnScroll>
                   <div className="usp-item">
                     <div className="usp-icon"><ShoppingCart className="h-6 w-6 text-turquoise" /></div>
