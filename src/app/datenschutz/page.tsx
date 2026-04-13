@@ -184,8 +184,8 @@ export default function DatenschutzPage() {
                     Die Verarbeitung erfolgt auf Grundlage vorvertraglicher Maßnahmen (Art. 6 Abs. 1 lit. b DSGVO) bzw. berechtigter Interessen (Art. 6 Abs. 1 lit. f DSGVO) der Finanzierungspartner an der Kreditwürdigkeitsprüfung.
                   </p>
                   <p className="mt-2">
-                    Die Creditreform Boniversum GmbH (Hellersbergstr. 11, 41460 Neuss) ist eigenständiger Verantwortlicher im Sinne der DSGVO. Informationen zur Datenverarbeitung durch Creditreform finden Sie unter{" "}
-                    <a href="https://www.creditreform-boniversum.de/datenschutz" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.creditreform-boniversum.de/datenschutz</a>.
+                    Die Verband der Vereine Creditreform e.V. (Hellersbergstr. 12, 41460 Neuss) ist eigenständiger Verantwortlicher im Sinne der DSGVO. Informationen zur Datenverarbeitung durch Creditreform finden Sie unter{" "}
+                    <a href="https://www.creditreform.de/datenschutz" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.creditreform.de/datenschutz</a>.
                     Creditreform kann die übermittelten Daten zur Berechnung von Bonitätsscores nutzen, die in die Kreditentscheidungen der Finanzierungspartner einfließen.
                   </p>
                 </section>

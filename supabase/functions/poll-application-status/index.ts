@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createServiceClient } from "../_shared/supabase-client.ts"
+import { getAccessToken, getBaseUrl, getAudience } from "../_shared/youlend-auth.ts"
 
 // Provider slug → status endpoint config
 const PROVIDERS: Record<string, {
@@ -30,6 +31,35 @@ const PROVIDERS: Record<string, {
       NOT_ELIGIBLE: "rejected",
     },
   },
+  youlend: {
+    slug: "youlend",
+    async getStatus(_baseUrl, _apiKey, externalRef) {
+      const baseUrl = getBaseUrl()
+      const token = await getAccessToken(getAudience('onboarding'))
+      const res = await fetch(`${baseUrl}/onboarding/Leads/${externalRef}/offers`, {
+        method: "GET",
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`Status check failed: ${res.status}`)
+      const data = await res.json()
+      if (data.acceptedOffer) return "OfferAccepted"
+      if (data.providedOffers && data.providedOffers.length > 0) return "OffersProvided"
+      return "Stage1Submitted"
+    },
+    statusMap: {
+      Stage1Incomplete:    "inquired",
+      Stage1Submitted:     "inquired",
+      InReview:            "inquired",
+      OffersProvided:      "offer_received",
+      OfferAccepted:       "offer_accepted",
+      ContractSigned:      "signed",
+      OnboardingComplete:  "signed",
+      Funded:              "signed",
+      Declined:            "rejected",
+      Withdrawn:           "rejected",
+      Expired:             "rejected",
+    },
+  },
 }
 
 serve(async (req) => {
@@ -44,7 +74,7 @@ serve(async (req) => {
   const { data: apps, error } = await supabase
     .from("applications")
     .select("id, status, metadata, provider_name")
-    .in("status", ["new", "inquired"])
+    .in("status", ["new", "inquired", "offer_received", "offer_accepted"])
     .not("metadata->external_ref", "is", null)
 
   if (error || !apps) {
@@ -70,9 +100,10 @@ serve(async (req) => {
       continue
     }
 
-    const apiKey = Deno.env.get(`${providerSlug.toUpperCase()}_API_KEY`)
-    const baseUrl = Deno.env.get(`${providerSlug.toUpperCase()}_API_BASE_URL`)
-    if (!apiKey || !baseUrl) {
+    // YouLend uses OAuth (CLIENT_ID/CLIENT_SECRET), others use API_KEY/API_BASE_URL
+    const apiKey = Deno.env.get(`${providerSlug.toUpperCase()}_API_KEY`) || Deno.env.get(`${providerSlug.toUpperCase()}_CLIENT_ID`) || ''
+    const baseUrl = Deno.env.get(`${providerSlug.toUpperCase()}_API_BASE_URL`) || ''
+    if (!apiKey && providerSlug !== 'youlend') {
       results.push({ id: app.id, provider: providerSlug, oldStatus: app.status, newStatus: null, error: "Missing API credentials" })
       continue
     }

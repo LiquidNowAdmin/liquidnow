@@ -4836,3 +4836,11 @@ button, .btn, label, .badge, .trust-item {
   }
 }
 
+@media (min-width: 768px) {
+  .yl-repayment-grid {
+    flex-direction: row !important;
+    display: grid !important;
+    grid-template-columns: 240px 1fr !important;
+  }
+}
+
