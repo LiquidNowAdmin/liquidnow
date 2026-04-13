@@ -40,7 +40,7 @@ export default function DatenschutzPage() {
                     Deutsche Einkaufsfinanzierer GmbH<br />
                     ABC-Straße 35<br />
                     20354 Hamburg<br />
-                    E-Mail: <a href="mailto:datenschutz@einkaufsfinanzierer.com" className="text-turquoise hover:underline">datenschutz@einkaufsfinanzierer.com</a><br />
+                    E-Mail: <a href="mailto:datenschutz@liqinow.de" className="text-turquoise hover:underline">datenschutz@liqinow.de</a><br />
                     Telefon: +49 40 999 999-400
                   </p>
                   <p className="mt-2">
@@ -207,7 +207,7 @@ export default function DatenschutzPage() {
                     <li><strong>Widerruf der Einwilligung</strong> (Art. 7 Abs. 3 DSGVO) – jederzeit mit Wirkung für die Zukunft</li>
                   </ul>
                   <p className="mt-2">
-                    Zur Ausübung Ihrer Rechte wenden Sie sich an: <a href="mailto:datenschutz@einkaufsfinanzierer.com" className="text-turquoise hover:underline">datenschutz@einkaufsfinanzierer.com</a>
+                    Zur Ausübung Ihrer Rechte wenden Sie sich an: <a href="mailto:datenschutz@liqinow.de" className="text-turquoise hover:underline">datenschutz@liqinow.de</a>
                   </p>
                 </section>
 
