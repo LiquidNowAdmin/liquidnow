@@ -19,12 +19,9 @@ interface DashboardStats {
   total_companies: number;
 }
 
-const DAY_OPTIONS = [7, 30, 90] as const;
-
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [funnelDays, setFunnelDays] = useState<number>(30);
 
   useEffect(() => {
     async function fetchStats() {
@@ -106,26 +103,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Funnel Waterfall */}
-      <div style={{ marginTop: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)" }}>
-            Marketing Funnel
-          </h2>
-          <div style={{ display: "flex", gap: "0.25rem" }}>
-            {DAY_OPTIONS.map((d) => (
-              <button
-                key={d}
-                onClick={() => setFunnelDays(d)}
-                className={`admin-date-filter${funnelDays === d ? " admin-date-filter-active" : ""}`}
-              >
-                {d} Tage
-              </button>
-            ))}
-          </div>
-        </div>
-        <FunnelChart days={funnelDays} />
-      </div>
+      <FunnelChart />
     </>
   );
 }
