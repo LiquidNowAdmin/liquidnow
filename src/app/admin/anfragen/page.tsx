@@ -1,60 +1,59 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { User, FileText, Send, Gift, CheckCircle, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import Link from "next/link";
 
-interface Inquiry {
-  id: string;
+interface KanbanCard {
+  kanban_status: string;
+  inquiry_id: string | null;
+  user_id: string;
+  user_email: string;
+  user_name: string;
   company_name: string | null;
-  volume: number;
+  volume: number | null;
   term_months: number | null;
   purpose: string | null;
-  status: string;
+  provider_names: string[];
+  application_count: number;
   created_at: string;
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const COLUMNS = [
+  { key: "account_created", label: "Account erstellt", icon: User, color: "#A8C9DD" },
+  { key: "inquiry_created", label: "Anfrage erstellt", icon: FileText, color: "#507AA6" },
+  { key: "submitted", label: "Abgesendet", icon: Send, color: "#6D9EC8" },
+  { key: "offer", label: "Angebot", icon: Gift, color: "#9BAA28" },
+  { key: "closed", label: "Abgeschlossen", icon: CheckCircle, color: "#16a34a" },
+  { key: "rejected", label: "Abgelehnt", icon: XCircle, color: "#DC2626" },
+] as const;
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(value);
 }
 
-const statusLabels: Record<string, { label: string; className: string }> = {
-  new: { label: "Neu", className: "admin-status-active" },
-  in_progress: { label: "In Bearbeitung", className: "admin-status-active" },
-  completed: { label: "Abgeschlossen", className: "admin-status-active" },
-  rejected: { label: "Abgelehnt", className: "admin-status-inactive" },
-};
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `vor ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `vor ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `vor ${days}d`;
+}
 
 export default function AnfragenPage() {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchInquiries() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("inquiries")
-        .select("id, company_name, volume, term_months, purpose, status, created_at")
-        .order("created_at", { ascending: false });
-
-      setInquiries(data ?? []);
+    const supabase = createClient();
+    supabase.rpc("admin_get_kanban_inquiries").then(({ data, error }) => {
+      if (error) console.error("[Kanban]", error.message);
+      setCards(data ?? []);
       setLoading(false);
-    }
-
-    fetchInquiries();
+    });
   }, []);
 
   return (
@@ -63,67 +62,73 @@ export default function AnfragenPage() {
         <h1 className="admin-page-title">Anfragen</h1>
       </div>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Unternehmen</th>
-              <th>Volumen</th>
-              <th>Laufzeit</th>
-              <th>Zweck</th>
-              <th>Status</th>
-              <th>Erstellt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="text-center text-subtle py-8">
-                  Laden...
-                </td>
-              </tr>
-            ) : inquiries.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <div className="admin-empty">
-                    <p className="admin-empty-title">Keine Anfragen</p>
-                    <p>Es sind noch keine Finanzierungsanfragen eingegangen.</p>
+      {loading ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "16rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>
+          Laden...
+        </div>
+      ) : (
+        <div className="kanban-board">
+          {COLUMNS.map((col) => {
+            const colCards = cards.filter((c) => c.kanban_status === col.key);
+            const Icon = col.icon;
+            return (
+              <div key={col.key} className="kanban-column">
+                <div className="kanban-column-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <Icon style={{ width: "0.875rem", height: "0.875rem", color: col.color }} />
+                    <span className="kanban-column-title">{col.label}</span>
                   </div>
-                </td>
-              </tr>
-            ) : (
-              inquiries.map((inquiry) => {
-                const statusInfo = statusLabels[inquiry.status] ?? {
-                  label: inquiry.status,
-                  className: "",
-                };
-                return (
-                  <tr key={inquiry.id}>
-                    <td className="font-semibold">
-                      {inquiry.company_name ?? "–"}
-                    </td>
-                    <td>{formatCurrency(inquiry.volume)}</td>
-                    <td>
-                      {inquiry.term_months
-                        ? `${inquiry.term_months} Mon.`
-                        : "–"}
-                    </td>
-                    <td className="text-subtle">{inquiry.purpose ?? "–"}</td>
-                    <td>
-                      <span className={`admin-status ${statusInfo.className}`}>
-                        {statusInfo.label}
-                      </span>
-                    </td>
-                    <td className="text-subtle text-sm">
-                      {formatDate(inquiry.created_at)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                  <span className="kanban-column-count">{colCards.length}</span>
+                </div>
+                <div className="kanban-column-body">
+                  {colCards.length === 0 ? (
+                    <div className="kanban-empty">Keine</div>
+                  ) : (
+                    colCards.map((card) => (
+                      <KanbanCardItem key={card.inquiry_id ?? card.user_id} card={card} />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
+}
+
+function KanbanCardItem({ card }: { card: KanbanCard }) {
+  const content = (
+    <div className="kanban-card">
+      <div className="kanban-card-header">
+        <span className="kanban-card-name">
+          {card.company_name ?? card.user_name ?? card.user_email}
+        </span>
+        <span className="kanban-card-time">{timeAgo(card.created_at)}</span>
+      </div>
+      {card.volume && (
+        <div className="kanban-card-detail">
+          {formatCurrency(card.volume)}
+          {card.term_months ? ` · ${card.term_months} Mon.` : ""}
+          {card.purpose ? ` · ${card.purpose}` : ""}
+        </div>
+      )}
+      {card.provider_names.length > 0 && (
+        <div className="kanban-card-providers">
+          {card.provider_names.map((p) => (
+            <span key={p} className="kanban-card-provider">{p}</span>
+          ))}
+        </div>
+      )}
+      {!card.volume && card.user_email && (
+        <div className="kanban-card-detail">{card.user_email}</div>
+      )}
+    </div>
+  );
+
+  if (card.inquiry_id) {
+    return <Link href={`/admin/anfragen/${card.inquiry_id}`} style={{ textDecoration: "none", color: "inherit" }}>{content}</Link>;
+  }
+  return content;
 }
