@@ -79,9 +79,11 @@ export default function UseCaseSlider() {
   // Smooth spring for silky motion
   const smoothProgress = useSpring(rawProgress, { stiffness: 160, damping: 22, restDelta: 0.001 });
 
-  // translateX: card 0 centered at progress=0, card N-1 centered at progress=N-1
-  // formula: cardWidth * (1 - progress)
-  const translateX = useTransform(smoothProgress, (p) => cardWidthRef.current * (1 - p));
+  // translateX: center the active card
+  // Desktop (33% cards): offset = 1 cardWidth (leaves 1 card visible on the left)
+  // Mobile (80% cards): offset = 10% of container (small left peek)
+  const offsetRef = useRef(0);
+  const translateX = useTransform(smoothProgress, (p) => offsetRef.current - cardWidthRef.current * p);
   const progressBarWidth = useTransform(rawProgress, [0, N - 1], ["0%", "100%"]);
 
   // Measure card width (80% on mobile, 1/3 on desktop)
@@ -89,9 +91,9 @@ export default function UseCaseSlider() {
     const measure = () => {
       if (trackWrapRef.current) {
         const isMobile = window.innerWidth <= 768;
-        cardWidthRef.current = isMobile
-          ? trackWrapRef.current.offsetWidth * 0.8
-          : trackWrapRef.current.offsetWidth / 3;
+        const containerW = trackWrapRef.current.offsetWidth;
+        cardWidthRef.current = isMobile ? containerW * 0.8 : containerW / 3;
+        offsetRef.current = isMobile ? containerW * 0.1 : cardWidthRef.current;
         scrollPerSlideRef.current = isMobile ? SCROLL_PER_SLIDE_MOBILE : SCROLL_PER_SLIDE_DESKTOP;
         setWrapperHeight(`calc(100vh + ${(N - 1) * scrollPerSlideRef.current}px)`);
       }
