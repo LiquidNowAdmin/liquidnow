@@ -1,4 +1,4 @@
--- Returns landing page route breakdown for funnel chart stacked bar
+-- Fix: Only count sessions landing on public pages, filter out admin/auth/internal routes
 
 create or replace function admin_get_funnel_routes(
   p_days integer default null,
@@ -19,7 +19,6 @@ begin
     from marketing_sessions s
     where s.tenant_id = get_user_tenant_id()
       and (p_days is null or s.created_at >= now() - (p_days || ' days')::interval)
-      -- Only count sessions that landed on public pages
       and (
         s.landing_page in ('/', '/plattform', '/plattform/', '/revenue-based-finance', '/revenue-based-finance/', '/faq', '/faq/')
         or s.landing_page like '/antrag/%'
@@ -44,5 +43,3 @@ begin
   order by session_count desc;
 end;
 $$ language plpgsql stable security definer;
-
-grant execute on function admin_get_funnel_routes to authenticated;

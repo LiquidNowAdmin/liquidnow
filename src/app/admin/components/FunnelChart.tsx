@@ -37,13 +37,32 @@ const ROUTE_COLORS = ["#507AA6", "#6D9EC8", "#8AB8D8", "#A8C9DD", "#C4DAE8"];
 const ROUTE_LABELS: Record<string, string> = {
   "/": "Landing Page",
   "/plattform": "Marktplatz",
-  "/plattform/": "Marktplatz",
   "/revenue-based-finance": "RBF",
-  "/revenue-based-finance/": "RBF",
+  "/faq": "FAQ",
 };
 
+function normalizeRoute(route: string): string {
+  // Strip trailing slash for consistency
+  return route.length > 1 && route.endsWith("/") ? route.slice(0, -1) : route;
+}
+
 function routeLabel(route: string): string {
-  return ROUTE_LABELS[route] ?? route;
+  const normalized = normalizeRoute(route);
+  if (ROUTE_LABELS[normalized]) return ROUTE_LABELS[normalized];
+  if (normalized.startsWith("/antrag/")) return `Antrag ${normalized.split("/")[2] ?? ""}`;
+  return normalized;
+}
+
+/** Merge routes that differ only by trailing slash */
+function mergeRoutes(rows: RouteRow[]): RouteRow[] {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const key = normalizeRoute(r.route);
+    map.set(key, (map.get(key) ?? 0) + r.session_count);
+  }
+  return Array.from(map.entries())
+    .map(([route, session_count]) => ({ route, session_count }))
+    .sort((a, b) => b.session_count - a.session_count);
 }
 
 export default function FunnelChart() {
@@ -82,7 +101,7 @@ export default function FunnelChart() {
         setError(waterfallRes.error.message);
       }
       setData(waterfallRes.data ?? []);
-      setRoutes(routesRes.data ?? []);
+      setRoutes(mergeRoutes(routesRes.data ?? []));
       setLoading(false);
     });
   }, [days, provider]);
