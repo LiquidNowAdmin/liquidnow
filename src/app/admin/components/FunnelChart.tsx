@@ -10,6 +10,11 @@ interface FunnelRow {
   session_count: number;
 }
 
+interface RouteRow {
+  route: string;
+  session_count: number;
+}
+
 type DatePreset =
   | { label: string; days: number | null }
   | { label: string; type: "custom_days" }
@@ -27,8 +32,23 @@ const DATE_PRESETS: DatePreset[] = [
   { label: "Letzte X Monate", type: "custom_months" },
 ];
 
+const ROUTE_COLORS = ["#507AA6", "#6D9EC8", "#8AB8D8", "#A8C9DD", "#C4DAE8"];
+
+const ROUTE_LABELS: Record<string, string> = {
+  "/": "Landing Page",
+  "/plattform": "Marktplatz",
+  "/plattform/": "Marktplatz",
+  "/revenue-based-finance": "RBF",
+  "/revenue-based-finance/": "RBF",
+};
+
+function routeLabel(route: string): string {
+  return ROUTE_LABELS[route] ?? route;
+}
+
 export default function FunnelChart() {
   const [data, setData] = useState<FunnelRow[]>([]);
+  const [routes, setRoutes] = useState<RouteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<number | null>(30);
@@ -46,25 +66,25 @@ export default function FunnelChart() {
     });
   }, []);
 
-  // Load funnel data
+  // Load funnel data + routes
   useEffect(() => {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    const params = { p_days: days, p_provider: provider };
 
-    supabase
-      .rpc("admin_get_funnel_waterfall", {
-        p_days: days,
-        p_provider: provider,
-      })
-      .then(({ data: rows, error: err }) => {
-        if (err) {
-          console.error("[FunnelChart]", err.message);
-          setError(err.message);
-        }
-        setData(rows ?? []);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.rpc("admin_get_funnel_waterfall", params),
+      supabase.rpc("admin_get_funnel_routes", params),
+    ]).then(([waterfallRes, routesRes]) => {
+      if (waterfallRes.error) {
+        console.error("[FunnelChart]", waterfallRes.error.message);
+        setError(waterfallRes.error.message);
+      }
+      setData(waterfallRes.data ?? []);
+      setRoutes(routesRes.data ?? []);
+      setLoading(false);
+    });
   }, [days, provider]);
 
   function selectPreset(preset: DatePreset) {
@@ -94,6 +114,7 @@ export default function FunnelChart() {
   }
 
   const maxCount = data.length > 0 ? Math.max(...data.map((d) => d.session_count)) : 0;
+  const routeTotal = routes.reduce((s, r) => s + r.session_count, 0);
 
   return (
     <div style={{ marginTop: "2rem" }}>
@@ -199,6 +220,7 @@ export default function FunnelChart() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {data.map((row, i) => {
+              const isPageView = row.stage_order === 0;
               const pct = maxCount > 0 ? (row.session_count / maxCount) * 100 : 0;
               const prev = i > 0 ? data[i - 1].session_count : null;
               const dropoff =
@@ -207,28 +229,62 @@ export default function FunnelChart() {
                   : null;
 
               return (
-                <div key={row.stage_order} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  <span style={{ width: "10rem", flexShrink: 0, fontSize: "0.8125rem", color: "var(--color-dark)", textAlign: "right" }}>
-                    {row.stage}
-                  </span>
-                  <div style={{ flex: 1, position: "relative", height: "2rem" }}>
-                    <div
-                      style={{
-                        width: `${pct}%`,
-                        minWidth: pct > 0 ? "2rem" : 0,
-                        height: "100%",
-                        borderRadius: "0.375rem",
-                        background: `color-mix(in srgb, var(--color-turquoise) ${100 - i * 8}%, transparent)`,
-                        transition: "width 0.4s ease",
-                      }}
-                    />
+                <div key={row.stage_order}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <span style={{ width: "10rem", flexShrink: 0, fontSize: "0.8125rem", color: "var(--color-dark)", textAlign: "right" }}>
+                      {row.stage}
+                    </span>
+                    <div style={{ flex: 1, position: "relative", height: "2rem" }}>
+                      {/* Stacked bar for page views */}
+                      {isPageView && routes.length > 0 && routeTotal > 0 ? (
+                        <div style={{ display: "flex", width: `${pct}%`, minWidth: pct > 0 ? "2rem" : 0, height: "100%", borderRadius: "0.375rem", overflow: "hidden", transition: "width 0.4s ease" }}>
+                          {routes.map((r, ri) => {
+                            const segPct = (r.session_count / routeTotal) * 100;
+                            return (
+                              <div
+                                key={r.route}
+                                title={`${routeLabel(r.route)}: ${r.session_count}`}
+                                style={{
+                                  width: `${segPct}%`,
+                                  height: "100%",
+                                  background: ROUTE_COLORS[ri % ROUTE_COLORS.length],
+                                  transition: "width 0.4s ease",
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            width: `${pct}%`,
+                            minWidth: pct > 0 ? "2rem" : 0,
+                            height: "100%",
+                            borderRadius: "0.375rem",
+                            background: `color-mix(in srgb, var(--color-turquoise) ${100 - i * 8}%, transparent)`,
+                            transition: "width 0.4s ease",
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {row.session_count}
+                    </span>
+                    <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.75rem", color: dropoff != null ? "rgba(220,38,38,0.7)" : "transparent", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      {dropoff != null ? `−${dropoff}%` : ""}
+                    </span>
                   </div>
-                  <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {row.session_count}
-                  </span>
-                  <span style={{ width: "3.5rem", flexShrink: 0, fontSize: "0.75rem", color: dropoff != null ? "rgba(220,38,38,0.7)" : "transparent", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {dropoff != null ? `−${dropoff}%` : ""}
-                  </span>
+                  {/* Route legend below stacked bar */}
+                  {isPageView && routes.length > 0 && (
+                    <div style={{ display: "flex", gap: "1rem", marginLeft: "10.75rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
+                      {routes.map((r, ri) => (
+                        <span key={r.route} style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                          <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: ROUTE_COLORS[ri % ROUTE_COLORS.length], flexShrink: 0 }} />
+                          {routeLabel(r.route)} ({r.session_count})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
