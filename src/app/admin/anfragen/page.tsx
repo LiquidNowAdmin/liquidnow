@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import DateFilter from "../components/DateFilter";
@@ -80,13 +81,23 @@ function daysAgo(dateStr: string): number {
 /* ── Main Page ── */
 
 export default function AnfragenPage() {
+  return <Suspense><AnfragenContent /></Suspense>;
+}
+
+function AnfragenContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const detailId = searchParams.get("id");
+
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<KanbanCard | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
+
+  // Derive selected card from URL param
+  const selected = detailId ? cards.find((c) => c.inquiry_id === detailId) ?? null : null;
 
   useEffect(() => {
     const supabase = createClient();
@@ -96,6 +107,17 @@ export default function AnfragenPage() {
       setLoading(false);
     });
   }, []);
+
+  // Load applications when detail opens
+  useEffect(() => {
+    if (!detailId) { setApplications([]); return; }
+    setDetailLoading(true);
+    const supabase = createClient();
+    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: detailId }).then(({ data }) => {
+      setApplications(data ?? []);
+      setDetailLoading(false);
+    });
+  }, [detailId]);
 
   const filtered = useMemo(() => {
     let result = cards;
@@ -114,21 +136,14 @@ export default function AnfragenPage() {
     return result;
   }, [cards, days, search]);
 
-  function openDetail(card: KanbanCard) {
+  const openDetail = useCallback((card: KanbanCard) => {
     if (!card.inquiry_id) return;
-    setSelected(card);
-    setDetailLoading(true);
-    const supabase = createClient();
-    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: card.inquiry_id }).then(({ data }) => {
-      setApplications(data ?? []);
-      setDetailLoading(false);
-    });
-  }
+    router.push(`/admin/anfragen?id=${card.inquiry_id}`);
+  }, [router]);
 
-  function closeDetail() {
-    setSelected(null);
-    setApplications([]);
-  }
+  const closeDetail = useCallback(() => {
+    router.push("/admin/anfragen");
+  }, [router]);
 
   // ── Detail view ──
   if (selected) {
