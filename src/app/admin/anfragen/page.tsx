@@ -302,11 +302,14 @@ function KanbanCardItem({ card }: { card: KanbanCard }) {
           {card.purpose ? ` · ${card.purpose}` : ""}
         </div>
       )}
-      {card.provider_names.length > 0 && (
+      {card.application_count > 0 && (
         <div className="kanban-card-providers">
           {card.provider_names.map((p) => (
             <span key={p} className="kanban-card-provider">{p}</span>
           ))}
+          {card.application_count > card.provider_names.length && (
+            <span className="kanban-card-provider">{card.application_count} Anträge</span>
+          )}
         </div>
       )}
     </div>
