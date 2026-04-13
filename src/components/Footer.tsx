@@ -21,7 +21,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <li><a href="/impressum" className="footer-link">Impressum</a></li>
               <li><a href="/datenschutz" className="footer-link">Datenschutz</a></li>
-              <li><a href="#" className="footer-link">AGB</a></li>
+              <li><a href="/agb" className="footer-link">AGB</a></li>
             </ul>
           </div>
 
