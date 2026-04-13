@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
 import UserMenu from "@/components/UserMenu";
 import { createClient } from "@/lib/supabase";
+import { useTracking } from "@/lib/tracking";
 import type { User } from "@supabase/supabase-js";
 
 interface Offer {
@@ -507,52 +508,19 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       setUser(session?.user ?? null);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const wasLoggedOut = !user;
       setUser(session?.user ?? null);
       setAuthLoading(false);
+      if (session?.user && wasLoggedOut && (event === "SIGNED_IN" || event === "USER_UPDATED")) {
+        trackEvent("signup_completed", { method: session.user.app_metadata?.provider ?? "unknown" });
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
 
 
-  // Marketing event tracking (fire-and-forget, anonymous-safe)
-  function trackStep(supabase: ReturnType<typeof createClient>, stepName: string, properties: Record<string, unknown>) {
-    const MKT_SESSION_KEY = "mkt_session_id";
-    const MKT_TENANT_KEY = "mkt_tenant_id";
-    async function run() {
-      let sid = localStorage.getItem(MKT_SESSION_KEY);
-      let tenantId = localStorage.getItem(MKT_TENANT_KEY);
-      if (!sid || !tenantId) {
-        const tenantRes = await supabase.rpc("get_default_tenant_id");
-        tenantId = tenantRes.data;
-        if (!tenantId) return;
-        localStorage.setItem(MKT_TENANT_KEY, tenantId);
-        // Pre-generate UUID client-side to avoid SELECT after INSERT (anon users can't SELECT)
-        const newSid = crypto.randomUUID();
-        const { error: sessionErr } = await supabase.from("marketing_sessions").insert({
-          id: newSid,
-          tenant_id: tenantId,
-          visitor_id: crypto.randomUUID(),
-          landing_page: window.location.pathname,
-        });
-        if (sessionErr) return;
-        sid = newSid;
-        localStorage.setItem(MKT_SESSION_KEY, sid);
-      }
-      const { error: eventErr } = await supabase.from("marketing_events").insert({
-        tenant_id: tenantId,
-        session_id: sid,
-        event_type: "funnel_step",
-        properties: { step: stepName, ...properties },
-      });
-      // Stale session in localStorage — clear so next call creates a fresh one
-      if (eventErr?.code === "23503") {
-        localStorage.removeItem(MKT_SESSION_KEY);
-        localStorage.removeItem(MKT_TENANT_KEY);
-      }
-    }
-    run().catch(() => { /* ignore tracking errors */ });
-  }
+  const { trackEvent } = useTracking();
 
   // Prefill funnel fields from user profile + company data
   useEffect(() => {
@@ -621,6 +589,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   }, [user]);
 
   async function handleOAuth() {
+    trackEvent("signup_start", { method: "google" });
     setOauthLoading("google");
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -631,6 +600,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     if (!authEmail) return;
+    trackEvent("signup_start", { method: "magic_link" });
     setOauthLoading("email");
     await supabase.auth.signInWithOtp({
       email: authEmail,
@@ -778,7 +748,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       return;
     }
     if (step === 2) {
-      trackStep(supabase, "unternehmen", { orgName, orgCity });
+      trackEvent("funnel_step", { step: "unternehmen", orgName, orgCity });
       syncOrg({ withTurnover: true });
     }
     // YouLend: skip Umsatz step (step 1), calculator already captures revenue
@@ -831,7 +801,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
         else if (fnResult && !fnResult.success) console.error(`[provider-${providerSlug}]`, fnResult.error);
       }
 
-      trackStep(supabase, "submit", { product_id: offer.product_id });
+      trackEvent("funnel_submit", { product_id: offer.product_id, provider_name: offer.provider_name });
       onSubmitted?.({
         id: applicationId as string,
         product_id: offer.product_id,
@@ -1044,7 +1014,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                         <textarea value={purposeManual} onChange={e => setPurposeManual(e.target.value)} placeholder="Beschreiben Sie den Verwendungszweck…" maxLength={200} rows={3} style={{ marginTop: "0.25rem", padding: "0.625rem 0.875rem", border: "1.5px solid var(--color-border)", borderRadius: "0.625rem", fontSize: "0.875rem", resize: "vertical", outline: "none", width: "100%", fontFamily: "inherit" }} />
                                       )}
                                     </div>
-                                    <button type="button" onClick={() => { trackStep(supabase, "anfrage", { volume: bedarfVolume, term: bedarfTerm, purpose }); setStep(s => s + 1); }} disabled={!purpose} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
+                                    <button type="button" onClick={() => { trackEvent("funnel_step", { step: "anfrage", volume: bedarfVolume, term: bedarfTerm, purpose }); setStep(s => s + 1); }} disabled={!purpose} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
                                       Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                     </button>
                                   </motion.div>
@@ -1064,7 +1034,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   <GermanNumberInput
                                     value={orgTurnover} min={1} max={10_000_000} step={1000}
                                     onChange={setOrgTurnover}
-                                    onEnter={() => { if (orgTurnover) { trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); } }}
+                                    onEnter={() => { if (orgTurnover) { trackEvent("funnel_step", { step: "umsatz", turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); } }}
                                     placeholder="20.000"
                                     className="admin-input" style={{ width: "100%", paddingRight: "2rem" }}
                                   />
@@ -1075,7 +1045,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
-                                <button type="button" onClick={() => { trackStep(supabase, "umsatz", { turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                <button type="button" onClick={() => { trackEvent("funnel_step", { step: "umsatz", turnover: orgTurnover }); syncOrg({ withTurnover: true }); setStep(s => s + 1); }} disabled={!orgTurnover} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                 </button>
                               </div>
@@ -1294,7 +1264,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 <button type="button" onClick={() => setStep(2)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
-                                <button type="button" onClick={() => { if (ylStep3Valid) setStep(4); }} disabled={!ylStep3Valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                <button type="button" onClick={() => { if (ylStep3Valid) { trackEvent("funnel_step", { step: "persoenliche_daten" }); setStep(4); } }} disabled={!ylStep3Valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                 </button>
                               </div>
@@ -1312,6 +1282,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 setApplicantPhone(data.phone); setPhoneCountry(data.phoneCountry);
                                 setApplicantStreet(data.street); setApplicantZip(data.zip); setApplicantCity(data.city);
 
+                                trackEvent("funnel_step", { step: "persoenliche_daten" });
                                 setStep(4);
                               }}
                               onBack={() => setStep(s => s - 1)}
@@ -1637,6 +1608,7 @@ function YouLendCalculator({ initialRevenue, maxVolume, onContinue, onEstimateCh
 }
 
 function PlattformContent() {
+  const { trackEvent } = useTracking();
   const searchParams = useSearchParams();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1805,6 +1777,7 @@ function PlattformContent() {
   const matchesAll = (offer: Offer) => matchesTerm(offer) && matchesVolume(offer) && matchesFeatures(offer);
 
   function handleCta(offer: Offer, amount: number, term: number) {
+    trackEvent("cta_click", { provider_name: offer.provider_name, product_id: offer.product_id, amount, term });
     setSelectedOffer({ offer, amount, term });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

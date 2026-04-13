@@ -3534,6 +3534,35 @@ button, .btn, label, .badge, .trust-item {
   margin-top: 0.25rem;
 }
 
+/* --- Chart card --- */
+.admin-chart-card {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.admin-date-filter {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1.5px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: var(--color-subtle);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-date-filter:hover {
+  border-color: var(--color-turquoise);
+  color: var(--color-dark);
+}
+.admin-date-filter-active {
+  background: var(--color-turquoise);
+  border-color: var(--color-turquoise);
+  color: #ffffff;
+}
+
 /* --- Table --- */
 .admin-table-wrap {
   background: #ffffff;

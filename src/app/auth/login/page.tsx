@@ -17,16 +17,6 @@ function GoogleIcon() {
   );
 }
 
-function MicrosoftIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M0 0h8.571v8.571H0z" fill="#F25022" />
-      <path d="M9.429 0H18v8.571H9.429z" fill="#7FBA00" />
-      <path d="M0 9.429h8.571V18H0z" fill="#00A4EF" />
-      <path d="M9.429 9.429H18V18H9.429z" fill="#FFB900" />
-    </svg>
-  );
-}
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -37,7 +27,7 @@ function LoginContent() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function handleOAuth(provider: "google" | "azure") {
+  async function handleOAuth(provider: "google") {
     setLoading(provider);
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
@@ -118,15 +108,6 @@ function LoginContent() {
           >
             <GoogleIcon />
             {loading === "google" ? "Weiterleitung…" : "Mit Google anmelden"}
-          </button>
-          <button
-            type="button"
-            className="auth-oauth-btn"
-            onClick={() => handleOAuth("azure")}
-            disabled={loading !== null}
-          >
-            <MicrosoftIcon />
-            {loading === "azure" ? "Weiterleitung…" : "Mit Microsoft anmelden"}
           </button>
         </div>
 

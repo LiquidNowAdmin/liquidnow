@@ -6,9 +6,8 @@ import { createClient } from "@/lib/supabase";
 
 const VISITOR_ID_KEY = "ln_visitor_id";
 const COOKIE_CONSENT_KEY = "cookie_consent";
-
-// Single-tenant for now (liqinow)
-const TENANT_ID = "c81022c9-48c5-4946-aa3e-deb25af89013";
+const SESSION_ID_KEY = "mkt_session_id";
+const TENANT_ID_KEY = "mkt_tenant_id";
 
 type TrackingContextValue = {
   trackEvent: (type: string, properties?: Record<string, unknown>) => void;
@@ -60,30 +59,26 @@ function getOrCreateVisitorId(): string {
 
 export function TrackingProvider({ children }: { children: React.ReactNode }) {
   const sessionIdRef = useRef<string | null>(null);
+  const tenantIdRef = useRef<string | null>(null);
   const initRef = useRef(false);
   const supabaseRef = useRef(createClient());
   const pathname = usePathname();
   const prevPathRef = useRef<string | null>(null);
 
-  // Initialize session
+  // Initialize session via Edge Function
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     if (!isConsentGiven()) return;
 
-    const supabase = supabaseRef.current;
-
     (async () => {
       const visitorId = getOrCreateVisitorId();
       const utm = getUtmParams();
-      const sessionId = crypto.randomUUID();
 
-      const { error } = await supabase
-        .from("marketing_sessions")
-        .insert({
-          id: sessionId,
-          tenant_id: TENANT_ID,
+      const { data, error } = await supabaseRef.current.functions.invoke("marketing-track", {
+        body: {
+          action: "session",
           visitor_id: visitorId,
           utm_source: utm.utm_source,
           utm_medium: utm.utm_medium,
@@ -91,38 +86,37 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
           referrer: document.referrer || null,
           landing_page: window.location.pathname,
           device_type: getDeviceType(),
-        });
+        },
+      });
 
-      if (!error) {
-        sessionIdRef.current = sessionId;
-
-        // Track initial page view
-        await supabase.from("marketing_events").insert({
-          tenant_id: TENANT_ID,
-          session_id: sessionId,
-          event_type: "page_view",
-          properties: { path: window.location.pathname },
-        });
+      if (!error && data?.data?.session_id) {
+        sessionIdRef.current = data.data.session_id;
+        tenantIdRef.current = data.data.tenant_id;
+        localStorage.setItem(SESSION_ID_KEY, data.data.session_id);
+        localStorage.setItem(TENANT_ID_KEY, data.data.tenant_id);
       }
     })();
   }, []);
 
-  // Track page views on navigation
+  // Track page views on navigation via Edge Function
   useEffect(() => {
     if (!sessionIdRef.current) return;
     if (!isConsentGiven()) return;
     if (prevPathRef.current === null) {
       prevPathRef.current = pathname;
-      return; // Skip — initial page_view already tracked above
+      return; // Skip — initial page_view already tracked by session creation
     }
     if (prevPathRef.current === pathname) return;
     prevPathRef.current = pathname;
 
-    supabaseRef.current.from("marketing_events").insert({
-      tenant_id: TENANT_ID,
-      session_id: sessionIdRef.current,
-      event_type: "page_view",
-      properties: { path: pathname },
+    supabaseRef.current.functions.invoke("marketing-track", {
+      body: {
+        action: "event",
+        session_id: sessionIdRef.current,
+        tenant_id: tenantIdRef.current,
+        event_type: "page_view",
+        properties: { path: pathname },
+      },
     });
   }, [pathname]);
 
@@ -131,11 +125,20 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
       if (!sessionIdRef.current) return;
       if (!isConsentGiven()) return;
 
-      supabaseRef.current.from("marketing_events").insert({
-        tenant_id: TENANT_ID,
-        session_id: sessionIdRef.current,
-        event_type: type,
-        properties: properties ?? {},
+      supabaseRef.current.functions.invoke("marketing-track", {
+        body: {
+          action: "event",
+          session_id: sessionIdRef.current,
+          tenant_id: tenantIdRef.current,
+          event_type: type,
+          properties: properties ?? {},
+        },
+      }).then(({ error, data }) => {
+        // Session expired — clear so next page load creates a fresh one
+        if (error || data?.error === "session_expired") {
+          localStorage.removeItem(SESSION_ID_KEY);
+          localStorage.removeItem(TENANT_ID_KEY);
+        }
       });
     },
     []
