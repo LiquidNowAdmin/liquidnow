@@ -107,12 +107,8 @@ export default function FunnelChart() {
 
   // Group data by stage, then by route
   const stages = Array.from(new Set(data.map((d) => d.stage_order))).sort((a, b) => a - b);
-  const allRoutes = Array.from(new Set(data.map((d) => d.route)));
-  // Sort routes: / first, /plattform second, rest after
-  const sortedRoutes = allRoutes.sort((a, b) => {
-    const order = ["/", "/plattform", "other"];
-    return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b));
-  });
+  const KNOWN_ROUTES = ["/", "/plattform"];
+  const sortedRoutes = KNOWN_ROUTES.filter((r) => data.some((d) => d.route === r));
 
   const maxCount = data.length > 0 ? Math.max(...data.map((d) => d.session_count)) : 0;
 
