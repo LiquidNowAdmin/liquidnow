@@ -96,8 +96,8 @@ function AnfragenContent() {
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
 
-  // Derive selected card from URL param
-  const selected = detailId ? cards.find((c) => c.inquiry_id === detailId) ?? null : null;
+  // Derive selected card from URL param (matches inquiry_id or user_id)
+  const selected = detailId ? cards.find((c) => c.inquiry_id === detailId || c.user_id === detailId) ?? null : null;
 
   useEffect(() => {
     const supabase = createClient();
@@ -108,16 +108,17 @@ function AnfragenContent() {
     });
   }, []);
 
-  // Load applications when detail opens
+  // Load applications when detail opens (only if it's an inquiry)
   useEffect(() => {
     if (!detailId) { setApplications([]); return; }
+    if (!selected?.inquiry_id) { setApplications([]); setDetailLoading(false); return; }
     setDetailLoading(true);
     const supabase = createClient();
-    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: detailId }).then(({ data }) => {
+    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: selected.inquiry_id }).then(({ data }) => {
       setApplications(data ?? []);
       setDetailLoading(false);
     });
-  }, [detailId]);
+  }, [detailId, selected?.inquiry_id]);
 
   const filtered = useMemo(() => {
     let result = cards;
@@ -137,8 +138,8 @@ function AnfragenContent() {
   }, [cards, days, search]);
 
   const openDetail = useCallback((card: KanbanCard) => {
-    if (!card.inquiry_id) return;
-    router.push(`/admin/anfragen?id=${card.inquiry_id}`);
+    const key = card.inquiry_id ?? card.user_id;
+    router.push(`/admin/anfragen?id=${key}`);
   }, [router]);
 
   const closeDetail = useCallback(() => {
