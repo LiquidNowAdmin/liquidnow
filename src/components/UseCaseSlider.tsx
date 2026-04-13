@@ -81,11 +81,14 @@ export default function UseCaseSlider() {
   const translateX = useTransform(smoothProgress, (p) => cardWidthRef.current * (1 - p));
   const progressBarWidth = useTransform(rawProgress, [0, N - 1], ["0%", "100%"]);
 
-  // Measure card width (= 1/3 of track container)
+  // Measure card width (80% on mobile, 1/3 on desktop)
   useEffect(() => {
     const measure = () => {
       if (trackWrapRef.current) {
-        cardWidthRef.current = trackWrapRef.current.offsetWidth / 3;
+        const isMobile = window.innerWidth <= 768;
+        cardWidthRef.current = isMobile
+          ? trackWrapRef.current.offsetWidth * 0.8
+          : trackWrapRef.current.offsetWidth / 3;
       }
     };
     measure();

@@ -4611,6 +4611,20 @@ button, .btn, label, .badge, .trust-item {
   display: inline-block;
 }
 
+@media (max-width: 768px) {
+  .usecase-sticky-heading {
+    font-size: 1.375rem;
+    padding: 0 1rem;
+  }
+  .usecase-sticky-label {
+    font-size: 0.6875rem;
+  }
+  .usecase-card {
+    flex: 0 0 80%;
+    width: 80%;
+  }
+}
+
 /* === FÜR WEN / ELIGIBILITY === */
 
 .eligibility-grid {
