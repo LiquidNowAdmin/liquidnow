@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import DateFilter from "../components/DateFilter";
 
 /* ── Types ── */
 
@@ -72,6 +73,10 @@ function timeAgo(dateStr: string): string {
   return `vor ${days}d`;
 }
 
+function daysAgo(dateStr: string): number {
+  return (Date.now() - new Date(dateStr).getTime()) / 86400000;
+}
+
 /* ── Main Page ── */
 
 export default function AnfragenPage() {
@@ -80,6 +85,8 @@ export default function AnfragenPage() {
   const [selected, setSelected] = useState<KanbanCard | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [days, setDays] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -89,6 +96,23 @@ export default function AnfragenPage() {
       setLoading(false);
     });
   }, []);
+
+  const filtered = useMemo(() => {
+    let result = cards;
+    if (days != null) {
+      result = result.filter((c) => daysAgo(c.created_at) <= days);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((c) =>
+        (c.company_name ?? "").toLowerCase().includes(q) ||
+        c.user_email.toLowerCase().includes(q) ||
+        (c.user_name ?? "").toLowerCase().includes(q) ||
+        c.provider_names.some((p) => p.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [cards, days, search]);
 
   function openDetail(card: KanbanCard) {
     if (!card.inquiry_id) return;
@@ -106,7 +130,7 @@ export default function AnfragenPage() {
     setApplications([]);
   }
 
-  // Detail view
+  // ── Detail view ──
   if (selected) {
     return (
       <>
@@ -179,11 +203,25 @@ export default function AnfragenPage() {
     );
   }
 
-  // Kanban view
+  // ── Kanban view ──
   return (
     <>
-      <div className="admin-page-header">
-        <h1 className="admin-page-title">Anfragen</h1>
+      <div className="admin-page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+        <h1 className="admin-page-title" style={{ margin: 0 }}>Anfragen</h1>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div style={{ position: "relative" }}>
+            <Search style={{ position: "absolute", left: "0.625rem", top: "50%", transform: "translateY(-50%)", width: "0.875rem", height: "0.875rem", color: "var(--color-border)" }} />
+            <input
+              type="text"
+              placeholder="Suche…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="admin-input"
+              style={{ paddingLeft: "2rem", fontSize: "0.8125rem", minWidth: "12rem" }}
+            />
+          </div>
+          <DateFilter days={days} onChange={setDays} />
+        </div>
       </div>
 
       {loading ? (
@@ -193,7 +231,7 @@ export default function AnfragenPage() {
       ) : (
         <div className="kanban-board">
           {COLUMNS.map((col) => {
-            const colCards = cards.filter((c) => c.kanban_status === col.key);
+            const colCards = filtered.filter((c) => c.kanban_status === col.key);
             const Icon = col.icon;
             return (
               <div key={col.key} className="kanban-column">
