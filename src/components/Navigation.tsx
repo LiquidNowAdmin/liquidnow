@@ -64,17 +64,17 @@ export default function Navigation() {
             Jetzt vergleichen
           </a>
           <UserMenu />
-          <a href="tel:034125648814" className="nav-phone">
+          <a href="tel:+494099999400" className="nav-phone">
             <Phone className="h-5 w-5 shrink-0" />
             <div className="nav-phone-text">
-              <span className="nav-phone-number">0341-25648814</span>
+              <span className="nav-phone-number">040 999 999 400</span>
               <span className="nav-phone-hours">Mo–Fr 09:00 – 20:00 Uhr</span>
             </div>
           </a>
         </div>
 
         <div className="flex items-center gap-4 md:hidden">
-          <a href="tel:034125648814" className="text-dark" aria-label="Anrufen">
+          <a href="tel:+494099999400" className="text-dark" aria-label="Anrufen">
             <Phone className="h-5 w-5" />
           </a>
           <button

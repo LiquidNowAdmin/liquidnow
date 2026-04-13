@@ -40,7 +40,7 @@ export default function ImpressumPage() {
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
                   <p className="leading-relaxed">
-                    <strong>Telefon:</strong> <a href="tel:+494099999400" className="text-turquoise hover:underline">+49 40 999 999-400</a><br />
+                    <strong>Telefon:</strong> <a href="tel:+494099999400" className="text-turquoise hover:underline">040 999 999 400</a><br />
                     <strong>Fax:</strong> +49 40 999 999-401<br />
                     <strong>E-Mail:</strong> <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a><br />
                     <strong>Website:</strong> <a href="https://www.liqinow.de" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.liqinow.de</a>

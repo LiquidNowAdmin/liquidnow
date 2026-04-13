@@ -226,7 +226,7 @@ export default function AGBPage() {
                     Deutsche Einkaufsfinanzierer GmbH<br />
                     ABC-Straße 35, 20354 Hamburg<br />
                     E-Mail: <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a><br />
-                    Telefon: +49 40 999 999-400
+                    Telefon: 040 999 999 400
                   </p>
                 </section>
 
