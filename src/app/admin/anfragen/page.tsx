@@ -265,16 +265,22 @@ export default function AnfragenPage() {
 /* ── Sub-components ── */
 
 function KanbanCardItem({ card }: { card: KanbanCard }) {
+  const displayName = card.company_name || card.user_name || card.user_email;
+  const contactLine = card.company_name
+    ? (card.user_name || card.user_email)
+    : (card.user_name ? card.user_email : null);
+
   return (
     <div className="kanban-card">
       <div className="kanban-card-header">
-        <span className="kanban-card-name">
-          {card.company_name ?? card.user_name ?? card.user_email}
-        </span>
+        <span className="kanban-card-name">{displayName}</span>
         <span className="kanban-card-time">{timeAgo(card.created_at)}</span>
       </div>
-      {card.volume && (
-        <div className="kanban-card-detail">
+      {contactLine && (
+        <div className="kanban-card-detail">{contactLine}</div>
+      )}
+      {card.volume != null && card.volume > 0 && (
+        <div className="kanban-card-detail" style={{ marginTop: "0.25rem" }}>
           {formatCurrency(card.volume)}
           {card.term_months ? ` · ${card.term_months} Mon.` : ""}
           {card.purpose ? ` · ${card.purpose}` : ""}
@@ -286,9 +292,6 @@ function KanbanCardItem({ card }: { card: KanbanCard }) {
             <span key={p} className="kanban-card-provider">{p}</span>
           ))}
         </div>
-      )}
-      {!card.volume && card.user_email && (
-        <div className="kanban-card-detail">{card.user_email}</div>
       )}
     </div>
   );
