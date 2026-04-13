@@ -150,7 +150,7 @@ export default function DatenschutzPage() {
                       <strong>Supabase Inc.</strong> (USA) – Datenbank-Hosting, Authentifizierung, Edge Functions, Datenspeicherung. Datenverarbeitung in der EU (AWS Frankfurt). Auftragsverarbeitungsvertrag geschlossen.
                     </li>
                     <li>
-                      <strong>Vercel Inc.</strong> (USA) – Website-Hosting und Content Delivery Network (CDN). Datenverarbeitung primär in der EU.
+                      <strong>Scaleway SAS</strong> (Frankreich) – Website-Hosting und Datenspeicherung. Datenverarbeitung in der EU (Rechenzentrum Amsterdam, Niederlande).
                     </li>
                     <li>
                       <strong>Google Ireland Ltd.</strong> – Authentifizierung via Google OAuth (Single Sign-On). Es werden nur die für die Anmeldung erforderlichen Daten (Name, E-Mail) übermittelt.
