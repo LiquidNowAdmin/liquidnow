@@ -57,7 +57,7 @@ export default function AGBPage() {
                     (1) Der Betreiber stellt eine Plattform zur Verfügung, auf der gewerbliche Nutzer Finanzierungsangebote verschiedener Anbieter vergleichen und Anfragen an diese Anbieter übermitteln können.
                   </p>
                   <p className="mt-2">
-                    (2) Der Betreiber erbringt einen Tippgeber-Service. Er vermittelt keine Kredite im Sinne des § 34c GewO und erbringt keine Finanzberatung. Die Kreditentscheidung liegt ausschließlich bei den jeweiligen Finanzierungspartnern.
+                    (2) Der Betreiber erbringt einen Tippgeber-Service. Er leitet Kontaktdaten und Anfragedaten des Nutzers an Finanzierungspartner weiter. Der Betreiber vermittelt keine Kredite im Sinne des § 34c GewO, gibt keine Empfehlungen für bestimmte Finanzierungsprodukte ab und erbringt keine Finanz- oder Anlageberatung. Die auf der Plattform dargestellten Konditionen beruhen auf den Angaben der Finanzierungspartner; der Betreiber nimmt keine eigene Bewertung oder Rangfolge vor. Die Kreditentscheidung liegt ausschließlich bei den jeweiligen Finanzierungspartnern.
                   </p>
                   <p className="mt-2">
                     (3) Der Betreiber übernimmt keine Gewähr für die Verfügbarkeit, Konditionen oder Zusage von Finanzierungsangeboten der auf der Plattform gelisteten Anbieter.
@@ -115,10 +115,13 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">§ 6 Datenweitergabe an Finanzierungspartner</h2>
                   <p>
-                    (1) Mit der Übermittlung einer Finanzierungsanfrage willigt der Nutzer in die Weitergabe seiner Antragsdaten an den ausgewählten Finanzierungspartner ein. Die Datenverarbeitung durch den Finanzierungspartner richtet sich nach dessen eigenen Datenschutzbestimmungen.
+                    (1) Die Weiterleitung der Antragsdaten an den ausgewählten Finanzierungspartner erfolgt auf Grundlage der Durchführung vorvertraglicher Maßnahmen (Art. 6 Abs. 1 lit. b DSGVO). Vor der Übermittlung wird der Nutzer im Antragsprozess gesondert über die Datenweitergabe informiert und erteilt hierzu eine separate, ausdrückliche Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).
                   </p>
                   <p className="mt-2">
-                    (2) Der Betreiber verarbeitet personenbezogene Daten gemäß seiner Datenschutzerklärung, abrufbar unter{" "}
+                    (2) Die Datenverarbeitung durch den Finanzierungspartner richtet sich nach dessen eigenen Datenschutzbestimmungen. Der Betreiber informiert den Nutzer vor der Übermittlung über den jeweiligen Empfänger.
+                  </p>
+                  <p className="mt-2">
+                    (3) Der Betreiber verarbeitet personenbezogene Daten gemäß seiner Datenschutzerklärung, abrufbar unter{" "}
                     <Link href="/datenschutz" className="text-turquoise hover:underline">www.liqinow.de/datenschutz</Link>.
                   </p>
                 </section>
@@ -149,6 +152,9 @@ export default function AGBPage() {
                   <p className="mt-2">
                     (2) Der Betreiber ist berechtigt, die Plattform jederzeit ganz oder teilweise zu ändern, zu erweitern oder einzustellen.
                   </p>
+                  <p className="mt-2">
+                    (3) Der Betreiber haftet nicht für Unterbrechungen oder Einschränkungen der Plattform, die auf Umstände zurückzuführen sind, die außerhalb seiner zumutbaren Kontrolle liegen (höhere Gewalt). Hierzu zählen insbesondere Naturkatastrophen, behördliche Anordnungen, Störungen der Telekommunikationsnetze, Cyberangriffe, Pandemien sowie Ausfälle von Drittanbietern (Hosting, Datenbank, Authentifizierungsdienste). Der Betreiber wird den Nutzer über wesentliche Einschränkungen unverzüglich informieren und sich um eine schnellstmögliche Wiederherstellung bemühen.
+                  </p>
                 </section>
 
                 {/* 9. Geistiges Eigentum */}
@@ -159,20 +165,56 @@ export default function AGBPage() {
                   </p>
                 </section>
 
-                {/* 10. Änderungen der AGB */}
+                {/* 10. Laufzeit und Kündigung */}
                 <section>
-                  <h2 className="text-xl font-semibold mb-3">§ 10 Änderungen der AGB</h2>
+                  <h2 className="text-xl font-semibold mb-3">§ 10 Laufzeit und Kündigung</h2>
                   <p>
-                    (1) Der Betreiber behält sich das Recht vor, diese AGB jederzeit zu ändern. Änderungen werden auf der Plattform veröffentlicht.
+                    (1) Das Nutzungsverhältnis wird auf unbestimmte Zeit geschlossen und beginnt mit der Registrierung auf der Plattform.
                   </p>
                   <p className="mt-2">
-                    (2) Durch die fortgesetzte Nutzung der Plattform nach Veröffentlichung geänderter AGB erklärt der Nutzer sein Einverständnis mit den Änderungen.
+                    (2) Der Nutzer kann sein Nutzerkonto jederzeit ohne Angabe von Gründen kündigen. Die Kündigung erfolgt per E-Mail an <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a> oder über die Kontoeinstellungen der Plattform. Mit Wirksamkeit der Kündigung werden die personenbezogenen Daten des Nutzers gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen.
+                  </p>
+                  <p className="mt-2">
+                    (3) Der Betreiber kann das Nutzungsverhältnis mit einer Frist von zwei Wochen per E-Mail kündigen.
+                  </p>
+                  <p className="mt-2">
+                    (4) Das Recht zur außerordentlichen Kündigung aus wichtigem Grund bleibt für beide Parteien unberührt. Ein wichtiger Grund liegt für den Betreiber insbesondere vor, wenn der Nutzer gegen wesentliche Bestimmungen dieser AGB verstößt.
+                  </p>
+                  <p className="mt-2">
+                    (5) Bereits übermittelte Finanzierungsanfragen bleiben von der Kündigung unberührt und werden von den Finanzierungspartnern nach deren eigenen Bedingungen weiterbearbeitet.
                   </p>
                 </section>
 
-                {/* 11. Schlussbestimmungen */}
+                {/* 11. Änderungen der AGB */}
                 <section>
-                  <h2 className="text-xl font-semibold mb-3">§ 11 Schlussbestimmungen</h2>
+                  <h2 className="text-xl font-semibold mb-3">§ 11 Änderungen der AGB</h2>
+                  <p>
+                    (1) Der Betreiber behält sich das Recht vor, diese AGB mit Wirkung für die Zukunft zu ändern, soweit dies unter Berücksichtigung der Interessen des Betreibers für den Nutzer zumutbar ist.
+                  </p>
+                  <p className="mt-2">
+                    (2) Der Betreiber wird den Nutzer über Änderungen mindestens zwei Wochen vor dem geplanten Inkrafttreten per E-Mail an die im Nutzerkonto hinterlegte Adresse informieren. Die Änderungen werden im Wortlaut mitgeteilt.
+                  </p>
+                  <p className="mt-2">
+                    (3) Der Nutzer kann den Änderungen innerhalb von zwei Wochen nach Zugang der Mitteilung widersprechen. Widerspricht der Nutzer nicht innerhalb der Frist, gelten die geänderten AGB als angenommen. Der Betreiber wird den Nutzer in der Änderungsmitteilung auf die Widerspruchsmöglichkeit, die Frist und die Folgen des Schweigens gesondert hinweisen.
+                  </p>
+                  <p className="mt-2">
+                    (4) Im Falle eines Widerspruchs steht beiden Parteien ein außerordentliches Kündigungsrecht zu. Bis zur Wirksamkeit der Kündigung gelten die bisherigen AGB fort.
+                  </p>
+                </section>
+
+                {/* 12. Streitbeilegung */}
+                <section>
+                  <h2 className="text-xl font-semibold mb-3">§ 12 Außergerichtliche Streitbeilegung</h2>
+                  <p>
+                    Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{" "}
+                    <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">ec.europa.eu/consumers/odr</a>.
+                    Der Betreiber ist weder verpflichtet noch bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Da sich die Plattform ausschließlich an Unternehmer richtet, sind die Regelungen des Verbraucherstreitbeilegungsgesetzes (VSBG) nicht anwendbar. Bei Streitigkeiten zwischen Unternehmern sind die Parteien bestrebt, eine einvernehmliche Lösung zu finden, bevor der Rechtsweg beschritten wird.
+                  </p>
+                </section>
+
+                {/* 13. Schlussbestimmungen */}
+                <section>
+                  <h2 className="text-xl font-semibold mb-3">§ 13 Schlussbestimmungen</h2>
                   <p>
                     (1) Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts.
                   </p>
