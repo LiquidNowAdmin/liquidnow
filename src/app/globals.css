@@ -3482,6 +3482,7 @@ button, .btn, label, .badge, .trust-item {
   padding: 2rem;
   background: var(--color-light-bg);
   min-height: 100vh;
+  overflow-x: auto;
 }
 
 /* --- Page Header --- */
