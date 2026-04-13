@@ -88,7 +88,7 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">§ 4 Finanzierungsanfragen</h2>
                   <p>
-                    (1) Durch die Übermittlung einer Finanzierungsanfrage über die Plattform beauftragt der Nutzer den Betreiber, seine Antragsdaten an den ausgewählten Finanzierungspartner weiterzuleiten.
+                    (1) Mit der Übermittlung einer Finanzierungsanfrage über die Plattform stimmt der Nutzer zu, dass der Betreiber seine Antragsdaten an den ausgewählten Finanzierungspartner weiterleitet.
                   </p>
                   <p className="mt-2">
                     (2) Die Finanzierungsanfrage stellt kein bindendes Angebot des Nutzers dar. Ein Finanzierungsvertrag kommt ausschließlich zwischen dem Nutzer und dem jeweiligen Finanzierungspartner zustande.
@@ -189,7 +189,7 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">§ 11 Änderungen der AGB</h2>
                   <p>
-                    (1) Der Betreiber behält sich das Recht vor, diese AGB mit Wirkung für die Zukunft zu ändern, soweit dies unter Berücksichtigung der Interessen des Betreibers für den Nutzer zumutbar ist.
+                    (1) Der Betreiber behält sich das Recht vor, diese AGB mit Wirkung für die Zukunft zu ändern, sofern die Änderung aufgrund von Gesetzesänderungen, geänderter Rechtsprechung, der Aufnahme neuer Finanzierungspartner oder technischen Änderungen der Plattform erforderlich wird.
                   </p>
                   <p className="mt-2">
                     (2) Der Betreiber wird den Nutzer über Änderungen mindestens zwei Wochen vor dem geplanten Inkrafttreten per E-Mail an die im Nutzerkonto hinterlegte Adresse informieren. Die Änderungen werden im Wortlaut mitgeteilt.
@@ -202,19 +202,9 @@ export default function AGBPage() {
                   </p>
                 </section>
 
-                {/* 12. Streitbeilegung */}
+                {/* 12. Schlussbestimmungen */}
                 <section>
-                  <h2 className="text-xl font-semibold mb-3">§ 12 Außergerichtliche Streitbeilegung</h2>
-                  <p>
-                    Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{" "}
-                    <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">ec.europa.eu/consumers/odr</a>.
-                    Der Betreiber ist weder verpflichtet noch bereit, an einem Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Da sich die Plattform ausschließlich an Unternehmer richtet, sind die Regelungen des Verbraucherstreitbeilegungsgesetzes (VSBG) nicht anwendbar. Bei Streitigkeiten zwischen Unternehmern sind die Parteien bestrebt, eine einvernehmliche Lösung zu finden, bevor der Rechtsweg beschritten wird.
-                  </p>
-                </section>
-
-                {/* 13. Schlussbestimmungen */}
-                <section>
-                  <h2 className="text-xl font-semibold mb-3">§ 13 Schlussbestimmungen</h2>
+                  <h2 className="text-xl font-semibold mb-3">§ 12 Schlussbestimmungen</h2>
                   <p>
                     (1) Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts.
                   </p>
@@ -222,7 +212,10 @@ export default function AGBPage() {
                     (2) Gerichtsstand für alle Streitigkeiten aus oder im Zusammenhang mit diesen AGB ist Hamburg, sofern der Nutzer Kaufmann, juristische Person des öffentlichen Rechts oder öffentlich-rechtliches Sondervermögen ist.
                   </p>
                   <p className="mt-2">
-                    (3) Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.
+                    (3) Bei Streitigkeiten aus oder im Zusammenhang mit diesem Nutzungsverhältnis sind die Parteien bestrebt, eine einvernehmliche Lösung zu finden, bevor der Rechtsweg beschritten wird.
+                  </p>
+                  <p className="mt-2">
+                    (4) Sollten einzelne Bestimmungen dieser AGB unwirksam sein oder werden, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.
                   </p>
                 </section>
 
