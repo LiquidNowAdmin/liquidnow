@@ -2156,10 +2156,10 @@ function YouLendCalculator({ initialRevenue, maxVolume, onContinue, onEstimateCh
       <div style={{ marginBottom: "0.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
           <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-subtle)" }}>Handelshistorie</span>
-          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{months} Monate</span>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{months >= 24 ? `${Math.floor(months / 12)} Jahre${months % 12 ? ` ${months % 12} Mon.` : ""}` : `${months} Monate`}</span>
         </div>
         <input type="range" min={3} max={60} step={1} value={months}
-          onChange={e => setMonths(+e.target.value)}
+          onChange={e => { const v = +e.target.value; setMonths(v >= 24 ? Math.round(v / 12) * 12 || 24 : v); }}
           className="funnel-slider" style={{ width: "100%", background: `linear-gradient(to right, var(--color-turquoise) ${((months - 3) / (60 - 3)) * 100}%, var(--color-border) 0%)` }} />
       </div>
       <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: onContinue ? "0.75rem" : 0 }}>
