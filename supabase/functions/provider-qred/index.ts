@@ -43,7 +43,7 @@ serve(async (req) => {
   try {
     const body = await req.text()
     if (!body) return errorResponse('Empty request body', origin)
-    const { action, application_id } = JSON.parse(body)
+    const { action, application_id, extra } = JSON.parse(body)
 
     if (!application_id) {
       return errorResponse('application_id is required', origin)
@@ -56,6 +56,8 @@ serve(async (req) => {
         return await handleSubmit(supabase, application_id, origin)
       case 'status':
         return await handleStatus(supabase, application_id, origin)
+      case 'upload':
+        return await handleUpload(supabase, application_id, origin, extra)
       default:
         return errorResponse(`Unknown action: ${action}`, origin)
     }
@@ -177,6 +179,57 @@ async function handleStatus(
     qred_status: qredStatus,
     internal_status: mappedStatus || data.application.status,
     changed: mappedStatus !== data.application.status,
+  }, origin)
+}
+
+// ─── UPLOAD ─────────────────────────────────────────────────
+
+async function handleUpload(
+  supabase: ReturnType<typeof createServiceClient>,
+  applicationId: string,
+  origin: string | null,
+  extra?: { files?: Array<{ filename: string; contentType: string }> }
+) {
+  const data = await fetchSubmissionData(supabase, applicationId)
+  const externalRef = (data.application.metadata as any)?.external_ref
+
+  if (!externalRef) {
+    return errorResponse('No external reference found — application not yet submitted', origin)
+  }
+
+  if (!extra?.files || extra.files.length === 0) {
+    return errorResponse('files array is required', origin)
+  }
+
+  const baseUrl = Deno.env.get('QRED_API_BASE_URL') || 'https://sandbox.test.qred.com/embedded'
+  const apiKey = Deno.env.get('QRED_API_KEY')
+
+  if (!apiKey) {
+    throw new Error('QRED_API_KEY not configured')
+  }
+
+  // 1. Get presigned upload URLs from Qred
+  const presignResponse = await fetch(`${baseUrl}/v1/loan/application/${externalRef}/files/presigned-urls`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': apiKey,
+    },
+    body: JSON.stringify({ files: extra.files }),
+  })
+
+  if (!presignResponse.ok) {
+    const errorBody = await presignResponse.text()
+    console.error(`[provider-qred] Presigned URL error ${presignResponse.status}:`, errorBody)
+    throw new Error(`Qred presigned URL failed: ${presignResponse.status} — ${errorBody}`)
+  }
+
+  const presignResult = await presignResponse.json()
+  console.log(`[provider-qred] Got ${presignResult.uploadUrls?.length} presigned URLs`)
+
+  return jsonResponse({
+    uploadUrls: presignResult.uploadUrls,
   }, origin)
 }
 

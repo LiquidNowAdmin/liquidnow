@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock, Search } from "lucide-react";
+import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock, Search, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import DateFilter from "../components/DateFilter";
 
@@ -49,6 +49,8 @@ const COLUMNS = [
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   new: { label: "Neu", color: "#243650", bg: "rgba(80,122,166,0.1)" },
   inquired: { label: "In Prüfung", color: "#6B7A0F", bg: "rgba(155,170,40,0.12)" },
+  offer_received: { label: "Angebote", color: "#d97706", bg: "rgba(217,119,6,0.1)" },
+  offer_accepted: { label: "Angenommen", color: "#6B7A0F", bg: "rgba(155,170,40,0.12)" },
   signed: { label: "Angebot", color: "#16a34a", bg: "rgba(22,163,74,0.1)" },
   closed: { label: "Abgeschlossen", color: "#16a34a", bg: "rgba(22,163,74,0.1)" },
   rejected: { label: "Abgelehnt", color: "#DC2626", bg: "rgba(220,38,38,0.08)" },
@@ -92,6 +94,7 @@ function AnfragenContent() {
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [documents, setDocuments] = useState<Array<{ id: string; name: string; doc_type: string | null; file_path: string; file_size: number | null; mime_type: string | null; created_at: string; valid_until: string | null }>>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
@@ -119,6 +122,23 @@ function AnfragenContent() {
       setDetailLoading(false);
     });
   }, [detailId, selected?.inquiry_id]);
+
+  // Load documents for the company
+  useEffect(() => {
+    if (!detailId || !selected) { setDocuments([]); return; }
+    const supabase = createClient();
+    // Get company_id from one of the applications, then load documents
+    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: selected.inquiry_id }).then(async ({ data: apps }) => {
+      if (!apps?.length) return;
+      // Load documents for this company via applications
+      const appIds = apps.map((a: Application) => a.application_id);
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("id, name, doc_type, file_path, file_size, mime_type, created_at, valid_until")
+        .order("created_at", { ascending: false });
+      if (docs) setDocuments(docs);
+    });
+  }, [detailId, selected]);
 
   const filtered = useMemo(() => {
     let result = cards;
@@ -214,6 +234,71 @@ function AnfragenContent() {
               );
             })}
           </div>
+        )}
+
+        {/* Documents section */}
+        {documents.length > 0 && (
+          <>
+            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem", marginTop: "2rem" }}>
+              Dokumente ({documents.length})
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {documents.map((doc) => {
+                const isExpired = doc.valid_until && new Date(doc.valid_until) < new Date();
+                const docTypeLabels: Record<string, string> = {
+                  bank_statement: "Kontoauszug",
+                  bwa_susa: "BWA + SuSa",
+                  annual_report: "Jahresabschluss",
+                  tax_assessment: "Einkommenssteuerbescheid",
+                  asset_statement: "Vermögensaufstellung",
+                  profit_determination: "Gewinnermittlung",
+                };
+                return (
+                  <div key={doc.id} className="admin-chart-card" style={{ padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <FileText style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)", flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {doc.name}
+                      </p>
+                      <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                        {docTypeLabels[doc.doc_type || ""] || doc.doc_type || "Sonstiges"}
+                        {doc.file_size ? ` · ${(doc.file_size / 1024 / 1024).toFixed(1)} MB` : ""}
+                        {" · "}{formatDate(doc.created_at)}
+                      </p>
+                    </div>
+                    {doc.valid_until && (
+                      <span style={{
+                        fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px",
+                        color: isExpired ? "rgba(220,38,38,0.8)" : "var(--color-turquoise)",
+                        background: isExpired ? "rgba(220,38,38,0.08)" : "rgba(80,122,166,0.08)",
+                        whiteSpace: "nowrap",
+                      }}>
+                        {isExpired ? "Abgelaufen" : `Gültig bis ${formatDate(doc.valid_until)}`}
+                      </span>
+                    )}
+                    <button type="button" onClick={async () => {
+                        const supabase = createClient();
+                        const { data } = await supabase.storage.from("documents").createSignedUrl(doc.file_path, 300);
+                        if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                      }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.6875rem", color: "var(--color-turquoise)", textDecoration: "underline", whiteSpace: "nowrap", flexShrink: 0, padding: 0 }}>
+                      Öffnen
+                    </button>
+                    <button type="button" onClick={async () => {
+                        if (!confirm(`"${doc.name}" wirklich löschen?`)) return;
+                        const supabase = createClient();
+                        await supabase.storage.from("documents").remove([doc.file_path]);
+                        await supabase.from("documents").delete().eq("id", doc.id);
+                        setDocuments(prev => prev.filter(d => d.id !== doc.id));
+                      }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)", padding: 0, flexShrink: 0, display: "flex" }}>
+                      <Trash2 style={{ width: "0.75rem", height: "0.75rem" }} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </>
     );

@@ -84,6 +84,10 @@ function ProduktEditForm() {
   // Meta: Voraussetzungen
   const [minMonthlyRevenue, setMinMonthlyRevenue] = useState("");
 
+  // Meta: Geeignet für / Nicht geeignet für
+  const [suitableFor, setSuitableFor] = useState("");
+  const [notSuitableFor, setNotSuitableFor] = useState("");
+
   useEffect(() => {
     if (!id) return;
 
@@ -139,6 +143,8 @@ function ProduktEditForm() {
 
         const req = (m.requirements ?? {}) as Record<string, unknown>;
         setMinMonthlyRevenue(req.min_monthly_revenue_eur != null ? String(req.min_monthly_revenue_eur) : "");
+        setSuitableFor(((m.suitable_for as string[]) ?? []).join("\n"));
+        setNotSuitableFor(((m.not_suitable_for as string[]) ?? []).join("\n"));
       }
 
       setLoading(false);
@@ -177,6 +183,11 @@ function ProduktEditForm() {
     if (useCases.length) meta.use_cases = useCases;
     if (eligibleLegalForms.length) meta.eligible_legal_forms = eligibleLegalForms;
     if (eligibleIndustries.length) meta.eligible_industries = eligibleIndustries;
+
+    const suitItems = suitableFor.split("\n").map(s => s.trim()).filter(Boolean);
+    if (suitItems.length) meta.suitable_for = suitItems;
+    const notSuitItems = notSuitableFor.split("\n").map(s => s.trim()).filter(Boolean);
+    if (notSuitItems.length) meta.not_suitable_for = notSuitItems;
 
     const req: Record<string, unknown> = {};
     if (minMonthlyRevenue) req.min_monthly_revenue_eur = parseInt(minMonthlyRevenue);
@@ -481,6 +492,19 @@ function ProduktEditForm() {
         <div className="admin-field">
           <label htmlFor="min_revenue" className="admin-label">Mindestumsatz (EUR/Monat)</label>
           <input id="min_revenue" type="number" value={minMonthlyRevenue} onChange={(e) => setMinMonthlyRevenue(e.target.value)} className="admin-input" placeholder="z.B. 10000" />
+        </div>
+
+        {/* ── Geeignet für / Nicht geeignet für ── */}
+        <SectionHeader title="Eignung" />
+
+        <div className="admin-field">
+          <label htmlFor="suitable_for" className="admin-label">Geeignet für (eine Zeile pro Punkt)</label>
+          <textarea id="suitable_for" value={suitableFor} onChange={(e) => setSuitableFor(e.target.value)} className="admin-input" rows={4} placeholder={"Kapitalgesellschaften (GmbH, UG, AG)\nMindestens 12 Monate am Markt\nOnline-Händler und Gastronomen"} style={{ resize: "vertical" }} />
+        </div>
+
+        <div className="admin-field">
+          <label htmlFor="not_suitable_for" className="admin-label">Nicht geeignet für (eine Zeile pro Punkt)</label>
+          <textarea id="not_suitable_for" value={notSuitableFor} onChange={(e) => setNotSuitableFor(e.target.value)} className="admin-input" rows={4} placeholder={"Startups unter 6 Monate\nFreiberufler ohne Umsatznachweis\nUnternehmen in Insolvenz"} style={{ resize: "vertical" }} />
         </div>
 
         <div className="admin-form-actions">

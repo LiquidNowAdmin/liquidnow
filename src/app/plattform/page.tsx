@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, ReceiptText, Shield, RefreshCw, Sparkles, Users, Headphones, Upload, Landmark } from "lucide-react";
+import { Clock, ArrowRight, ArrowLeft, Search, Banknote, ChevronDown, Check, MessageCircle, Star, SlidersHorizontal, Loader2, Building2, Zap, ReceiptText, Shield, RefreshCw, Sparkles, Users, Headphones, Upload, Landmark, ExternalLink, Trash2, XCircle } from "lucide-react";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberInput";
@@ -208,13 +208,33 @@ const PURPOSE_OPTIONS = [
   { value: "OTHER", label: "Anderes" },
 ];
 
+// Document type definitions with validity periods
+const DOC_TYPES: Array<{
+  key: string; label: string; validity: string;
+  required: (volume: number, isPersonen: boolean) => boolean;
+}> = [
+  { key: "bank_statement", label: "Geschäftskontoauszüge", validity: "2 Wochen gültig · aller Konten der letzten 3 Monate",
+    required: () => true },
+  { key: "annual_report", label: "Jahresabschluss", validity: "12 Monate gültig",
+    required: (v, p) => v > 25000 && !p },
+  { key: "profit_determination", label: "Gewinnermittlung", validity: "12 Monate gültig",
+    required: (v, p) => v > 25000 && p },
+  { key: "bwa_susa", label: "BWA + SuSa", validity: "2 Monate gültig",
+    required: (v) => v > 25000 },
+  { key: "tax_assessment", label: "Einkommenssteuerbescheid", validity: "12 Monate gültig",
+    required: (v, p) => v > 50000 && !p },
+  { key: "asset_statement", label: "Vermögensaufstellung", validity: "12 Monate gültig",
+    required: (v) => v > 100000 },
+];
+
 const FUNNEL_STEPS = [
+  { title: "Voraussetzungen", sub: "Eignung & benötigte Unterlagen" },
   { title: "Ihre Anfrage", sub: "Volumen, Laufzeit & Verwendungszweck" },
   { title: "Ihr Umsatz", sub: "Durchschnittlicher Monatsumsatz" },
   { title: "Ihr Unternehmen", sub: "Firma suchen – wir füllen den Rest aus." },
   { title: "Persönliche Daten", sub: "Wer stellt den Antrag?" },
   { title: "Zusammenfassung", sub: "Prüfen und absenden" },
-  { title: "Kontoauszüge", sub: "Bankdaten verifizieren" },
+  { title: "Dokumente", sub: "Unterlagen hochladen" },
 ];
 
 const TERM_OPTIONS = [3, 6, 9, 12, 18, 24, 36];
@@ -456,7 +476,10 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [submittedAppId, setSubmittedAppId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [docFiles, setDocFiles] = useState<Record<string, File[]>>({});
+  const [docUploaded, setDocUploaded] = useState<Record<string, Array<{ name: string; file_path: string; created_at: string; valid_until?: string }>>>({});
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; status: string; error?: string }>>([]);
 
   const [step, setStep] = useState(0);
@@ -506,6 +529,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   const isLastStep = step === FUNNEL_STEPS.length - 1;
 
   const stepSummaries = [
+    null, // Step 0: Voraussetzungen
     purpose ? `${formatCurrency(bedarfVolume)} · ${bedarfTerm} Mon. · ${PURPOSE_OPTIONS.find(p => p.value === purpose)?.label ?? ""}` : null,
     orgTurnover ? `Ø ${formatCurrency(orgTurnover)} / Monat` : null,
     orgName ? `${orgName}${orgCity ? ` · ${orgCity}` : ""}` : null,
@@ -530,6 +554,38 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
 
 
   const { trackEvent } = useTracking();
+
+  // Load existing documents from DB when entering step 5
+  useEffect(() => {
+    if (step !== 6) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: member } = await supabase.from("company_members").select("company_id").eq("user_id", session.user.id).limit(1).maybeSingle();
+      if (!member?.company_id) return;
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("name, doc_type, file_path, created_at, valid_until")
+        .eq("company_id", member.company_id)
+        .order("created_at", { ascending: false });
+      if (docs && docs.length > 0) {
+        const grouped: Record<string, Array<{ name: string; file_path: string; created_at: string; valid_until?: string }>> = {};
+        for (const d of docs) {
+          const key = d.doc_type || "other";
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push({ name: d.name, file_path: d.file_path, created_at: d.created_at, valid_until: d.valid_until ?? undefined });
+        }
+        setDocUploaded(prev => {
+          const merged = { ...prev };
+          for (const [key, dbDocs] of Object.entries(grouped)) {
+            const existing = new Set((merged[key] || []).map(f => f.name));
+            merged[key] = [...(merged[key] || []), ...dbDocs.filter(d => !existing.has(d.name))];
+          }
+          return merged;
+        });
+      }
+    })();
+  }, [step]);
 
   // Prefill funnel fields from user profile + company data
   useEffect(() => {
@@ -575,7 +631,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       if (memberRes.data?.company_id) {
         const { data: co } = await supabase
           .from("companies")
-          .select("name, crefo, hrb, ust_id, website, address, annual_revenue")
+          .select("name, crefo, hrb, ust_id, website, address, annual_revenue, legal_form")
           .eq("id", memberRes.data.company_id)
           .maybeSingle();
         if (co) {
@@ -589,6 +645,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
           if (addr.zip    && !orgZip)     setOrgZip(addr.zip);
           if (addr.city   && !orgCity)    setOrgCity(addr.city);
           if (co.annual_revenue && !orgTurnover) setOrgTurnover(Math.round(co.annual_revenue / 12));
+          if (co.legal_form && !ylCompanyType) setYlCompanyType(co.legal_form);
         }
       }
       return profileRes.data;
@@ -752,23 +809,23 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   const [ylCompanyType, setYlCompanyType] = useState("");
 
   function handleNext() {
-    if (step === 2 && companyMode === "url" && orgWebpage && !showOrgFields) {
+    if (step === 3 && companyMode === "url" && orgWebpage && !showOrgFields) {
       handleCompanySearch();
       return;
     }
-    if (step === 2) {
+    if (step === 3) {
       trackEvent("funnel_step", { step: "unternehmen", orgName, orgCity });
       syncOrg({ withTurnover: true });
     }
-    // YouLend: skip Umsatz step (step 1), calculator already captures revenue
-    if (isYouLend && step === 0) {
-      setStep(2);
+    // YouLend: skip Umsatz step (step 2), calculator already captures revenue
+    if (isYouLend && step === 1) {
+      setStep(3);
       return;
     }
     setStep(s => s + 1);
   }
 
-  const step2Valid = companyMode === "search" ? orgName.length >= 3 : companyMode === "url" ? !!orgWebpage : !!(orgName && orgStreet && orgCity);
+  const step2Valid = companyMode === "search" ? orgName.length >= 3 && !!ylCompanyType : companyMode === "url" ? !!orgWebpage && !!ylCompanyType : !!(orgName && orgStreet && orgCity && ylCompanyType);
 
   async function doSubmit(data: PersonalData) {
     setSubmitting(true); setSubmitError(null);
@@ -802,6 +859,41 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
 
       setSubmittedAppId(applicationId as string);
 
+      // Log credit search consent with timestamp, user agent, and IP for compliance
+      if (creditSearchConsent && applicationId) {
+        fetch("https://api.ipify.org?format=json").then(r => r.json()).then(({ ip }) => {
+          supabase.from("events").insert({
+            tenant_id: "00000000-0000-0000-0000-000000000001",
+            entity_type: "application",
+            entity_id: applicationId as string,
+            event_type: "credit_search_consent",
+            payload: {
+              consent_given: true,
+              consent_text: `Ich stimme einer Bonitätsprüfung durch ${offer.provider_name} zu (Schufa/Crefo). Diese Anfrage hat keinen Einfluss auf Ihren Score.`,
+              consented_at: new Date().toISOString(),
+              user_agent: navigator.userAgent,
+              ip_address: ip,
+              provider: offer.provider_name,
+            },
+          });
+        }).catch(() => {
+          // Fallback without IP
+          supabase.from("events").insert({
+            tenant_id: "00000000-0000-0000-0000-000000000001",
+            entity_type: "application",
+            entity_id: applicationId as string,
+            event_type: "credit_search_consent",
+            payload: {
+              consent_given: true,
+              consent_text: `Ich stimme einer Bonitätsprüfung durch ${offer.provider_name} zu (Schufa/Crefo). Diese Anfrage hat keinen Einfluss auf Ihren Score.`,
+              consented_at: new Date().toISOString(),
+              user_agent: navigator.userAgent,
+              provider: offer.provider_name,
+            },
+          });
+        });
+      }
+
       // Call provider Edge Function if available
       const providerSlug = PROVIDER_SLUGS[offer.provider_name];
       if (providerSlug && applicationId) {
@@ -834,12 +926,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
         metadata: {},
         created_at: new Date().toISOString(),
       });
-      // YouLend: go to Step 5 (bank data) instead of showing submitted view
-      if (isYouLend) {
-        setStep(5);
-      } else {
-        setSubmitted(true);
-      }
+      // Go to Step 6 (documents) after submit
+      setStep(6);
     } catch (err) {
       console.error("[doSubmit]", err);
       setSubmitError("Fehler beim Einreichen. Bitte versuchen Sie es erneut.");
@@ -901,8 +989,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
           {/* Left: step navigation */}
           <div className="funnel-nav">
             {(() => { let visibleIdx = 0; return FUNNEL_STEPS.map((s, i) => {
-              if (isYouLend && i === 1) return null;
-              if (!isYouLend && i === 5) return null;
+              if (isYouLend && i === 2) return null;
               const stepNum = ++visibleIdx;
               const isActive = i === step;
               const isDone = i < step;
@@ -947,6 +1034,11 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
 
           {/* Right: active step content */}
           <div className="funnel-content">
+            {/* Mobile step indicator */}
+            <div className="funnel-mobile-step">
+              <span className="funnel-mobile-step-num">{(() => { let n = 0; for (let j = 0; j <= step; j++) { if (isYouLend && j === 2) continue; n++; } return n; })()}</span>
+              <span className="funnel-mobile-step-title">{FUNNEL_STEPS[step]?.title}</span>
+            </div>
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
@@ -958,8 +1050,63 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                 {(() => {
                   const i = step;
                   return (<>
-                          {/* Step 0: Ihre Anfrage — sequential reveal */}
-                          {i === 0 && (
+                          {/* Step 0: Voraussetzungen */}
+                          {i === 0 && (() => {
+                            const m = offer.metadata || {};
+                            const suitable = (m.suitable_for as string[] | undefined) ?? [];
+                            const notSuitable = (m.not_suitable_for as string[] | undefined) ?? [];
+                            return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                              <div style={{ padding: "1rem", background: "rgba(80,122,166,0.04)", borderRadius: "0.75rem" }}>
+                                <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Wirtschaftliche Dokumente</p>
+                                <p style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.6, marginBottom: "0.75rem" }}>
+                                  Sobald alle Unterlagen vorliegen, erhalten Sie Ihr Angebot in der Regel innerhalb von <strong>24 Stunden</strong>. Nach Annahme wird das Geld noch am <strong>selben Tag</strong> überwiesen.
+                                </p>
+                                <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
+                                  Sie können die Dokumente auch nach dem Antrag jederzeit nachreichen. Die benötigten Unterlagen finden Sie unter <strong style={{ color: "var(--color-dark)" }}>Details → Produktbeschreibung</strong>.
+                                </p>
+                              </div>
+
+                              {(suitable.length > 0 || notSuitable.length > 0) && (
+                                <div className="suitability-grid">
+                                  {suitable.length > 0 && (
+                                    <div>
+                                      <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Geeignet für</p>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                        {suitable.map((s, idx) => (
+                                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-dark)" }}>
+                                            <Check style={{ width: "0.75rem", height: "0.75rem", color: "#16a34a", flexShrink: 0, marginTop: "0.0625rem" }} />
+                                            <span>{s}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {notSuitable.length > 0 && (
+                                    <div>
+                                      <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Nicht geeignet für</p>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                        {notSuitable.map((s, idx) => (
+                                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                                            <XCircle style={{ width: "0.75rem", height: "0.75rem", color: "rgba(220,38,38,0.6)", flexShrink: 0, marginTop: "0.0625rem" }} />
+                                            <span>{s}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <button type="button" onClick={() => setStep(1)}
+                                className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                Verstanden — Antrag starten <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                              </button>
+                            </div>
+                            ); })()}
+
+                          {/* Step 1: Ihre Anfrage — sequential reveal */}
+                          {i === 1 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
                               {/* Phase 0: Volumen (YouLend: calculator, others: number input) */}
@@ -972,7 +1119,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 <YouLendCalculator
                                   initialRevenue={bedarfVolume > 0 ? Math.round(bedarfVolume / 10) : 10000}
                                   maxVolume={offer.max_volume}
-                                  onContinue={(estimate) => { setBedarfVolume(estimate); setStep(2); }}
+                                  onContinue={(estimate) => { setBedarfVolume(estimate); setStep(3); }}
                                   onEstimateChange={onEstimateChange}
                                 />
                               ) : (
@@ -1052,8 +1199,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 1: Ihr Umsatz */}
-                          {i === 1 && (
+                          {/* Step 2: Ihr Umsatz */}
+                          {i === 2 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                               <div>
                                 <label style={LABEL_STYLE}>Wie hoch ist Ihr durchschnittlicher Monatsumsatz?</label>
@@ -1079,8 +1226,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 2: Ihr Unternehmen — full version (all providers) */}
-                          {i === 2 && (
+                          {/* Step 3: Ihr Unternehmen — full version (all providers) */}
+                          {i === 3 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
                               {/* Mode: Search by name */}
@@ -1116,6 +1263,13 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                         ))}
                                       </div>
                                     )}
+                                  </div>
+                                  <div>
+                                    <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Rechtsform<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
+                                    <select value={ylCompanyType} onChange={e => setYlCompanyType(e.target.value)} className="admin-input" style={{ width: "100%" }}>
+                                      <option value="">Bitte wählen…</option>
+                                      {YL_COMPANY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    </select>
                                   </div>
                                   <div style={{ display: "flex", gap: "1rem" }}>
                                     <button type="button" onClick={() => setCompanyMode("url")} style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
@@ -1201,15 +1355,13 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                         </div>
                                       )}
                                     </div>
-                                    {isYouLend && (
-                                      <div>
-                                        <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Rechtsform<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
-                                        <select value={ylCompanyType} onChange={e => setYlCompanyType(e.target.value)} className="admin-input" style={{ width: "100%" }}>
-                                          <option value="">Bitte wählen…</option>
-                                          {YL_COMPANY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                        </select>
-                                      </div>
-                                    )}
+                                    <div>
+                                      <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)", marginBottom: "0.375rem" }}>Rechtsform<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
+                                      <select value={ylCompanyType} onChange={e => setYlCompanyType(e.target.value)} className="admin-input" style={{ width: "100%" }}>
+                                        <option value="">Bitte wählen…</option>
+                                        {YL_COMPANY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                      </select>
+                                    </div>
                                     <FunnelField label="Crefo-Nummer" value={orgCrefo} onChange={setOrgCrefo} placeholder="3XXXXXXXX9" hint="Creditreform-Nummer" />
                                     <FunnelField label="HRB-Nummer" value={orgHrb} onChange={setOrgHrb} placeholder="HRB 12345" hint="Handelsregisternummer (optional)" />
                                     <FunnelField label="USt-IdNr." value={orgUstId} onChange={setOrgUstId} placeholder="DE123456789" />
@@ -1231,8 +1383,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 3: Persönliche Daten + Anschrift (all providers) */}
-                          {i === 3 && !submitted && (
+                          {/* Step 4: Persönliche Daten + Anschrift (all providers) */}
+                          {i === 4 && !submitted && (
                             <PersonalDataForm
                               key={`personal-${formKey}`}
                               defaults={{ firstName, lastName, email: applicantEmail, phone: applicantPhone, phoneCountry, dateOfBirth, street: applicantStreet, zip: applicantZip, city: applicantCity }}
@@ -1243,7 +1395,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 setApplicantStreet(data.street); setApplicantZip(data.zip); setApplicantCity(data.city);
 
                                 trackEvent("funnel_step", { step: "persoenliche_daten" });
-                                setStep(4);
+                                setStep(5);
                               }}
                               onBack={() => setStep(s => s - 1)}
                               submitting={false}
@@ -1252,8 +1404,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             />
                           )}
 
-                          {/* Step 4: Zusammenfassung — all providers */}
-                          {i === 4 && !submitted && (
+                          {/* Step 5: Zusammenfassung — all providers */}
+                          {i === 5 && !submitted && (
                             <div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                                 <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
@@ -1287,27 +1439,25 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   </label>
                                 </div>
 
-                                {isYouLend && (
-                                  <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
-                                    <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
-                                      <input type="checkbox" checked={creditSearchConsent} onChange={e => setCreditSearchConsent(e.target.checked)}
-                                        style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
-                                      <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
-                                        Ich stimme einer Bonitätsprüfung durch YouLend zu. Diese hat keinen Einfluss auf Ihren Schufa-Score.
-                                      </span>
-                                    </label>
-                                  </div>
-                                )}
+                                <div style={{ padding: "0.875rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", border: "1px solid var(--color-border)" }}>
+                                  <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer" }}>
+                                    <input type="checkbox" checked={creditSearchConsent} onChange={e => setCreditSearchConsent(e.target.checked)}
+                                      style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
+                                    <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                      Ich stimme einer Bonitätsprüfung durch <strong>{offer.provider_name}</strong> zu (Schufa/Crefo). Diese Anfrage hat keinen Einfluss auf Ihren Score.
+                                    </span>
+                                  </label>
+                                </div>
                               </div>
 
                               {submitError && <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.8)", marginTop: "0.5rem" }}>{submitError}</p>}
 
                               <div style={{ display: "flex", gap: "0.625rem", marginTop: "1.25rem" }}>
-                                <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                <button type="button" onClick={() => setStep(4)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                   <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                 </button>
                                 <button type="button" onClick={() => doSubmit({ firstName, lastName, dateOfBirth, email: applicantEmail, phone: applicantPhone, phoneCountry, street: applicantStreet, zip: applicantZip, city: applicantCity })}
-                                  disabled={!agbConsent || (isYouLend && !creditSearchConsent) || submitting}
+                                  disabled={!agbConsent || !creditSearchConsent || submitting}
                                   className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                   {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird eingereicht…</> : <>Antrag einreichen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
                                 </button>
@@ -1315,7 +1465,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {i === 4 && submitted && !isYouLend && (
+                          {i === 5 && submitted && !isYouLend && (
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0" }}>
                               <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
@@ -1329,7 +1479,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {i === 4 && submitted && isYouLend && (
+                          {i === 5 && submitted && isYouLend && (
                             <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
                               <div style={{ width: "3rem", height: "3rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
                                 <Check style={{ width: "1.5rem", height: "1.5rem", color: "var(--color-turquoise)" }} />
@@ -1357,204 +1507,321 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 5: Kontoauszüge — YouLend only */}
-                          {i === 5 && isYouLend && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "1rem", background: "rgba(80,122,166,0.05)", borderRadius: "0.75rem" }}>
-                                <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
-                                </div>
-                                <div>
-                                  <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.125rem" }}>Antrag eingereicht</p>
-                                  <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Verifizieren Sie jetzt Ihre Bankdaten, um den Antrag abzuschließen.</p>
-                                </div>
-                              </div>
+                          {/* Step 6: Dokumente hochladen */}
+                          {i === 6 && (() => {
+                            const isPersonen = ["Einzelunternehmen", "e.K.", "GbR", "Freiberufler"].includes(ylCompanyType);
+                            const requiredDocs = DOC_TYPES.filter(d => d.required(bedarfVolume, isPersonen));
+                            const providerSlug = PROVIDER_SLUGS[offer.provider_name];
+                            const totalPending = Object.values(docFiles).flat().length;
 
-                              <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Bitte wählen Sie eine Option</p>
-
-                              {/* Option 1: Open Banking */}
-                              <button
-                                type="button"
-                                onClick={() => { if (redirectUrl) window.open(redirectUrl, "_blank"); }}
-                                disabled={!redirectUrl}
-                                style={{
-                                  width: "100%", padding: "1.25rem", borderRadius: "0.75rem",
-                                  border: "2px solid var(--color-turquoise)", background: "#fff",
-                                  cursor: redirectUrl ? "pointer" : "default",
-                                  opacity: redirectUrl ? 1 : 0.5,
-                                  textAlign: "left", display: "flex", alignItems: "center", gap: "1rem",
-                                  transition: "all 0.2s",
-                                }}
-                              >
-                                <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", background: "rgba(80,122,166,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <Landmark style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Open Banking</p>
-                                  <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>Bankdaten sicher und automatisch verifizieren. Schnellste Option — dauert nur 2 Minuten.</p>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexShrink: 0, padding: "0.25rem 0.625rem", borderRadius: "1rem", background: "rgba(80,122,166,0.08)", fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-turquoise)" }}>
-                                  <Zap style={{ width: "0.75rem", height: "0.75rem" }} /> Empfohlen
-                                </div>
-                              </button>
-
-                              {/* Option 2: PDF Upload */}
-                              {(() => {
-                                function addFiles(files: File[]) {
-                                  const pdfs = files.filter(f => f.type === "application/pdf");
-                                  if (pdfs.length === 0) return;
-                                  setPendingFiles(prev => {
-                                    const existing = new Set(prev.map(f => f.name + f.size));
-                                    return [...prev, ...pdfs.filter(f => !existing.has(f.name + f.size))];
-                                  });
-                                }
-                                async function submitFiles() {
-                                  if (pendingFiles.length === 0 || !submittedAppId) return;
-                                  setUploadingFiles(true); setUploadResults([]);
-                                  try {
-                                    // 1. Save to Supabase Storage
-                                    for (const file of pendingFiles) {
-                                      const path = `bank-statements/${submittedAppId}/${file.name}`;
-                                      await supabase.storage.from("documents").upload(path, file, { upsert: true });
+                            async function uploadDocType(docType: string) {
+                              const files = docFiles[docType];
+                              if (!files?.length || !submittedAppId) return;
+                              setUploadingDocType(docType);
+                              try {
+                                // 1. Save to Supabase Storage + documents table
+                                for (const file of files) {
+                                  const path = `${docType}/${submittedAppId}/${file.name}`;
+                                  await supabase.storage.from("documents").upload(path, file, { upsert: true });
+                                  // Insert into documents table with doc_type
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  if (session) {
+                                    const { data: member } = await supabase.from("company_members").select("company_id, tenant_id:companies(tenant_id)").eq("user_id", session.user.id).limit(1).maybeSingle();
+                                    if (member) {
+                                      await supabase.from("documents").insert({
+                                        tenant_id: (member as any).tenant_id?.tenant_id || (member as any).tenant_id,
+                                        company_id: member.company_id,
+                                        uploaded_by: session.user.id,
+                                        name: file.name,
+                                        doc_type: docType,
+                                        category: docType,
+                                        file_path: path,
+                                        file_size: file.size,
+                                        mime_type: file.type,
+                                      });
                                     }
-                                    // 2. Send to YouLend
-                                    const formData = new FormData();
-                                    formData.append("application_id", submittedAppId);
-                                    pendingFiles.forEach(f => formData.append("files", f));
-                                    const { data: result, error } = await supabase.functions.invoke("provider-youlend", { body: formData });
-                                    if (error) throw error;
-                                    if (result?.data?.uploaded) setUploadResults(result.data.uploaded);
-                                    else setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "ok" })));
-                                    // 3. Auto-trigger Stage 1 submission after successful upload
-                                    if (!result?.data?.uploaded?.some((r: any) => r.status !== "ok")) {
-                                      await supabase.functions.invoke("provider-youlend", {
-                                        body: { action: "submit_stage1", application_id: submittedAppId },
-                                      }).catch(err => console.error("[submit_stage1]", err));
-                                    }
-                                  } catch (err) {
-                                    console.error("[upload]", err);
-                                    setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "error", error: "Upload fehlgeschlagen" })));
-                                  } finally {
-                                    setUploadingFiles(false);
                                   }
                                 }
-                                return (
-                              <div style={{
-                                width: "100%", padding: "1.25rem", borderRadius: "0.75rem",
-                                border: "1px solid var(--color-border)", background: "#fff",
-                                textAlign: "left",
-                              }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-                                  <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", background: "var(--color-light-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                    <Upload style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-subtle)" }} />
-                                  </div>
-                                  <div style={{ flex: 1 }}>
-                                    <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>Kontoauszüge hochladen</p>
-                                    <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>PDF-Kontoauszüge der letzten 3–12 Monate hochladen. Max. 16 MB pro Datei.</p>
-                                  </div>
-                                </div>
 
-                                {uploadingFiles ? (
-                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", padding: "1.5rem" }}>
-                                    <Loader2 className="animate-spin" style={{ width: "2rem", height: "2rem", color: "var(--color-turquoise)" }} />
-                                    <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)" }}>Dokumente werden übermittelt…</p>
-                                    <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>{pendingFiles.length} Datei{pendingFiles.length !== 1 ? "en" : ""}</p>
-                                  </div>
-                                ) : uploadResults.length > 0 ? (
-                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                                    {uploadResults.map((r, idx) => (
-                                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", background: r.status === "ok" ? "rgba(80,122,166,0.05)" : "rgba(220,38,38,0.05)" }}>
-                                        {r.status === "ok"
-                                          ? <Check style={{ width: "1rem", height: "1rem", color: "var(--color-turquoise)", flexShrink: 0 }} />
-                                          : <span style={{ width: "1rem", height: "1rem", color: "rgba(220,38,38,0.8)", flexShrink: 0, fontSize: "1rem", lineHeight: 1 }}>!</span>}
-                                        <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", flex: 1 }}>{r.name}</span>
-                                        <span style={{ fontSize: "0.6875rem", color: r.status === "ok" ? "var(--color-turquoise)" : "rgba(220,38,38,0.8)" }}>
-                                          {r.status === "ok" ? "Übermittelt" : "Fehler"}
-                                        </span>
-                                      </div>
-                                    ))}
-                                    {uploadResults.every(r => r.status === "ok") && (
-                                      <div style={{ textAlign: "center", padding: "1rem 0" }}>
-                                        <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
-                                          <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
-                                        </div>
-                                        <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Antrag vollständig eingereicht</p>
-                                        <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.6, maxWidth: "360px", margin: "0 auto 1rem" }}>
-                                          YouLend prüft jetzt Ihre Unterlagen. Sie erhalten Ihr Angebot in der Regel innerhalb von 24 Stunden — direkt hier in Ihrem Dashboard.
-                                        </p>
-                                        <button type="button" onClick={() => window.location.href = "/plattform"}
-                                          className="btn btn-primary btn-md" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
-                                          Zurück zum Marktplatz <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <>
-                                    {/* File list */}
-                                    {pendingFiles.length > 0 && (
-                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "0.75rem" }}>
-                                        {pendingFiles.map((f, idx) => (
-                                          <div key={f.name + f.size} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
-                                            <span style={{ fontSize: "0.8125rem", color: "var(--color-dark)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                                            <span style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
-                                            <button type="button" onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}
-                                              style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem", color: "var(--color-subtle)", fontSize: "1rem", lineHeight: 1 }}>×</button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
+                                // 2. Forward to provider
+                                if (providerSlug === "youlend") {
+                                  const formData = new FormData();
+                                  formData.append("application_id", submittedAppId);
+                                  files.forEach(f => formData.append("files", f));
+                                  await supabase.functions.invoke("provider-youlend", { body: formData });
+                                } else if (providerSlug === "qred") {
+                                  const filesMeta = files.map(f => ({ filename: f.name, contentType: f.type || "application/pdf" }));
+                                  const { data: result } = await supabase.functions.invoke("provider-qred", {
+                                    body: { action: "upload", application_id: submittedAppId, extra: { files: filesMeta } },
+                                  });
+                                  if (result?.data?.uploadUrls) {
+                                    for (const urlInfo of result.data.uploadUrls) {
+                                      const file = files.find(f => f.name === urlInfo.filename);
+                                      if (file) await fetch(urlInfo.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/pdf" } });
+                                    }
+                                  }
+                                }
 
-                                    {/* Drop zone */}
-                                    <label
-                                      style={{
-                                        display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-                                        padding: "0.75rem 1rem", borderRadius: "0.625rem",
-                                        border: "2px dashed var(--color-border)", cursor: "pointer",
-                                        fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-subtle)",
-                                        transition: "all 0.2s",
-                                      }}
-                                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--color-turquoise)"; e.currentTarget.style.background = "rgba(80,122,166,0.03)"; }}
-                                      onDragLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.background = "none"; }}
-                                      onDrop={e => {
-                                        e.preventDefault();
-                                        e.currentTarget.style.borderColor = "var(--color-border)";
-                                        e.currentTarget.style.background = "none";
-                                        addFiles(Array.from(e.dataTransfer.files));
-                                      }}
-                                    >
-                                      <input type="file" accept=".pdf" multiple style={{ display: "none" }}
-                                        onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ""; }} />
-                                      <Upload style={{ width: "1rem", height: "1rem" }} />
-                                      {pendingFiles.length > 0 ? "Weitere Dateien hinzufügen" : "PDF-Dateien auswählen oder hierher ziehen"}
-                                    </label>
+                                // 3. Mark as uploaded
+                                setDocUploaded(prev => ({
+                                  ...prev,
+                                  [docType]: [...(prev[docType] || []), ...files.map(f => ({ name: f.name, file_path: `${docType}/${submittedAppId}/${f.name}`, created_at: new Date().toISOString() }))],
+                                }));
+                                setDocFiles(prev => ({ ...prev, [docType]: [] }));
+                              } catch (err) {
+                                console.error(`[upload ${docType}]`, err);
+                              } finally {
+                                setUploadingDocType(null);
+                              }
+                            }
 
-                                    {/* Submit button */}
-                                    {pendingFiles.length > 0 && (
-                                      <button type="button" onClick={submitFiles}
-                                        className="btn btn-primary btn-md"
-                                        style={{ width: "100%", marginTop: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
-                                        {pendingFiles.length} Dokument{pendingFiles.length !== 1 ? "e" : ""} übermitteln <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
-                                      </button>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                                ); })()}
+                            async function sendExistingDocsToProvider() {
+                              if (!submittedAppId) return;
+                              setUploadingDocType("__sending__");
+                              try {
+                                // Collect all valid file paths from docUploaded
+                                const allPaths: string[] = [];
+                                for (const doc of requiredDocs) {
+                                  const valid = (docUploaded[doc.key] || []).filter(f => !f.valid_until || new Date(f.valid_until) > new Date());
+                                  allPaths.push(...valid.map(f => f.file_path));
+                                }
+                                // Download files from Storage and forward to provider
+                                const filesToSend: File[] = [];
+                                for (const path of allPaths) {
+                                  const { data } = await supabase.storage.from("documents").download(path);
+                                  if (data) {
+                                    const name = path.split("/").pop() || "document";
+                                    filesToSend.push(new File([data], name, { type: data.type }));
+                                  }
+                                }
+                                if (filesToSend.length > 0) {
+                                  if (providerSlug === "youlend") {
+                                    const formData = new FormData();
+                                    formData.append("application_id", submittedAppId);
+                                    filesToSend.forEach(f => formData.append("files", f));
+                                    await supabase.functions.invoke("provider-youlend", { body: formData });
+                                  } else if (providerSlug === "qred") {
+                                    const filesMeta = filesToSend.map(f => ({ filename: f.name, contentType: f.type || "application/pdf" }));
+                                    const { data: result } = await supabase.functions.invoke("provider-qred", {
+                                      body: { action: "upload", application_id: submittedAppId, extra: { files: filesMeta } },
+                                    });
+                                    if (result?.data?.uploadUrls) {
+                                      for (const urlInfo of result.data.uploadUrls) {
+                                        const file = filesToSend.find(f => f.name === urlInfo.filename);
+                                        if (file) await fetch(urlInfo.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/pdf" } });
+                                      }
+                                    }
+                                  }
+                                }
+                              } catch (err) {
+                                console.error("[send existing docs]", err);
+                              } finally {
+                                setUploadingDocType(null);
+                              }
+                            }
 
-                              <div style={{ padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", textAlign: "center" }}>
-                                <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.6 }}>
-                                  Nach Abschluss der Bankverifizierung erhalten Sie Ihr Angebot in der Regel innerhalb von <strong style={{ color: "var(--color-dark)" }}>24 Stunden</strong> — direkt hier in Ihrem Dashboard.
+                            async function uploadAllDocs() {
+                              // Upload new files first
+                              for (const doc of requiredDocs) {
+                                if (docFiles[doc.key]?.length) await uploadDocType(doc.key);
+                              }
+                              // Then send all (new + existing) to provider
+                              await sendExistingDocsToProvider();
+                              // Auto-trigger Stage 1 for YouLend
+                              if (providerSlug === "youlend" && submittedAppId) {
+                                await supabase.functions.invoke("provider-youlend", {
+                                  body: { action: "submit_stage1", application_id: submittedAppId },
+                                }).catch(err => console.error("[submit_stage1]", err));
+                              }
+                            }
+
+                            const allUploaded = requiredDocs.every(d => {
+                              const valid = (docUploaded[d.key] || []).filter(f => !f.valid_until || new Date(f.valid_until) > new Date());
+                              return valid.length > 0;
+                            });
+                            const hasAnything = allUploaded || totalPending > 0;
+
+                            return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                              <div style={{ padding: "1.25rem", background: "linear-gradient(135deg, rgba(80,122,166,0.08) 0%, rgba(155,170,40,0.08) 100%)", borderRadius: "0.75rem", textAlign: "center" }}>
+                                <p style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--color-dark)", lineHeight: 1.2, marginBottom: "0.375rem" }}>
+                                  {formatCurrency(bedarfVolume)} warten auf Sie
+                                </p>
+                                <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
+                                  Nur noch Dokumente hochladen — Auszahlung in der Regel innerhalb von <strong style={{ color: "var(--color-dark)" }}>24 Stunden</strong>.
                                 </p>
                               </div>
-                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5, textAlign: "center" }}>
-                                Ihre Bankdaten werden verschlüsselt übertragen und nur zur Prüfung Ihres Antrags verwendet.
-                              </p>
+
+                              {isYouLend && redirectUrl && (
+                                <button type="button" onClick={() => window.open(redirectUrl, "_blank")}
+                                  style={{
+                                    width: "100%", padding: "1rem", borderRadius: "0.75rem",
+                                    border: "2px solid var(--color-turquoise)", background: "#fff",
+                                    cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "1rem",
+                                  }}>
+                                  <Landmark style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)", flexShrink: 0 }} />
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)" }}>Open Banking</p>
+                                    <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>Bankdaten automatisch verifizieren — 2 Minuten</p>
+                                  </div>
+                                  <span style={{ padding: "0.125rem 0.5rem", borderRadius: "1rem", background: "rgba(80,122,166,0.08)", fontSize: "0.625rem", fontWeight: 600, color: "var(--color-turquoise)" }}>
+                                    <Zap style={{ width: "0.625rem", height: "0.625rem", display: "inline", verticalAlign: "middle" }} /> Empfohlen
+                                  </span>
+                                </button>
+                              )}
+
+                              {/* Separate upload zones per document type */}
+                              {requiredDocs.map(doc => {
+                                const pending = docFiles[doc.key] || [];
+                                const uploaded = docUploaded[doc.key] || [];
+                                const validUploaded = uploaded.filter(f => !f.valid_until || new Date(f.valid_until) > new Date());
+                                const expiredUploaded = uploaded.filter(f => f.valid_until && new Date(f.valid_until) <= new Date());
+                                const isUploading = uploadingDocType === doc.key;
+
+                                async function openDoc(filePath: string) {
+                                  const { data } = await supabase.storage.from("documents").createSignedUrl(filePath, 300);
+                                  if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                                }
+
+                                async function deleteDoc(docType: string, filePath: string, fileName: string) {
+                                  if (!confirm(`"${fileName}" wirklich löschen?`)) return;
+                                  await supabase.storage.from("documents").remove([filePath]);
+                                  await supabase.from("documents").delete().eq("file_path", filePath);
+                                  setDocUploaded(prev => ({
+                                    ...prev,
+                                    [docType]: (prev[docType] || []).filter(f => f.file_path !== filePath),
+                                  }));
+                                }
+
+                                return (
+                                  <div key={doc.key} style={{ borderRadius: "0.75rem", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                                    <div style={{ padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", background: validUploaded.length > 0 ? "rgba(80,122,166,0.04)" : "#fff" }}>
+                                      <div>
+                                        <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{doc.label}</p>
+                                        <p style={{ fontSize: "0.625rem", color: "var(--color-subtle)" }}>{doc.validity}</p>
+                                      </div>
+                                      {validUploaded.length > 0 && <Check style={{ width: "1rem", height: "1rem", color: "var(--color-turquoise)" }} />}
+                                    </div>
+
+                                    <div style={{ padding: "0 1rem 0.75rem" }}>
+                                      {/* Valid uploaded files */}
+                                      {validUploaded.map((f, idx) => (
+                                        <div key={`v-${idx}`} style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.25rem 0", fontSize: "0.75rem" }}>
+                                          <Check style={{ width: "0.75rem", height: "0.75rem", color: "var(--color-turquoise)", flexShrink: 0 }} />
+                                          <span style={{ color: "var(--color-dark)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                                          <button type="button" onClick={() => openDoc(f.file_path)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem", color: "var(--color-turquoise)", fontSize: "0.625rem", fontWeight: 600, padding: 0, flexShrink: 0 }}>
+                                            <ExternalLink style={{ width: "0.625rem", height: "0.625rem" }} /> Öffnen
+                                          </button>
+                                          <button type="button" onClick={() => deleteDoc(doc.key, f.file_path, f.name)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)", padding: 0, flexShrink: 0, display: "flex" }}>
+                                            <Trash2 style={{ width: "0.625rem", height: "0.625rem" }} />
+                                          </button>
+                                        </div>
+                                      ))}
+
+                                      {/* Expired files */}
+                                      {expiredUploaded.map((f, idx) => (
+                                        <div key={`e-${idx}`} style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.25rem 0", fontSize: "0.75rem" }}>
+                                          <span style={{ width: "0.75rem", height: "0.75rem", color: "rgba(220,38,38,0.7)", flexShrink: 0, fontSize: "0.75rem", textAlign: "center" }}>!</span>
+                                          <span style={{ color: "var(--color-subtle)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "line-through" }}>{f.name}</span>
+                                          <button type="button" onClick={() => openDoc(f.file_path)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem", color: "rgba(220,38,38,0.7)", fontSize: "0.625rem", padding: 0, flexShrink: 0 }}>
+                                            <ExternalLink style={{ width: "0.625rem", height: "0.625rem" }} /> Öffnen
+                                          </button>
+                                          <button type="button" onClick={() => deleteDoc(doc.key, f.file_path, f.name)}
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)", padding: 0, flexShrink: 0, display: "flex" }}>
+                                            <Trash2 style={{ width: "0.625rem", height: "0.625rem" }} />
+                                          </button>
+                                        </div>
+                                      ))}
+
+                                      {/* Pending files */}
+                                      {pending.map((f, idx) => (
+                                        <div key={f.name + f.size} style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.25rem 0", fontSize: "0.75rem" }}>
+                                          <span style={{ color: "var(--color-dark)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                                          <span style={{ color: "var(--color-subtle)", fontSize: "0.625rem" }}>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                                          <button type="button" onClick={() => setDocFiles(prev => ({ ...prev, [doc.key]: (prev[doc.key] || []).filter((_, j) => j !== idx) }))}
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)", fontSize: "0.875rem", lineHeight: 1, padding: 0 }}>×</button>
+                                        </div>
+                                      ))}
+
+                                      {isUploading ? (
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", padding: "0.5rem" }}>
+                                          <Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)" }} />
+                                          <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Wird hochgeladen…</span>
+                                        </div>
+                                      ) : (
+                                        <label style={{
+                                          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                                          padding: "0.375rem", borderRadius: "0.375rem", border: "1.5px dashed var(--color-border)",
+                                          cursor: "pointer", fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-subtle)",
+                                          marginTop: "0.25rem", transition: "all 0.2s",
+                                        }}
+                                          onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--color-turquoise)"; }}
+                                          onDragLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
+                                          onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--color-border)";
+                                            const valid = Array.from(e.dataTransfer.files);
+                                            setDocFiles(prev => ({ ...prev, [doc.key]: [...(prev[doc.key] || []), ...valid] }));
+                                          }}
+                                        >
+                                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv,.txt" multiple style={{ display: "none" }}
+                                            onChange={e => { const files = Array.from(e.target.files || []); setDocFiles(prev => ({ ...prev, [doc.key]: [...(prev[doc.key] || []), ...files] })); e.target.value = ""; }} />
+                                          <Upload style={{ width: "0.625rem", height: "0.625rem" }} />
+                                          {pending.length > 0 || uploaded.length > 0 ? "Weitere hinzufügen" : "Dateien auswählen"}
+                                        </label>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {/* Submit button */}
+                              {hasAnything && !uploadingDocType && (
+                                <button type="button" onClick={uploadAllDocs}
+                                  className="btn btn-primary btn-md"
+                                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  {totalPending > 0
+                                    ? <>{totalPending} neue{totalPending !== 1 ? "" : "s"} Dokument{totalPending !== 1 ? "e" : ""} hochladen &amp; übermitteln</>
+                                    : <>Dokumente an {offer.provider_name} übermitteln</>
+                                  } <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                </button>
+                              )}
+
+                              {uploadingDocType === "__sending__" && (
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "0.75rem" }}>
+                                  <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem", color: "var(--color-turquoise)" }} />
+                                  <span style={{ fontSize: "0.8125rem", color: "var(--color-subtle)" }}>Dokumente werden an {offer.provider_name} übermittelt…</span>
+                                </div>
+                              )}
+
+                              {/* All done — shown after successful send */}
+                              {allUploaded && totalPending === 0 && uploadingDocType === null && (
+                                <div style={{ textAlign: "center", padding: "0.75rem 0" }}>
+                                  <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                                    <Check style={{ width: "1.25rem", height: "1.25rem", color: "var(--color-turquoise)" }} />
+                                  </div>
+                                  <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Alle Dokumente eingereicht</p>
+                                  <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", lineHeight: 1.6, maxWidth: "360px", margin: "0 auto 1rem" }}>
+                                    Sie erhalten Ihr Angebot in der Regel innerhalb von 24 Stunden — direkt hier in Ihrem Dashboard.
+                                  </p>
+                                  <button type="button" onClick={() => window.location.href = "/plattform"}
+                                    className="btn btn-primary btn-md" style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
+                                    Zurück zum Marktplatz <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                  </button>
+                                </div>
+                              )}
+
+                              <button type="button" onClick={() => window.location.href = "/plattform"}
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem", color: "var(--color-subtle)", textDecoration: "underline", textAlign: "center", width: "100%", padding: "0.25rem 0" }}>
+                                Dokumente nicht zur Hand? Jederzeit im Dashboard nachreichen.
+                              </button>
                             </div>
+                            ); })(
                           )}
 
-                          {/* Navigation: Step 2 (Unternehmen) */}
-                          {i === 2 && (
+                          {/* Navigation: Step 3 (Unternehmen) */}
+                          {i === 3 && (
                             <div style={{ display: "flex", gap: "0.625rem", marginTop: "1.25rem" }}>
                               <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                 <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
@@ -1594,28 +1861,59 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
   const [uploading, setUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; status: string }>>([]);
 
+  const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/jpg", "image/png", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "application/csv", "text/plain"]);
+
   function addFiles(files: File[]) {
-    const pdfs = files.filter(f => f.type === "application/pdf");
+    const valid = files.filter(f => ALLOWED_TYPES.has(f.type));
     setPendingFiles(prev => {
       const existing = new Set(prev.map(f => f.name + f.size));
-      return [...prev, ...pdfs.filter(f => !existing.has(f.name + f.size))];
+      return [...prev, ...valid.filter(f => !existing.has(f.name + f.size))];
     });
   }
 
-  async function submitFiles(appId: string) {
+  async function submitFiles(appId: string, providerName: string) {
     if (pendingFiles.length === 0) return;
     setUploading(true); setUploadResults([]);
     try {
+      // 1. Save to Supabase Storage
       for (const file of pendingFiles) {
         await supabase.storage.from("documents").upload(`bank-statements/${appId}/${file.name}`, file, { upsert: true });
       }
-      const formData = new FormData();
-      formData.append("application_id", appId);
-      pendingFiles.forEach(f => formData.append("files", f));
-      const { data: result, error } = await supabase.functions.invoke("provider-youlend", { body: formData });
-      if (error) throw error;
-      if (result?.data?.uploaded) setUploadResults(result.data.uploaded);
-      else setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "ok" })));
+
+      const slug = PROVIDER_SLUGS[providerName];
+
+      if (slug === "youlend") {
+        // YouLend: multipart upload via Edge Function
+        const formData = new FormData();
+        formData.append("application_id", appId);
+        pendingFiles.forEach(f => formData.append("files", f));
+        const { data: result, error } = await supabase.functions.invoke("provider-youlend", { body: formData });
+        if (error) throw error;
+        if (result?.data?.uploaded) setUploadResults(result.data.uploaded);
+        else setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "ok" })));
+      } else if (slug === "qred") {
+        // Qred: get presigned URLs then upload directly
+        const filesMeta = pendingFiles.map(f => ({ filename: f.name, contentType: f.type || "application/pdf" }));
+        const { data: result, error } = await supabase.functions.invoke("provider-qred", {
+          body: { action: "upload", application_id: appId, extra: { files: filesMeta } },
+        });
+        if (error) throw error;
+        if (!result?.data?.uploadUrls) throw new Error("No upload URLs returned");
+
+        // Upload each file to its presigned URL
+        const uploadResults: Array<{ name: string; status: string }> = [];
+        for (const urlInfo of result.data.uploadUrls) {
+          const file = pendingFiles.find(f => f.name === urlInfo.filename);
+          if (!file) { uploadResults.push({ name: urlInfo.filename, status: "error" }); continue; }
+          try {
+            const putRes = await fetch(urlInfo.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/pdf" } });
+            uploadResults.push({ name: file.name, status: putRes.ok ? "ok" : "error" });
+          } catch { uploadResults.push({ name: file.name, status: "error" }); }
+        }
+        setUploadResults(uploadResults);
+      } else {
+        setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "ok" })));
+      }
     } catch (err) {
       console.error("[upload]", err);
       setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "error" })));
@@ -1634,7 +1932,7 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
           const isYouLend = app.provider_name === "YouLend";
           const meta = app.metadata || {};
           const hasOpenBanking = !!(meta as any).open_banking_url;
-          const showUpload = isYouLend && ["inquired", "new", "product_selected"].includes(app.status);
+          const showUpload = ["inquired", "new", "product_selected"].includes(app.status) && (isYouLend || app.provider_name === "Qred Bank");
           const hasOffers = isYouLend && app.status === "offer_received";
           const ylOffers = (meta as any).offers as Array<{ OfferId: string; YouWillGet: string; YouWillRepay: string; Sweep: string; CurrencyISOCode: string }> | undefined;
           const showActions = showUpload || hasOffers;
@@ -1786,12 +2084,12 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
                         onDragLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
                         onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--color-border)"; addFiles(Array.from(e.dataTransfer.files)); }}
                       >
-                        <input type="file" accept=".pdf" multiple style={{ display: "none" }} onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ""; }} />
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv,.txt" multiple style={{ display: "none" }} onChange={e => { addFiles(Array.from(e.target.files || [])); e.target.value = ""; }} />
                         <Upload style={{ width: "0.75rem", height: "0.75rem" }} />
-                        {pendingFiles.length > 0 ? "Weitere hinzufügen" : "PDF auswählen oder hierher ziehen"}
+                        {pendingFiles.length > 0 ? "Weitere hinzufügen" : "Dateien auswählen oder hierher ziehen"}
                       </label>
                       {pendingFiles.length > 0 && (
-                        <button type="button" onClick={() => submitFiles(app.id)}
+                        <button type="button" onClick={() => submitFiles(app.id, app.provider_name)}
                           className="btn btn-primary btn-md"
                           style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.8125rem", padding: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                           {pendingFiles.length} Dokument{pendingFiles.length !== 1 ? "e" : ""} übermitteln <ArrowRight style={{ width: "0.75rem", height: "0.75rem" }} />
@@ -2054,6 +2352,7 @@ function PlattformContent() {
 
   function handleCta(offer: Offer, amount: number, term: number) {
     trackEvent("cta_click", { provider_name: offer.provider_name, product_id: offer.product_id, amount, term });
+    setExpandedIds(new Set());
     setSelectedOffer({ offer, amount, term });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -2887,6 +3186,162 @@ function PlattformContent() {
                               {/* Tab content */}
                               {currentTab === "description" && (
                                 <div>
+                                  {/* 1. Geeignet für / Nicht geeignet für */}
+                                  {(() => {
+                                    const m = offer.metadata || {};
+                                    const suitable = (m.suitable_for as string[] | undefined) ?? [];
+                                    const notSuitable = (m.not_suitable_for as string[] | undefined) ?? [];
+                                    if (suitable.length === 0 && notSuitable.length === 0) return null;
+                                    return (
+                                      <div style={{ marginBottom: "1.75rem" }} className="suitability-grid">
+                                        {suitable.length > 0 && (
+                                          <div>
+                                            <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Geeignet für</p>
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                                              {suitable.map((s, idx) => (
+                                                <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-dark)" }}>
+                                                  <Check style={{ width: "0.75rem", height: "0.75rem", color: "#16a34a", flexShrink: 0, marginTop: "0.0625rem" }} />
+                                                  <span>{s}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {notSuitable.length > 0 && (
+                                          <div>
+                                            <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Nicht geeignet für</p>
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                                              {notSuitable.map((s, idx) => (
+                                                <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                                                  <XCircle style={{ width: "0.75rem", height: "0.75rem", color: "rgba(220,38,38,0.6)", flexShrink: 0, marginTop: "0.0625rem" }} />
+                                                  <span>{s}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* 2. Dokumentenanforderungen — Qred */}
+                                  {offer.provider_name === "Qred Bank" && (
+                                    <div style={{ marginBottom: "1.75rem" }}>
+                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
+                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "1rem" }}>
+                                        Je nach Kreditbetrag und Rechtsform werden unterschiedliche Dokumente benötigt:
+                                      </p>
+                                      <div style={{ overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "0.6875rem" }}>
+                                          <thead>
+                                            <tr>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "left", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem", borderTopLeftRadius: "0.5rem" }}></th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem" }}>GmbH, UG, AG, KG, OHG, PartG</th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem", borderTopRightRadius: "0.5rem" }}>Einzelunternehmer, e.K., GbR</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {([
+                                              { title: "≥ 5.000 €", kapital: [{ name: "Geschäftskontoauszüge", sub: "der letzten 3 Monate" }], person: [{ name: "Geschäftskontoauszüge", sub: "der letzten 3 Monate" }] },
+                                              { title: "> 25.000 €", kapital: [{ name: "Letzter Jahresabschluss", sub: "oder BWA + SuSa" }], person: [{ name: "Gewinnermittlung", sub: "oder BWA + SuSa" }] },
+                                              { title: "> 50.000 €", kapital: [{ name: "BWA + SuSa", sub: "" }, { name: "Einkommenssteuerbescheid", sub: "Antragstellender Gesellschafter" }], person: [{ name: "BWA + SuSa", sub: "" }] },
+                                              { title: "> 100.000 €", kapital: [{ name: "Vermögensaufstellung", sub: "Antragstellender Gesellschafter" }], person: [] },
+                                            ] as Array<{ title: string; kapital: Array<{ name: string; sub: string }>; person: Array<{ name: string; sub: string }> }>).map((row, rowIdx, rows) => (
+                                              <tr key={row.title} style={{ borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--color-light-bg)" : "none" }}>
+                                                <td style={{ padding: "0.5rem 0.625rem", verticalAlign: "top", background: "var(--color-light-bg)", fontWeight: 700, color: "var(--color-dark)", whiteSpace: "nowrap" }}>{row.title}</td>
+                                                <td style={{ padding: "0.5rem 0.625rem", verticalAlign: "top" }}>
+                                                  {row.kapital.map((d, i) => (
+                                                    <div key={i} style={{ marginBottom: i < row.kapital.length - 1 ? "0.375rem" : 0 }}>
+                                                      <span style={{ fontWeight: 600, color: "var(--color-turquoise)" }}>{d.name}</span>
+                                                      {d.sub && <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>{d.sub}</span>}
+                                                    </div>
+                                                  ))}
+                                                </td>
+                                                <td style={{ padding: "0.5rem 0.625rem", verticalAlign: "top" }}>
+                                                  {row.person.length > 0 ? row.person.map((d, i) => (
+                                                    <div key={i} style={{ marginBottom: i < row.person.length - 1 ? "0.375rem" : 0 }}>
+                                                      <span style={{ fontWeight: 600, color: "var(--color-turquoise)" }}>{d.name}</span>
+                                                      {d.sub && <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>{d.sub}</span>}
+                                                    </div>
+                                                  )) : <span style={{ color: "var(--color-border)" }}>—</span>}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 2. Dokumentenanforderungen — YouLend */}
+                                  {offer.provider_name === "YouLend" && (
+                                    <div style={{ marginBottom: "1.75rem" }}>
+                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
+                                      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
+                                        <Check style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)", flexShrink: 0, marginTop: "0.125rem" }} />
+                                        <div>
+                                          <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.125rem" }}>Geschäftskontoauszüge aller Konten der letzten 3 Monate</p>
+                                          <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>Als PDF-Upload oder direkt per Open Banking verifizieren.</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 2. Dokumentenanforderungen — iwoca */}
+                                  {offer.provider_name === "iwoca" && (
+                                    <div style={{ marginBottom: "1.75rem" }}>
+                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
+                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "1rem" }}>
+                                        Ihre Kontoumsätze können Sie direkt per Open Banking an uns übermitteln. Das sind die richtigen Geschäftsdokumente für Ihre Finanzierung:
+                                      </p>
+                                      <div style={{ overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "0.6875rem" }}>
+                                          <thead>
+                                            <tr>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "left", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem", borderTopLeftRadius: "0.5rem" }}></th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem" }}>1.000 € – 15.000 €</th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem" }}>15.001 € – 50.000 €</th>
+                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.5rem 0.625rem", fontWeight: 700, fontSize: "0.625rem", borderTopRightRadius: "0.5rem" }}>50.001 € – 500.000 €</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {([
+                                              { title: "Geschäftliche Kontoumsätze", sub: "Letzten 90 Tage über Open Banking oder im PDF-Format aus dem Online Banking gespeichert", cells: ["check-auto", "check", "check"] },
+                                              { title: "BWA", sub: "Der letzten 2 Geschäftsjahre und aktuelle BWA (nicht älter als 4 Monate)", cells: ["no", "no", "check"] },
+                                              { title: "Summen- und Saldenliste", sub: "Der letzten 2 Geschäftsjahre und aktuelle SuSa (nicht älter als 4 Monate)", cells: ["no", "no", "check"] },
+                                            ] as { title: string; sub: string; cells: ("check" | "no" | "check-auto")[] }[]).map(({ title, sub, cells }, rowIdx, rows) => (
+                                              <tr key={title} style={{ borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--color-light-bg)" : "none" }}>
+                                                <td style={{ padding: "0.5rem 0.625rem", verticalAlign: "top", background: "var(--color-light-bg)" }}>
+                                                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>{title}</p>
+                                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{sub}</p>
+                                                </td>
+                                                {cells.map((cell, ci) => (
+                                                  <td key={ci} style={{ padding: "0.5rem 0.625rem", textAlign: "center", verticalAlign: "middle" }}>
+                                                    {cell === "check" || cell === "check-auto" ? (
+                                                      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "0.375rem" }}>
+                                                        <div style={{ width: "1.375rem", height: "1.375rem", borderRadius: "50%", background: "var(--color-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                          <Check style={{ width: "0.875rem", height: "0.875rem", color: "#fff" }} />
+                                                        </div>
+                                                        {cell === "check-auto" && (
+                                                          <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)", textAlign: "center", lineHeight: 1.3 }}>Teils automatisiert ganz ohne Unterlagen</span>
+                                                        )}
+                                                      </div>
+                                                    ) : (
+                                                      <div style={{ width: "1.375rem", height: "1.375rem", borderRadius: "50%", border: "1.5px solid #16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                                        <div style={{ width: "0.75rem", height: "1.5px", background: "#16a34a", transform: "rotate(-45deg)" }} />
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                ))}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 3. Provider-spezifische Produktbeschreibung */}
                                   {offer.provider_name === "iwoca" ? (
                                     <div>
                                       {/* Hero box */}
@@ -2967,9 +3422,7 @@ function PlattformContent() {
                                     </div>
                                   ) : longDescription ? (
                                     <p style={{ fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.6 }}>{longDescription}</p>
-                                  ) : (
-                                    <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>Keine Produktbeschreibung hinterlegt.</p>
-                                  )}
+                                  ) : null}
                                   {productUseCases.length > 0 && (
                                     <div style={{ marginTop: "1rem" }}>
                                       <p className="offer-accordion-col-title">Geeignet für</p>
@@ -3062,76 +3515,11 @@ function PlattformContent() {
                                   <div className="offer-accordion-rows">
                                     <div className="offer-accordion-row"><span>Volumen</span><span>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</span></div>
                                     <div className="offer-accordion-row"><span>Laufzeit</span><span>{offer.min_term_months}–{offer.max_term_months} Monate</span></div>
-                                    <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `${rateStr}% p.a.`}</span></div>
+                                    <div className="offer-accordion-row"><span>{hasFeeModel ? "Gebühr" : "Zinssatz"}</span><span>{hasFeeModel ? (feeModel ?? "Gebührenbasiert") : `ab ${rateStr}% p.a.`}</span></div>
                                     {repayment && <div className="offer-accordion-row"><span>Rückzahlung</span><span>{repayment}</span></div>}
                                     {req.min_monthly_revenue_eur != null && <div className="offer-accordion-row"><span>Mindestumsatz</span><span>{(req.min_monthly_revenue_eur as number).toLocaleString("de-DE")} €/Mo.</span></div>}
                                   </div>
 
-                                  {/* iwoca: required documents table */}
-                                  {offer.provider_name === "iwoca" && (
-                                    <div style={{ marginTop: "1.75rem" }}>
-                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
-                                      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "1rem" }}>
-                                        Ihre Kontoumsätze können Sie direkt per Open Banking an uns übermitteln. Das sind die richtigen Geschäftsdokumente für Ihre Finanzierung:
-                                      </p>
-                                      <div style={{ overflowX: "auto" }}>
-                                        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "0.75rem" }}>
-                                          <thead>
-                                            <tr>
-                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "left", padding: "0.75rem 0.875rem", fontWeight: 700, borderTopLeftRadius: "0.5rem" }}></th>
-                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700 }}>1.000 € – 15.000 €</th>
-                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700 }}>15.001 € – 50.000 €</th>
-                                              <th style={{ background: "var(--color-dark)", color: "#fff", textAlign: "center", padding: "0.75rem 0.875rem", fontWeight: 700, borderTopRightRadius: "0.5rem" }}>50.001 € – 500.000 €</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {([
-                                              {
-                                                title: "Geschäftliche Kontoumsätze",
-                                                sub: "Letzten 90 Tage über Open Banking oder im PDF-Format aus dem Online Banking gespeichert",
-                                                cells: ["check-auto", "check", "check"],
-                                              },
-                                              {
-                                                title: "BWA",
-                                                sub: "Der letzten 2 Geschäftsjahre und aktuelle BWA (nicht älter als 4 Monate)",
-                                                cells: ["no", "no", "check"],
-                                              },
-                                              {
-                                                title: "Summen- und Saldenliste",
-                                                sub: "Der letzten 2 Geschäftsjahre und aktuelle SuSa (nicht älter als 4 Monate)",
-                                                cells: ["no", "no", "check"],
-                                              },
-                                            ] as { title: string; sub: string; cells: ("check" | "no" | "check-auto")[] }[]).map(({ title, sub, cells }, rowIdx, rows) => (
-                                              <tr key={title} style={{ borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--color-light-bg)" : "none" }}>
-                                                <td style={{ padding: "1rem 0.875rem", verticalAlign: "top", background: "var(--color-light-bg)" }}>
-                                                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.25rem" }}>{title}</p>
-                                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{sub}</p>
-                                                </td>
-                                                {cells.map((cell, ci) => (
-                                                  <td key={ci} style={{ padding: "1rem 0.875rem", textAlign: "center", verticalAlign: "middle" }}>
-                                                    {cell === "check" || cell === "check-auto" ? (
-                                                      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "0.375rem" }}>
-                                                        <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", background: "var(--color-dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                          <Check style={{ width: "0.875rem", height: "0.875rem", color: "#fff" }} />
-                                                        </div>
-                                                        {cell === "check-auto" && (
-                                                          <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)", textAlign: "center", lineHeight: 1.3 }}>Teils automatisiert ganz ohne Unterlagen</span>
-                                                        )}
-                                                      </div>
-                                                    ) : (
-                                                      <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", border: "1.5px solid #16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                                                        <div style={{ width: "0.75rem", height: "1.5px", background: "#16a34a", transform: "rotate(-45deg)" }} />
-                                                      </div>
-                                                    )}
-                                                  </td>
-                                                ))}
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               )}
                             </div>
