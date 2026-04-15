@@ -976,7 +976,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                 </button>
               </form>
               <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5, marginTop: "1rem" }}>
-                Mit der Anmeldung bestätige ich, dass ich die <a href="/datenschutz" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzbestimmungen</a> zur Kenntnis genommen habe.
+                Mit der Anmeldung bestätige ich, dass ich die <a href="/agb" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und die <a href="/datenschutz" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzbestimmungen</a> zur Kenntnis genommen habe.
               </p>
             </>
           )}
@@ -3467,33 +3467,35 @@ function PlattformContent() {
                                         Jetzt anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                       </button>
                                     </div>
-                                  ) : offer.provider_name === "YouLend" ? (
-                                    <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
-                                      <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Komplett digitaler Antrag</h3>
-                                      <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.75rem" }}>Geld auf dem Konto innerhalb von 24–48 Stunden.</p>
-                                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr auto 1fr", gap: "0.875rem", alignItems: "start", padding: "1rem 0", marginBottom: "1.5rem" }}>
+                                  ) : offer.provider_name === "YouLend" || offer.provider_name === "Qred Bank" ? (
+                                    <div style={{ padding: "0.5rem 0" }}>
+                                      <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.125rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem", textAlign: "center" }}>So einfach erhalten Sie Ihr Geld</h3>
+                                      <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginBottom: "1.5rem", textAlign: "center" }}>6 Schritte bis zur Auszahlung.</p>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem", maxWidth: "440px", margin: "0 auto 1.5rem" }}>
                                         {([
-                                          { num: "1", title: "Anfrage stellen", sub: "Daten bei LiQiNow ausfüllen" },
-                                          { num: "2", title: "Antrag bestätigen", sub: "Direkt bei YouLend" },
-                                          { num: "3", title: "Antrag abschließen", sub: "Unterlagen hochladen" },
-                                          { num: "4", title: "Geld erhalten", sub: "Innerhalb von 24h" },
-                                        ]).flatMap(({ num, title, sub }, idx, arr) => [
-                                          <div key={num} style={{ textAlign: "center" }}>
-                                            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.5rem", fontSize: "0.875rem", fontWeight: 700 }}>{num}</div>
-                                            <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)" }}>{title}</p>
-                                            <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.125rem", lineHeight: 1.4 }}>{sub}</p>
-                                          </div>,
-                                          ...(idx < arr.length - 1 ? [<div key={`arrow-${idx}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: "0.875rem" }}><ArrowRight style={{ width: "1rem", height: "1rem", color: "var(--color-border)" }} /></div>] : []),
-                                        ])}
+                                          { num: "1", title: "Papierlosen Antrag ausfüllen" },
+                                          { num: "2", title: "Wirtschaftliche Dokumente hochladen" },
+                                          { num: "3", title: "Angebot erhalten" },
+                                          { num: "4", title: "Angebot annehmen" },
+                                          { num: "5", title: "KYC & Online-Vertragsunterzeichnung" },
+                                          { num: "6", title: "Auszahlung am gleichen Tag" },
+                                        ]).map(({ num, title }) => (
+                                          <div key={num} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                            <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "50%", background: "var(--color-dark)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}>{num}</div>
+                                            <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-dark)" }}>{title}</p>
+                                          </div>
+                                        ))}
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
-                                        className="btn btn-primary btn-md"
-                                        style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
-                                      >
-                                        Jetzt anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
-                                      </button>
+                                      <div style={{ textAlign: "center" }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCta(offer, effectiveVolume, effectiveTerm)}
+                                          className="btn btn-primary btn-md"
+                                          style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                                        >
+                                          Jetzt anfragen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                        </button>
+                                      </div>
                                     </div>
                                   ) : processSteps.length > 0 ? (
                                     <ol style={{ display: "flex", flexDirection: "column", gap: "0.625rem", padding: 0, margin: 0, listStyle: "none" }}>

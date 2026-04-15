@@ -136,11 +136,10 @@ function LoginContent() {
         </form>
 
         <p style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "1.5rem", lineHeight: 1.5 }}>
-          Mit der Anmeldung stimmen Sie unseren{" "}
-          <a href="/datenschutz" style={{ color: "var(--color-dark)", textDecoration: "underline" }}>
-            Datenschutzbestimmungen
-          </a>{" "}
-          zu.
+          Mit der Anmeldung bestätige ich, dass ich die{" "}
+          <a href="/agb" target="_blank" style={{ color: "var(--color-dark)", textDecoration: "underline" }}>AGB</a>{" "}und die{" "}
+          <a href="/datenschutz" target="_blank" style={{ color: "var(--color-dark)", textDecoration: "underline" }}>Datenschutzbestimmungen</a>{" "}
+          zur Kenntnis genommen habe.
         </p>
       </div>
     </div>
