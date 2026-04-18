@@ -66,10 +66,10 @@ export default function Home() {
               <div className="text-center lg:text-left self-end relative z-10">
                 <AnimateOnScroll delay={0.1}>
                   <h1 className="heading-hero">
-                    Der Working Capital Marktplatz
+                    Der Marktplatz für
                     <br />
                     <span className="text-turquoise">
-                      für den deutschen Mittelstand
+                      Working Capital Lösungen
                     </span>
                   </h1>
                 </AnimateOnScroll>

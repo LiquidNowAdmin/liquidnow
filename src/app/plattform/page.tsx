@@ -2437,7 +2437,9 @@ function PlattformContent() {
       <header className="relative z-10 bg-white border-b border-border">
         <div className="mx-auto px-4 max-w-[1400px] mx-auto py-3">
           <div className="flex items-center justify-between">
-            <Logo size="md" />
+            <a href={selectedOffer ? "/plattform" : "/"} onClick={e => { if (selectedOffer) { e.preventDefault(); setSelectedOffer(null); } }} style={{ cursor: "pointer" }}>
+              <Logo size="md" />
+            </a>
             <UserMenu />
           </div>
         </div>

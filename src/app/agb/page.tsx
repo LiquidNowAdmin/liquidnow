@@ -18,7 +18,7 @@ export default function AGBPage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <Logo size="md" />
+            <a href="/plattform"><Logo size="md" /></a>
             <div className="w-20" />
           </div>
         </div>
@@ -29,7 +29,7 @@ export default function AGBPage() {
           <div className="max-w-3xl mx-auto">
             <div className="card p-8 sm:p-12">
               <h1 className="text-3xl font-bold text-dark mb-2">Allgemeine Geschäftsbedingungen</h1>
-              <p className="text-sm text-subtle mb-8">Stand: April 2026</p>
+              <p className="text-sm text-subtle mb-8">Stand: April 2026 (überarbeitet)</p>
 
               <div className="space-y-8 text-dark text-[0.9375rem] leading-relaxed">
 
@@ -46,7 +46,7 @@ export default function AGBPage() {
                     (3) Die Plattform richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB. Die Nutzung durch Verbraucher im Sinne von § 13 BGB ist nicht vorgesehen.
                   </p>
                   <p className="mt-2">
-                    (4) Abweichende oder entgegenstehende Bedingungen des Nutzers werden nicht anerkannt, es sei denn, der Betreiber stimmt ihrer Geltung ausdrücklich schriftlich zu.
+                    (4) Abweichende oder entgegenstehende Bedingungen des Nutzers werden nicht anerkannt, es sei denn, der Betreiber stimmt ihrer Geltung ausdrücklich zu. Diese AGB gelten für alle gegenwärtigen und zukünftigen Geschäftsbeziehungen zwischen dem Nutzer und dem Betreiber.
                   </p>
                 </section>
 
@@ -130,16 +130,25 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">§ 7 Haftung</h2>
                   <p>
-                    (1) Der Betreiber haftet unbeschränkt für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit, die auf einer vorsätzlichen oder fahrlässigen Pflichtverletzung beruhen, sowie für Schäden, die auf vorsätzlichem oder grob fahrlässigem Verhalten beruhen.
+                    (1) Die Haftung des Betreibers auf Schadensersatz, gleich aus welchem Rechtsgrund, ist, soweit es dabei jeweils auf ein Verschulden ankommt, nach Maßgabe dieses § 7 beschränkt.
                   </p>
                   <p className="mt-2">
-                    (2) Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten (Kardinalpflichten) ist die Haftung auf den vertragstypisch vorhersehbaren Schaden begrenzt.
+                    (2) Der Betreiber haftet nicht im Falle einfacher Fahrlässigkeit seiner Organe, gesetzlichen Vertreter, Angestellten oder sonstigen Erfüllungsgehilfen, soweit es sich nicht um eine Verletzung vertragswesentlicher Pflichten handelt. Vertragswesentlich sind solche Pflichten, deren Erfüllung die ordnungsgemäße Durchführung des Vertrags überhaupt erst ermöglicht und auf deren Einhaltung der Vertragspartner regelmäßig vertrauen darf.
                   </p>
                   <p className="mt-2">
-                    (3) Eine weitergehende Haftung ist ausgeschlossen. Insbesondere haftet der Betreiber nicht für die Richtigkeit, Vollständigkeit oder Aktualität der auf der Plattform dargestellten Finanzierungsangebote.
+                    (3) Soweit der Betreiber gem. Abs. 2 dem Grunde nach auf Schadensersatz haftet, ist diese Haftung auf Schäden begrenzt, die der Betreiber bei Vertragsschluss als mögliche Folge einer Vertragsverletzung vorausgesehen hat oder die er bei Anwendung verkehrsüblicher Sorgfalt hätte voraussehen müssen. Die vorstehenden Regelungen dieses Abs. 3 gelten nicht im Fall vorsätzlichen oder grob fahrlässigen Verhaltens von Organmitgliedern oder leitenden Angestellten des Betreibers.
                   </p>
                   <p className="mt-2">
-                    (4) Der Betreiber haftet nicht für Handlungen oder Unterlassungen der Finanzierungspartner, insbesondere nicht für deren Kreditentscheidungen oder die Erfüllung der zwischen dem Nutzer und dem Finanzierungspartner geschlossenen Verträge.
+                    (4) Die vorstehenden Haftungsausschlüsse und -beschränkungen gelten in gleichem Umfang zugunsten der Organe, gesetzlichen Vertreter, Angestellten und sonstigen Erfüllungsgehilfen des Betreibers.
+                  </p>
+                  <p className="mt-2">
+                    (5) Soweit die auf der Plattform dargestellten Informationen von den Finanzierungspartnern stammen, haftet der Betreiber nicht für deren Richtigkeit, Vollständigkeit oder Aktualität. Dies gilt nicht für Informationen, die der Betreiber selbst erstellt oder deren Richtigkeit er ausdrücklich bestätigt hat.
+                  </p>
+                  <p className="mt-2">
+                    (6) Der Betreiber haftet nicht für Handlungen oder Unterlassungen der Finanzierungspartner, insbesondere nicht für deren Kreditentscheidungen oder die Erfüllung der zwischen dem Nutzer und dem Finanzierungspartner geschlossenen Verträge.
+                  </p>
+                  <p className="mt-2">
+                    (7) Die Einschränkungen dieses § 7 gelten nicht für die Haftung des Betreibers wegen vorsätzlichen Verhaltens, für garantierte Beschaffenheitsmerkmale, wegen Verletzung des Lebens, des Körpers oder der Gesundheit oder nach dem Produkthaftungsgesetz.
                   </p>
                 </section>
 
@@ -172,7 +181,7 @@ export default function AGBPage() {
                     (1) Das Nutzungsverhältnis wird auf unbestimmte Zeit geschlossen und beginnt mit der Registrierung auf der Plattform.
                   </p>
                   <p className="mt-2">
-                    (2) Der Nutzer kann sein Nutzerkonto jederzeit ohne Angabe von Gründen kündigen. Die Kündigung erfolgt per E-Mail an <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a> oder über die Kontoeinstellungen der Plattform. Mit Wirksamkeit der Kündigung werden die personenbezogenen Daten des Nutzers gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen.
+                    (2) Der Nutzer kann sein Nutzerkonto jederzeit ohne Angabe von Gründen kündigen. Die Kündigung erfolgt per E-Mail an <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a> oder über die Kontoeinstellungen der Plattform. Mit Wirksamkeit der Kündigung werden die personenbezogenen Daten des Nutzers gelöscht, soweit keine gesetzlichen oder vertraglichen Aufbewahrungspflichten (insbesondere steuer- und handelsrechtliche Aufbewahrungsfristen) entgegenstehen. Nach Ablauf dieser Fristen werden die Daten unverzüglich gelöscht.
                   </p>
                   <p className="mt-2">
                     (3) Der Betreiber kann das Nutzungsverhältnis mit einer Frist von zwei Wochen per E-Mail kündigen.
@@ -195,7 +204,7 @@ export default function AGBPage() {
                     (2) Der Betreiber wird den Nutzer über Änderungen mindestens zwei Wochen vor dem geplanten Inkrafttreten per E-Mail an die im Nutzerkonto hinterlegte Adresse informieren. Die Änderungen werden im Wortlaut mitgeteilt.
                   </p>
                   <p className="mt-2">
-                    (3) Der Nutzer kann den Änderungen innerhalb von zwei Wochen nach Zugang der Mitteilung widersprechen. Widerspricht der Nutzer nicht innerhalb der Frist, gelten die geänderten AGB als angenommen. Der Betreiber wird den Nutzer in der Änderungsmitteilung auf die Widerspruchsmöglichkeit, die Frist und die Folgen des Schweigens gesondert hinweisen.
+                    (3) Der Nutzer kann den Änderungen innerhalb von vier (4) Wochen nach Zugang der Mitteilung widersprechen. Widerspricht der Nutzer nicht innerhalb der Frist, gelten die geänderten AGB als angenommen. Der Betreiber wird den Nutzer in der Änderungsmitteilung auf die Widerspruchsmöglichkeit, die Frist und die Folgen des Schweigens gesondert hinweisen.
                   </p>
                   <p className="mt-2">
                     (4) Im Falle eines Widerspruchs steht beiden Parteien ein außerordentliches Kündigungsrecht zu. Bis zur Wirksamkeit der Kündigung gelten die bisherigen AGB fort.

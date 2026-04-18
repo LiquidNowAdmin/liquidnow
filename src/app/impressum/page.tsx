@@ -14,7 +14,7 @@ export default function ImpressumPage() {
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Zurück</span>
             </Link>
-            <Logo size="md" />
+            <a href="/plattform"><Logo size="md" /></a>
             <div className="w-20" />
           </div>
         </div>

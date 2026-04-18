@@ -50,7 +50,7 @@ export default function Navigation() {
       }`}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
-        <a href="/">
+        <a href="/plattform">
           <Logo size="lg" />
         </a>
 
