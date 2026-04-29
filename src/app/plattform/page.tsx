@@ -1891,6 +1891,13 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
         if (error) throw error;
         if (result?.data?.uploaded) setUploadResults(result.data.uploaded);
         else setUploadResults(pendingFiles.map(f => ({ name: f.name, status: "ok" })));
+        // Auto-trigger Stage 1 submission after successful upload
+        const allOk = !result?.data?.uploaded?.some((r: { status: string }) => r.status !== "ok");
+        if (allOk) {
+          await supabase.functions.invoke("provider-youlend", {
+            body: { action: "submit_stage1", application_id: appId },
+          }).catch(err => console.error("[submit_stage1]", err));
+        }
       } else if (slug === "qred") {
         // Qred: get presigned URLs then upload directly
         const filesMeta = pendingFiles.map(f => ({ filename: f.name, contentType: f.type || "application/pdf" }));
@@ -2094,6 +2101,30 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
                           style={{ width: "100%", marginTop: "0.5rem", fontSize: "0.8125rem", padding: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                           {pendingFiles.length} Dokument{pendingFiles.length !== 1 ? "e" : ""} übermitteln <ArrowRight style={{ width: "0.75rem", height: "0.75rem" }} />
                         </button>
+                      )}
+                      {/* Manual submit_stage1 trigger for YouLend (after Open Banking) */}
+                      {isYouLend && pendingFiles.length === 0 && (
+                        <div style={{ marginTop: "0.75rem", padding: "0.625rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5, marginBottom: "0.5rem" }}>
+                            Bankdaten bereits per Open Banking übermittelt? Antrag jetzt einreichen, um die Prüfung zu starten.
+                          </p>
+                          <button type="button" onClick={async () => {
+                              try {
+                                const { error } = await supabase.functions.invoke("provider-youlend", {
+                                  body: { action: "submit_stage1", application_id: app.id },
+                                });
+                                if (error) throw error;
+                                alert("Antrag wurde zur Prüfung eingereicht.");
+                              } catch (err) {
+                                console.error("[submit_stage1]", err);
+                                alert("Fehler beim Einreichen. Bitte später erneut versuchen.");
+                              }
+                            }}
+                            className="btn btn-secondary btn-md"
+                            style={{ width: "100%", fontSize: "0.75rem", padding: "0.375rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                            Antrag zur Prüfung einreichen <ArrowRight style={{ width: "0.625rem", height: "0.625rem" }} />
+                          </button>
+                        </div>
                       )}
                     </>
                   )}

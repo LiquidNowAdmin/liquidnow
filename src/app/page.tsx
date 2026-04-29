@@ -220,7 +220,7 @@ export default function Home() {
               <AnimateOnScroll>
                 <div className="section-header">
                   <h2>Häufig gestellte Fragen</h2>
-                  <p>Alles, was Sie über LiqiNow wissen müssen</p>
+                  <p>Alles, was Sie über LiQiNow wissen müssen</p>
                 </div>
               </AnimateOnScroll>
 

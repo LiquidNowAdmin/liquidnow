@@ -45,9 +45,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de">
+    <html lang="de" translate="no">
+      <head>
+        <meta name="google" content="notranslate" />
+      </head>
       <body
-        className={`${poppins.variable} ${inter.variable} antialiased`}
+        className={`${poppins.variable} ${inter.variable} antialiased notranslate`}
       >
         <TrackingProvider>
           {children}

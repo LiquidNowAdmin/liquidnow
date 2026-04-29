@@ -35,7 +35,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <span className="footer-text">Mo–Fr: 9:00–18:00 Uhr</span>
+                <span className="footer-text">Mo–Fr 09:00 – 20:00 Uhr</span>
               </li>
             </ul>
           </div>
@@ -45,10 +45,10 @@ export default function Footer() {
         <div className="mt-12 pt-8">
           <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
             <p className="text-xs text-white/40">
-              &copy; {new Date().getFullYear()} LiqiNow. Alle Rechte vorbehalten.
+              &copy; {new Date().getFullYear()} LiQiNow. Alle Rechte vorbehalten.
             </p>
             <p className="text-xs text-white/30 text-center md:text-right max-w-md">
-              LiqiNow ist ein Tippgeber-Service und bietet keine Finanzberatung
+              LiQiNow ist ein Tippgeber-Service und bietet keine Finanzberatung
               oder Kreditvermittlung im Sinne des §34c GewO an.
             </p>
           </div>

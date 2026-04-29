@@ -5,20 +5,22 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts"
 import { jsonResponse, errorResponse } from "../_shared/response.ts"
 import { getAccessToken, getBaseUrl, getAudience } from "../_shared/youlend-auth.ts"
 
-// YouLend status → internal application status
+// YouLend onboardingState (lowercase camelCase from /details endpoint) → internal application status
 const YOULEND_STATUS_MAP: Record<string, string> = {
-  'New':              'inquired',
-  'Stage1Incomplete': 'inquired',
-  'Stage1Submitted':  'inquired',
-  'InReview':         'inquired',
-  'OffersProvided':   'inquired',
-  'OfferAccepted':    'inquired',
-  'ContractSigned':   'signed',
-  'OnboardingComplete': 'signed',
-  'Funded':           'signed',
-  'Declined':         'rejected',
-  'Withdrawn':        'rejected',
-  'Expired':          'rejected',
+  'new':                'inquired',
+  'stage1Incomplete':   'inquired',
+  'stage1Submitted':    'inquired',
+  'inReview':           'inquired',
+  'offersProvided':     'offer_received',
+  'offerAccepted':      'offer_accepted',
+  'contractgenerated':  'offer_accepted',
+  'contractSent':       'offer_accepted',
+  'contractSigned':     'signed',
+  'onboardingComplete': 'signed',
+  'funded':             'signed',
+  'declined':           'rejected',
+  'withdrawn':          'rejected',
+  'expired':            'rejected',
 }
 
 // Internal legal_form → YouLend companyType
@@ -326,9 +328,9 @@ async function handleStatus(
   let ylStatus = 'unknown'
 
   try {
-    // Use /offers endpoint — /Leads/{id} returns 404 in YouLend's API
+    // Use /details endpoint (per Santino's email — correct status source)
     const response = await fetch(
-      `${baseUrl}/onboarding/Leads/${externalRef}/offers`,
+      `${baseUrl}/onboarding/Leads/${externalRef}/details`,
       {
         method: 'GET',
         headers: {
@@ -340,7 +342,7 @@ async function handleStatus(
 
     if (!response.ok) {
       const errorBody = await response.text()
-      console.warn(`[provider-youlend] Status check returned ${response.status} for lead ${externalRef}`)
+      console.warn(`[provider-youlend] Status check returned ${response.status} for lead ${externalRef}: ${errorBody}`)
       return jsonResponse({
         youlend_status: 'unknown',
         internal_status: data.application.status,
@@ -350,15 +352,10 @@ async function handleStatus(
     }
 
     result = await response.json()
+    console.log(`[provider-youlend] Lead details:`, JSON.stringify(result))
 
-    // Determine status from offers response
-    if (result.acceptedOffer) {
-      ylStatus = 'OfferAccepted'
-    } else if (result.providedOffers && result.providedOffers.length > 0) {
-      ylStatus = 'OffersProvided'
-    } else {
-      ylStatus = 'Stage1Submitted' // Still waiting for decision
-    }
+    // /details endpoint returns onboardingState
+    ylStatus = result.onboardingState || result.status || result.leadStatus || 'unknown'
   } catch (fetchErr) {
     console.warn(`[provider-youlend] Status fetch failed for lead ${externalRef}:`, fetchErr)
     return jsonResponse({

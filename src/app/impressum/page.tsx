@@ -40,8 +40,7 @@ export default function ImpressumPage() {
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
                   <p className="leading-relaxed">
-                    <strong>Telefon:</strong> <a href="tel:+494099999400" className="text-turquoise hover:underline">040 999 999 400</a><br />
-                    <strong>Fax:</strong> +49 40 999 999-401<br />
+                    <strong>Telefon:</strong> <a href="tel:+494099999400" className="text-turquoise hover:underline">040 999 999 400</a> (Mo–Fr 09:00 – 20:00 Uhr)<br />
                     <strong>E-Mail:</strong> <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a><br />
                     <strong>Website:</strong> <a href="https://www.liqinow.de" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.liqinow.de</a>
                   </p>
@@ -76,7 +75,7 @@ export default function ImpressumPage() {
                 <div className="pt-6">
                   <h2 className="text-xl font-semibold mb-3">Hinweis</h2>
                   <p className="leading-relaxed text-subtle">
-                    LiqiNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.
+                    LiQiNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.
                     Wir bieten keine Finanzberatung oder Kreditvermittlung im Sinne des §34c GewO an.
                   </p>
                 </div>

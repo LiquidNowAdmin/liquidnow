@@ -86,6 +86,77 @@ export default function AnfragenPage() {
   return <Suspense><AnfragenContent /></Suspense>;
 }
 
+// Inline-edit field — Enter saves, Escape cancels, Tab moves to next
+function InlineField({ label, value, onSave, type = "text", placeholder }: {
+  label: string;
+  value: string | number | null | undefined;
+  onSave: (newValue: string) => Promise<void>;
+  type?: string;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const display = value === null || value === undefined || value === "" ? "–" : String(value);
+
+  function startEdit() {
+    setDraft(value === null || value === undefined ? "" : String(value));
+    setEditing(true);
+  }
+
+  async function commit() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch (err) {
+      console.error("[InlineField]", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit().then(() => {
+        // Focus next inline field
+        const fields = Array.from(document.querySelectorAll<HTMLElement>("[data-inline-field]"));
+        const idx = fields.findIndex(f => f.contains(e.currentTarget));
+        const next = fields[idx + 1];
+        if (next) (next.querySelector("button, input") as HTMLElement | null)?.focus();
+      });
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setEditing(false);
+    }
+  }
+
+  return (
+    <div data-inline-field style={{ padding: "0.625rem 0.875rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
+      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-subtle)", whiteSpace: "nowrap" }}>{label}</span>
+      {editing ? (
+        <input
+          type={type}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={handleKey}
+          onBlur={commit}
+          autoFocus
+          placeholder={placeholder}
+          style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", textAlign: "right", border: "1px solid var(--color-turquoise)", borderRadius: "0.25rem", padding: "0.125rem 0.375rem", background: "#fff", outline: "none" }}
+        />
+      ) : (
+        <button type="button" onClick={startEdit}
+          style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 600, color: display === "–" ? "var(--color-border)" : "var(--color-dark)", textAlign: "right", background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.375rem" }}>
+          {display}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function AnfragenContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -95,6 +166,8 @@ function AnfragenContent() {
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<Application[]>([]);
   const [documents, setDocuments] = useState<Array<{ id: string; name: string; doc_type: string | null; file_path: string; file_size: number | null; mime_type: string | null; created_at: string; valid_until: string | null }>>([]);
+  const [userDetail, setUserDetail] = useState<Record<string, unknown> | null>(null);
+  const [companyDetail, setCompanyDetail] = useState<Record<string, unknown> | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
@@ -123,21 +196,43 @@ function AnfragenContent() {
     });
   }, [detailId, selected?.inquiry_id]);
 
-  // Load documents for the company
+  // Load documents + user + company details
   useEffect(() => {
-    if (!detailId || !selected) { setDocuments([]); return; }
+    if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); return; }
     const supabase = createClient();
-    // Get company_id from one of the applications, then load documents
-    supabase.rpc("admin_get_inquiry_detail", { p_inquiry_id: selected.inquiry_id }).then(async ({ data: apps }) => {
-      if (!apps?.length) return;
-      // Load documents for this company via applications
-      const appIds = apps.map((a: Application) => a.application_id);
-      const { data: docs } = await supabase
-        .from("documents")
-        .select("id, name, doc_type, file_path, file_size, mime_type, created_at, valid_until")
-        .order("created_at", { ascending: false });
-      if (docs) setDocuments(docs);
-    });
+    (async () => {
+      // Load user
+      const { data: user } = await supabase
+        .from("users")
+        .select("id, email, first_name, last_name, phone, metadata, created_at")
+        .eq("id", selected.user_id)
+        .maybeSingle();
+      if (user) setUserDetail(user);
+
+      // Load company via company_members
+      const { data: member } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", selected.user_id)
+        .limit(1)
+        .maybeSingle();
+      if (member?.company_id) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("id, name, legal_form, ust_id, hrb, crefo, website, address, industry, annual_revenue, created_at")
+          .eq("id", member.company_id)
+          .maybeSingle();
+        if (company) setCompanyDetail(company);
+
+        // Load documents for this company
+        const { data: docs } = await supabase
+          .from("documents")
+          .select("id, name, doc_type, file_path, file_size, mime_type, created_at, valid_until")
+          .eq("company_id", member.company_id)
+          .order("created_at", { ascending: false });
+        if (docs) setDocuments(docs);
+      }
+    })();
   }, [detailId, selected]);
 
   const filtered = useMemo(() => {
@@ -185,6 +280,76 @@ function AnfragenContent() {
           <InfoCard icon={Banknote} label="Volumen" value={selected.volume ? formatCurrency(selected.volume) : "–"} />
           <InfoCard icon={Clock} label="Laufzeit" value={selected.term_months ? `${selected.term_months} Monate` : "–"} />
           <InfoCard icon={FileText} label="Zweck" value={selected.purpose ?? "–"} />
+        </div>
+
+        {/* User & Company details with inline edit */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "2rem" }}>
+          {userDetail && (
+            <div>
+              <h3 style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.625rem" }}>Nutzer</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                {(() => {
+                  const supabase = createClient();
+                  const meta = (userDetail.metadata as Record<string, unknown>) || {};
+                  async function saveUser(field: string, val: string) {
+                    await supabase.from("users").update({ [field]: val || null }).eq("id", userDetail!.id as string);
+                    setUserDetail(prev => prev ? { ...prev, [field]: val || null } : prev);
+                  }
+                  async function saveUserMeta(metaField: string, val: string) {
+                    const newMeta = { ...meta, [metaField]: val || null };
+                    await supabase.from("users").update({ metadata: newMeta }).eq("id", userDetail!.id as string);
+                    setUserDetail(prev => prev ? { ...prev, metadata: newMeta } : prev);
+                  }
+                  return <>
+                    <InlineField label="Vorname" value={userDetail.first_name as string} onSave={v => saveUser("first_name", v)} />
+                    <InlineField label="Nachname" value={userDetail.last_name as string} onSave={v => saveUser("last_name", v)} />
+                    <InlineField label="E-Mail" value={userDetail.email as string} onSave={v => saveUser("email", v)} type="email" />
+                    <InlineField label="Telefon" value={userDetail.phone as string} onSave={v => saveUser("phone", v)} type="tel" />
+                    <InlineField label="Geburtsdatum" value={meta.date_of_birth as string} onSave={v => saveUserMeta("date_of_birth", v)} type="date" />
+                    <InlineField label="Straße" value={meta.street as string} onSave={v => saveUserMeta("street", v)} />
+                    <InlineField label="PLZ" value={meta.zip as string} onSave={v => saveUserMeta("zip", v)} />
+                    <InlineField label="Stadt" value={meta.city as string} onSave={v => saveUserMeta("city", v)} />
+                  </>;
+                })()}
+              </div>
+            </div>
+          )}
+
+          {companyDetail && (
+            <div>
+              <h3 style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.625rem" }}>Unternehmen</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                {(() => {
+                  const supabase = createClient();
+                  const addr = (companyDetail.address as Record<string, string>) || {};
+                  async function saveCompany(field: string, val: string) {
+                    const update: Record<string, unknown> = { [field]: val || null };
+                    if (field === "annual_revenue") update[field] = val ? parseInt(val) : null;
+                    await supabase.from("companies").update(update).eq("id", companyDetail!.id as string);
+                    setCompanyDetail(prev => prev ? { ...prev, [field]: update[field] } : prev);
+                  }
+                  async function saveAddress(addrField: string, val: string) {
+                    const newAddr = { ...addr, [addrField]: val || "" };
+                    await supabase.from("companies").update({ address: newAddr }).eq("id", companyDetail!.id as string);
+                    setCompanyDetail(prev => prev ? { ...prev, address: newAddr } : prev);
+                  }
+                  return <>
+                    <InlineField label="Name" value={companyDetail.name as string} onSave={v => saveCompany("name", v)} />
+                    <InlineField label="Rechtsform" value={companyDetail.legal_form as string} onSave={v => saveCompany("legal_form", v)} />
+                    <InlineField label="HRB" value={companyDetail.hrb as string} onSave={v => saveCompany("hrb", v)} />
+                    <InlineField label="USt-IdNr." value={companyDetail.ust_id as string} onSave={v => saveCompany("ust_id", v)} />
+                    <InlineField label="Crefo" value={companyDetail.crefo as string} onSave={v => saveCompany("crefo", v)} />
+                    <InlineField label="Website" value={companyDetail.website as string} onSave={v => saveCompany("website", v)} />
+                    <InlineField label="Branche" value={companyDetail.industry as string} onSave={v => saveCompany("industry", v)} />
+                    <InlineField label="Jahresumsatz" value={companyDetail.annual_revenue as number} onSave={v => saveCompany("annual_revenue", v)} type="number" />
+                    <InlineField label="Straße" value={addr.street} onSave={v => saveAddress("street", v)} />
+                    <InlineField label="PLZ" value={addr.zip} onSave={v => saveAddress("zip", v)} />
+                    <InlineField label="Stadt" value={addr.city} onSave={v => saveAddress("city", v)} />
+                  </>;
+                })()}
+              </div>
+            </div>
+          )}
         </div>
 
         <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem" }}>

@@ -36,28 +36,45 @@ const PROVIDERS: Record<string, {
     async getStatus(_baseUrl, _apiKey, externalRef) {
       const baseUrl = getBaseUrl()
       const token = await getAccessToken(getAudience('onboarding'))
-      const res = await fetch(`${baseUrl}/onboarding/Leads/${externalRef}/offers`, {
+      const res = await fetch(`${baseUrl}/onboarding/Leads/${externalRef}/details`, {
         method: "GET",
         headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error(`Status check failed: ${res.status}`)
       const data = await res.json()
-      if (data.acceptedOffer) return "OfferAccepted"
-      if (data.providedOffers && data.providedOffers.length > 0) return "OffersProvided"
-      return "Stage1Submitted"
+      const state = data.onboardingState || data.status || data.leadStatus || "unknown"
+
+      // Auto-trigger submit_stage1 if payment data is complete but state is still pre-submission
+      const preSubmitStates = ["stage1Incomplete", "stage1NotSubmitted", "new"]
+      if (data.paymentDataStepComplete === true && preSubmitStates.includes(state)) {
+        console.log(`[poll-status] Auto-triggering submit_stage1 for lead ${externalRef} (paymentData complete, state=${state})`)
+        await fetch(`${baseUrl}/onboarding/Leads/${externalRef}/submitonboarding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }).catch(err => console.error(`[poll-status] Auto-submit failed:`, err))
+        return "stage1Submitted"
+      }
+
+      return state
     },
     statusMap: {
-      Stage1Incomplete:    "inquired",
-      Stage1Submitted:     "inquired",
-      InReview:            "inquired",
-      OffersProvided:      "offer_received",
-      OfferAccepted:       "offer_accepted",
-      ContractSigned:      "signed",
-      OnboardingComplete:  "signed",
-      Funded:              "signed",
-      Declined:            "rejected",
-      Withdrawn:           "rejected",
-      Expired:             "rejected",
+      stage1Incomplete:    "inquired",
+      stage1Submitted:     "inquired",
+      inReview:            "inquired",
+      offersProvided:      "offer_received",
+      offerAccepted:       "offer_accepted",
+      contractgenerated:   "offer_accepted",
+      contractSent:        "offer_accepted",
+      contractSigned:      "signed",
+      onboardingComplete:  "signed",
+      funded:              "signed",
+      declined:            "rejected",
+      withdrawn:           "rejected",
+      expired:             "rejected",
     },
   },
 }
