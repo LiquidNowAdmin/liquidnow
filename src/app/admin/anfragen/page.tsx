@@ -134,8 +134,10 @@ function InlineField({ label, value, onSave, type = "text", placeholder }: {
   }
 
   return (
-    <div data-inline-field style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
-      <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{label}</span>
+    <div data-inline-field
+         style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: "0.5rem", padding: "0.125rem 0", minWidth: 0 }}>
+      <span style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", flexShrink: 0, whiteSpace: "nowrap" }}>{label}</span>
       {editing ? (
         <input
           type={type}
@@ -145,16 +147,147 @@ function InlineField({ label, value, onSave, type = "text", placeholder }: {
           onBlur={commit}
           autoFocus
           placeholder={placeholder}
-          style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-dark)", border: "1px solid var(--color-turquoise)", borderRadius: "0.25rem", padding: "0.25rem 0.375rem", background: "#fff", outline: "none", minHeight: "1.625rem" }}
+          style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--color-dark)",
+                   textAlign: "right", border: "1px solid var(--color-turquoise)",
+                   borderRadius: "0.25rem", padding: "0.125rem 0.25rem", background: "#fff",
+                   outline: "none", width: "11rem", flexShrink: 0 }}
         />
       ) : (
         <button type="button" onClick={startEdit}
-          className="anfragen-inline-value"
-          style={{ fontSize: "0.8125rem", fontWeight: 500, color: display === "–" ? "var(--color-border)" : "var(--color-dark)", textAlign: "left", background: "none", border: "1px solid transparent", borderRadius: "0.25rem", cursor: "text", padding: "0.25rem 0.375rem", minHeight: "1.625rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-light-bg)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          style={{ fontSize: "0.75rem", fontWeight: 500,
+                   color: display === "–" ? "var(--color-border)" : "var(--color-dark)",
+                   textAlign: "right", background: "none", border: "1px solid transparent",
+                   borderRadius: "0.25rem", cursor: "text", padding: "0.125rem 0.25rem",
+                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                   maxWidth: "12rem", transition: "background 0.1s ease" }}>
           {display}
         </button>
       )}
     </div>
+  );
+}
+
+// Empty-State für Unternehmen-Section: Website eingeben, KI extrahiert
+// Firmendaten via company-search Edge Function, dann anlegen + verknüpfen.
+function CompanyEmptyState({ userId, onCreated }: {
+  userId: string;
+  onCreated: (company: Record<string, unknown>) => void;
+}) {
+  const [website, setWebsite] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{
+    name?: string; ustId?: string; hrb?: string; website?: string;
+    address?: { street?: string; zip?: string; city?: string; country?: string };
+  } | null>(null);
+
+  const supabase = createClient();
+
+  const search = async () => {
+    if (!website.trim()) return;
+    setBusy(true); setError(null); setPreview(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/company-search`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ website: website.trim() }),
+      });
+      const json = await res.json();
+      if (!json?.success) throw new Error(json?.error || "Keine Firmendaten gefunden");
+      setPreview(json.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler bei der Suche");
+    } finally { setBusy(false); }
+  };
+
+  const accept = async () => {
+    if (!preview?.name) return;
+    setBusy(true); setError(null);
+    try {
+      const { data: userRow } = await supabase.from("users").select("tenant_id").eq("id", userId).maybeSingle();
+      const tenantId = (userRow as Record<string, unknown> | null)?.tenant_id as string | undefined;
+      if (!tenantId) throw new Error("Tenant nicht gefunden");
+      const { data: company, error: cErr } = await supabase.from("companies").insert({
+        tenant_id: tenantId,
+        name: preview.name,
+        ust_id: preview.ustId ?? null,
+        hrb: preview.hrb ?? null,
+        website: preview.website ?? website,
+        address: preview.address ?? {},
+      }).select("*").maybeSingle();
+      if (cErr || !company) throw new Error(cErr?.message || "Konnte Firma nicht anlegen");
+      const { error: mErr } = await supabase.from("company_members").insert({
+        tenant_id: tenantId,
+        user_id: userId,
+        company_id: (company as Record<string, unknown>).id as string,
+        role: "owner",
+      });
+      if (mErr) console.warn("[CompanyEmptyState] company_members insert:", mErr.message);
+      onCreated(company as Record<string, unknown>);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Anlegen");
+    } finally { setBusy(false); }
+  };
+
+  const headlineFont = { fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase" as const, letterSpacing: "0.06em", margin: 0 };
+
+  return (
+    <section className="admin-chart-card" style={{ display: "flex", flexDirection: "column", minWidth: 0, padding: "0.875rem 1rem", gap: "0.625rem" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingBottom: "0.375rem" }}>
+        <Building2 style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)" }} />
+        <h3 style={headlineFont}>Unternehmen</h3>
+        <span style={{ marginLeft: "auto", fontSize: "0.75rem", color: "var(--color-subtle)" }}>noch nicht verknüpft</span>
+      </header>
+
+      <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", margin: 0, lineHeight: 1.5 }}>
+        Trag die Firmen-Website ein — wir extrahieren Name, HRB, USt-IdNr. und Adresse automatisch.
+      </p>
+
+      <div style={{ display: "flex", gap: "0.375rem" }}>
+        <input
+          type="url"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") search(); }}
+          disabled={busy}
+          placeholder="https://example.de"
+          style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.375rem", border: "1px solid var(--color-border)", fontSize: "0.8125rem", outline: "none" }}
+        />
+        <button onClick={search} disabled={busy || !website.trim()}
+                style={{ padding: "0.375rem 0.875rem", borderRadius: "0.375rem", border: "1px solid var(--color-turquoise)", background: "var(--color-turquoise)", color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
+          {busy ? "…" : "Suchen"}
+        </button>
+      </div>
+
+      {error && <div style={{ fontSize: "0.75rem", color: "rgba(220,38,38,0.85)" }}>{error}</div>}
+
+      {preview && (
+        <div style={{ borderRadius: "0.5rem", background: "var(--color-light-bg)", padding: "0.625rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.75rem" }}>
+          <div><strong style={{ color: "var(--color-dark)" }}>{preview.name ?? "—"}</strong></div>
+          {preview.hrb && <div style={{ color: "var(--color-subtle)" }}>HRB: {preview.hrb}</div>}
+          {preview.ustId && <div style={{ color: "var(--color-subtle)" }}>USt-IdNr.: {preview.ustId}</div>}
+          {preview.address && (preview.address.street || preview.address.city) && (
+            <div style={{ color: "var(--color-subtle)" }}>
+              {[preview.address.street, [preview.address.zip, preview.address.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.375rem" }}>
+            <button onClick={accept} disabled={busy}
+                    style={{ padding: "0.3125rem 0.75rem", borderRadius: "0.375rem", border: "1px solid var(--color-turquoise)", background: "var(--color-turquoise)", color: "#fff", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+              Übernehmen + verknüpfen
+            </button>
+            <button onClick={() => setPreview(null)}
+                    style={{ padding: "0.3125rem 0.75rem", borderRadius: "0.375rem", border: "1px solid var(--color-border)", background: "transparent", fontSize: "0.75rem", color: "var(--color-subtle)", cursor: "pointer" }}>
+              Verwerfen
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -170,6 +303,7 @@ function AnfragenContent() {
   const [userDetail, setUserDetail] = useState<Record<string, unknown> | null>(null);
   const [companyDetail, setCompanyDetail] = useState<Record<string, unknown> | null>(null);
   const [sentEmails, setSentEmails] = useState<Array<{ id: string; recipient_email: string; subject: string; status: string; trigger_kind: string; template_slug: string | null; sent_at: string }>>([]);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
@@ -303,90 +437,89 @@ function AnfragenContent() {
           <InfoCard icon={FileText} label="Zweck" value={selected.purpose ?? "–"} />
         </div>
 
-        {/* User & Company details with inline edit — kompakt */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
-          {userDetail && (
-            <section className="anfragen-detail-card">
-              <header className="anfragen-detail-card-header">
-                <User style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)" }} />
-                <h3>Nutzer</h3>
-              </header>
-              <div className="anfragen-detail-grid">
-                {(() => {
-                  const supabase = createClient();
-                  const meta = (userDetail.metadata as Record<string, unknown>) || {};
-                  async function saveUser(field: string, val: string) {
-                    await supabase.from("users").update({ [field]: val || null }).eq("id", userDetail!.id as string);
-                    setUserDetail(prev => prev ? { ...prev, [field]: val || null } : prev);
-                  }
-                  async function saveUserMeta(metaField: string, val: string) {
-                    const newMeta = { ...meta, [metaField]: val || null };
-                    await supabase.from("users").update({ metadata: newMeta }).eq("id", userDetail!.id as string);
-                    setUserDetail(prev => prev ? { ...prev, metadata: newMeta } : prev);
-                  }
-                  return <>
-                    <InlineField label="Vorname" value={userDetail.first_name as string} onSave={v => saveUser("first_name", v)} />
-                    <InlineField label="Nachname" value={userDetail.last_name as string} onSave={v => saveUser("last_name", v)} />
-                    <div style={{ gridColumn: "span 2" }}>
-                      <InlineField label="E-Mail" value={userDetail.email as string} onSave={v => saveUser("email", v)} type="email" />
-                    </div>
-                    <InlineField label="Telefon" value={userDetail.phone as string} onSave={v => saveUser("phone", v)} type="tel" />
-                    <InlineField label="Geburtsdatum" value={meta.date_of_birth as string} onSave={v => saveUserMeta("date_of_birth", v)} type="date" />
-                    <div style={{ gridColumn: "span 2" }}>
-                      <InlineField label="Straße" value={meta.street as string} onSave={v => saveUserMeta("street", v)} />
-                    </div>
-                    <InlineField label="PLZ" value={meta.zip as string} onSave={v => saveUserMeta("zip", v)} />
-                    <InlineField label="Stadt" value={meta.city as string} onSave={v => saveUserMeta("city", v)} />
-                  </>;
-                })()}
-              </div>
-            </section>
-          )}
+        {/* User & Company details — kompakt, 2-Spalten nebeneinander */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem", marginBottom: "1.5rem" }}>
+          {userDetail && (() => {
+            const supabase = createClient();
+            const meta = (userDetail.metadata as Record<string, unknown>) || {};
+            const saveUser = async (field: string, val: string) => {
+              await supabase.from("users").update({ [field]: val || null }).eq("id", userDetail.id as string);
+              setUserDetail(prev => prev ? { ...prev, [field]: val || null } : prev);
+            };
+            const saveUserMeta = async (metaField: string, val: string) => {
+              const newMeta = { ...meta, [metaField]: val || null };
+              await supabase.from("users").update({ metadata: newMeta }).eq("id", userDetail.id as string);
+              setUserDetail(prev => prev ? { ...prev, metadata: newMeta } : prev);
+            };
+            const fullName = [userDetail.first_name, userDetail.last_name].filter(Boolean).join(" ") || "—";
 
-          {companyDetail && (
-            <section className="anfragen-detail-card">
-              <header className="anfragen-detail-card-header">
-                <Building2 style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)" }} />
-                <h3>Unternehmen</h3>
-              </header>
-              <div className="anfragen-detail-grid">
-                {(() => {
-                  const supabase = createClient();
-                  const addr = (companyDetail.address as Record<string, string>) || {};
-                  async function saveCompany(field: string, val: string) {
-                    const update: Record<string, unknown> = { [field]: val || null };
-                    if (field === "annual_revenue") update[field] = val ? parseInt(val) : null;
-                    await supabase.from("companies").update(update).eq("id", companyDetail!.id as string);
-                    setCompanyDetail(prev => prev ? { ...prev, [field]: update[field] } : prev);
-                  }
-                  async function saveAddress(addrField: string, val: string) {
-                    const newAddr = { ...addr, [addrField]: val || "" };
-                    await supabase.from("companies").update({ address: newAddr }).eq("id", companyDetail!.id as string);
-                    setCompanyDetail(prev => prev ? { ...prev, address: newAddr } : prev);
-                  }
-                  return <>
-                    <div style={{ gridColumn: "span 2" }}>
-                      <InlineField label="Name" value={companyDetail.name as string} onSave={v => saveCompany("name", v)} />
-                    </div>
-                    <InlineField label="Rechtsform" value={companyDetail.legal_form as string} onSave={v => saveCompany("legal_form", v)} />
-                    <InlineField label="HRB" value={companyDetail.hrb as string} onSave={v => saveCompany("hrb", v)} />
-                    <InlineField label="USt-IdNr." value={companyDetail.ust_id as string} onSave={v => saveCompany("ust_id", v)} type="text" />
-                    <InlineField label="Crefo" value={companyDetail.crefo as string} onSave={v => saveCompany("crefo", v)} />
-                    <InlineField label="Branche" value={companyDetail.industry as string} onSave={v => saveCompany("industry", v)} />
-                    <InlineField label="Jahresumsatz" value={companyDetail.annual_revenue as number} onSave={v => saveCompany("annual_revenue", v)} type="number" />
-                    <div style={{ gridColumn: "span 2" }}>
-                      <InlineField label="Website" value={companyDetail.website as string} onSave={v => saveCompany("website", v)} />
-                    </div>
-                    <div style={{ gridColumn: "span 2" }}>
-                      <InlineField label="Straße" value={addr.street} onSave={v => saveAddress("street", v)} />
-                    </div>
-                    <InlineField label="PLZ" value={addr.zip} onSave={v => saveAddress("zip", v)} />
-                    <InlineField label="Stadt" value={addr.city} onSave={v => saveAddress("city", v)} />
-                  </>;
-                })()}
-              </div>
-            </section>
+            return (
+              <section className="admin-chart-card" style={{ display: "flex", flexDirection: "column", minWidth: 0, padding: "0.875rem 1rem" }}>
+                <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingBottom: "0.375rem", marginBottom: "0.25rem", minWidth: 0 }}>
+                  <User style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)", flexShrink: 0 }} />
+                  <h3 style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0, flexShrink: 0 }}>Nutzer</h3>
+                  <span style={{ marginLeft: "auto", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{fullName}</span>
+                </header>
+                <InlineField label="Vorname" value={userDetail.first_name as string} onSave={v => saveUser("first_name", v)} />
+                <InlineField label="Nachname" value={userDetail.last_name as string} onSave={v => saveUser("last_name", v)} />
+                <InlineField label="E-Mail" value={userDetail.email as string} onSave={v => saveUser("email", v)} type="email" />
+                <InlineField label="Telefon" value={userDetail.phone as string} onSave={v => saveUser("phone", v)} type="tel" />
+                <InlineField label="Geburtsdatum" value={meta.date_of_birth as string} onSave={v => saveUserMeta("date_of_birth", v)} type="date" />
+                <InlineField label="Straße" value={meta.street as string} onSave={v => saveUserMeta("street", v)} />
+                <InlineField label="PLZ / Stadt" value={[meta.zip, meta.city].filter(Boolean).join(" ") as string}
+                  onSave={async v => {
+                    const [zip, ...rest] = v.split(" ");
+                    await saveUserMeta("zip", zip || "");
+                    await saveUserMeta("city", rest.join(" ") || "");
+                  }} />
+              </section>
+            );
+          })()}
+
+          {!companyDetail && selected && (
+            <CompanyEmptyState userId={selected.user_id} onCreated={(c) => setCompanyDetail(c)} />
           )}
+          {companyDetail && (() => {
+            const supabase = createClient();
+            const addr = (companyDetail.address as Record<string, string>) || {};
+            const saveCompany = async (field: string, val: string) => {
+              const update: Record<string, unknown> = { [field]: val || null };
+              if (field === "annual_revenue") update[field] = val ? parseInt(val) : null;
+              await supabase.from("companies").update(update).eq("id", companyDetail.id as string);
+              setCompanyDetail(prev => prev ? { ...prev, [field]: update[field] } : prev);
+            };
+            const saveAddress = async (addrField: string, val: string) => {
+              const newAddr = { ...addr, [addrField]: val || "" };
+              await supabase.from("companies").update({ address: newAddr }).eq("id", companyDetail.id as string);
+              setCompanyDetail(prev => prev ? { ...prev, address: newAddr } : prev);
+            };
+            const headline = [companyDetail.name, companyDetail.legal_form].filter(Boolean).join(" ") || "—";
+
+            return (
+              <section className="admin-chart-card" style={{ display: "flex", flexDirection: "column", minWidth: 0, padding: "0.875rem 1rem" }}>
+                <header style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingBottom: "0.375rem", marginBottom: "0.25rem", minWidth: 0 }}>
+                  <Building2 style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)", flexShrink: 0 }} />
+                  <h3 style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0, flexShrink: 0 }}>Unternehmen</h3>
+                  <span style={{ marginLeft: "auto", fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{headline as string}</span>
+                </header>
+                <InlineField label="Name" value={companyDetail.name as string} onSave={v => saveCompany("name", v)} />
+                <InlineField label="Rechtsform" value={companyDetail.legal_form as string} onSave={v => saveCompany("legal_form", v)} />
+                <InlineField label="HRB" value={companyDetail.hrb as string} onSave={v => saveCompany("hrb", v)} />
+                <InlineField label="USt-IdNr." value={companyDetail.ust_id as string} onSave={v => saveCompany("ust_id", v)} />
+                <InlineField label="Crefo" value={companyDetail.crefo as string} onSave={v => saveCompany("crefo", v)} />
+                <InlineField label="Branche" value={companyDetail.industry as string} onSave={v => saveCompany("industry", v)} />
+                <InlineField label="Jahresumsatz" value={companyDetail.annual_revenue as number} onSave={v => saveCompany("annual_revenue", v)} type="number" />
+                <InlineField label="Website" value={companyDetail.website as string} onSave={v => saveCompany("website", v)} />
+                <InlineField label="Straße" value={addr.street} onSave={v => saveAddress("street", v)} />
+                <InlineField label="PLZ / Stadt" value={[addr.zip, addr.city].filter(Boolean).join(" ")}
+                  onSave={async v => {
+                    const [zip, ...rest] = v.split(" ");
+                    await saveAddress("zip", zip || "");
+                    await saveAddress("city", rest.join(" ") || "");
+                  }} />
+              </section>
+            );
+          })()}
         </div>
 
         <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem" }}>
@@ -503,50 +636,65 @@ function AnfragenContent() {
           </>
         )}
 
-        {/* Sent emails section */}
-        {sentEmails.length > 0 && (
-          <>
-            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem", marginTop: "2rem" }}>
-              Versendete E-Mails ({sentEmails.length})
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {sentEmails.map((email) => {
-                const statusColor =
-                  email.status === "sent"   ? "rgba(34, 197, 94, 0.8)"  :
-                  email.status === "failed" ? "rgba(220, 38, 38, 0.8)"  :
-                                              "rgba(107, 114, 128, 0.8)";
-                const kindLabel: Record<string, string> = {
-                  workflow:      "Auto",
-                  manual:        "Manuell",
-                  test:          "Test",
-                  transactional: "System",
-                };
-                return (
-                  <div key={email.id} className="admin-chart-card" style={{ padding: "0.75rem 1rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <Send style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)", flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {email.subject || <em>(kein Betreff)</em>}
-                        </p>
-                        <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
-                          → {email.recipient_email}
-                          {email.template_slug ? ` · ${email.template_slug}` : ""}
-                          {" · "}{formatDate(email.sent_at)}
-                        </p>
-                      </div>
-                      <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: "var(--color-subtle)", background: "rgba(107,114,128,0.08)", whiteSpace: "nowrap" }}>
-                        {kindLabel[email.trigger_kind] ?? email.trigger_kind}
-                      </span>
-                      <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: statusColor, background: "rgba(0,0,0,0.04)", whiteSpace: "nowrap" }}>
-                        {email.status}
-                      </span>
+        {/* Sent emails section — immer sichtbar, mit Empty-State und Send-Button */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "2rem", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", margin: 0 }}>
+            Versendete E-Mails {sentEmails.length > 0 && `(${sentEmails.length})`}
+          </h2>
+          <button onClick={() => setShowSendModal(true)}
+                  style={{ padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "1px solid var(--color-turquoise)", background: "var(--color-turquoise)", color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.375rem" }}>
+            <Send style={{ width: "0.875rem", height: "0.875rem" }} /> E-Mail senden
+          </button>
+        </div>
+
+        {sentEmails.length === 0 ? (
+          <div className="admin-chart-card" style={{ padding: "2rem", textAlign: "center" }}>
+            <Send style={{ width: "1.5rem", height: "1.5rem", color: "var(--color-border)", margin: "0 auto 0.5rem" }} />
+            <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", margin: 0 }}>
+              Noch keine E-Mails an diesen Lead versendet.
+            </p>
+            <p style={{ fontSize: "0.75rem", color: "var(--color-border)", marginTop: "0.25rem" }}>
+              Klick „E-Mail senden" oben um eine Mail aus deinen Templates zu schicken.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {sentEmails.map((email) => {
+              const statusColor =
+                email.status === "sent"   ? "rgba(34, 197, 94, 0.8)"  :
+                email.status === "failed" ? "rgba(220, 38, 38, 0.8)"  :
+                                            "rgba(107, 114, 128, 0.8)";
+              const kindLabel: Record<string, string> = {
+                workflow:      "Auto",
+                manual:        "Manuell",
+                test:          "Test",
+                transactional: "System",
+              };
+              return (
+                <div key={email.id} className="admin-chart-card" style={{ padding: "0.75rem 1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <Send style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)", flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {email.subject || <em>(kein Betreff)</em>}
+                      </p>
+                      <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                        → {email.recipient_email}
+                        {email.template_slug ? ` · ${email.template_slug}` : ""}
+                        {" · "}{formatDate(email.sent_at)}
+                      </p>
                     </div>
+                    <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: "var(--color-subtle)", background: "rgba(107,114,128,0.08)", whiteSpace: "nowrap" }}>
+                      {kindLabel[email.trigger_kind] ?? email.trigger_kind}
+                    </span>
+                    <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: statusColor, background: "rgba(0,0,0,0.04)", whiteSpace: "nowrap" }}>
+                      {email.status}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          </>
+                </div>
+              );
+            })}
+          </div>
         )}
       </>
     );

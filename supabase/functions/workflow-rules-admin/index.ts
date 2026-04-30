@@ -9,6 +9,33 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 
+// Enrich rows with `link_id`: for inquiries/users it's the entity_id itself,
+// for applications we look up the inquiry_id (Detail-View an /admin/anfragen?id=
+// erwartet entweder inquiry_id oder user_id).
+async function enrichWithLinkIds<T extends { entity_type: string | null; entity_id: string | null }>(
+  rows: T[],
+  sb: ReturnType<typeof createServiceClient>,
+): Promise<Array<T & { link_id: string | null }>> {
+  if (!rows.length) return rows.map((r) => ({ ...r, link_id: r.entity_id ?? null }));
+  const appIds = rows
+    .filter((r) => r.entity_type === 'applications' && r.entity_id)
+    .map((r) => r.entity_id as string);
+  let appMap = new Map<string, string>();
+  if (appIds.length) {
+    const { data: apps } = await sb.from('applications')
+      .select('id, inquiry_id').in('id', appIds);
+    for (const a of (apps as Array<{ id: string; inquiry_id: string | null }>) || []) {
+      if (a.inquiry_id) appMap.set(a.id, a.inquiry_id);
+    }
+  }
+  return rows.map((r) => ({
+    ...r,
+    link_id: r.entity_type === 'applications'
+      ? (r.entity_id ? appMap.get(r.entity_id) ?? null : null)
+      : r.entity_id ?? null,
+  }));
+}
+
 async function authorize(req: Request) {
   const auth = req.headers.get('authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '');
@@ -115,7 +142,8 @@ Deno.serve(async (req) => {
           .order('executed_at', { ascending: false })
           .limit(100);
         if (error) throw error;
-        return Response.json({ executions: rows || [] }, { headers });
+        const enriched = await enrichWithLinkIds((rows ?? []) as never[], sb);
+        return Response.json({ executions: enriched }, { headers });
       }
       if (action === 'list_by_rule') {
         const { data: rows, error } = await sb.from('workflow_executions')
@@ -152,7 +180,8 @@ Deno.serve(async (req) => {
           .order('sent_at', { ascending: false })
           .limit(100);
         if (error) throw error;
-        return Response.json({ sent_emails: rows || [] }, { headers });
+        const enriched = await enrichWithLinkIds((rows ?? []) as never[], sb);
+        return Response.json({ sent_emails: enriched }, { headers });
       }
       return Response.json({ error: `Unknown sent_email action: ${action}` }, { status: 400, headers });
     }

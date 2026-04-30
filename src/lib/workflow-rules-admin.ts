@@ -65,6 +65,8 @@ export type WorkflowExecution = {
   rule_id: string;
   entity_type: string;
   entity_id: string;
+  /** ID die im /admin/anfragen?id=<…> Detail-View funktioniert (inquiry_id oder user_id) */
+  link_id: string | null;
   status: "success" | "failure" | "skipped";
   error_message: string | null;
   matched_conditions: ConditionGroup;
@@ -85,6 +87,7 @@ export type SentEmail = {
   sent_at: string;
   entity_type?: string;
   entity_id?: string;
+  link_id?: string | null;
 };
 
 // ----- Rules -----

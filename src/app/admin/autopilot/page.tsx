@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, RefreshCw, Trash2, Power, Pencil, Mail, Clock, Zap, ChevronRight, Play } from "lucide-react";
+import Link from "next/link";
+import { Plus, RefreshCw, Trash2, Power, Pencil, Mail, Clock, Zap, ChevronRight, Play, ExternalLink } from "lucide-react";
 import {
   listWorkflowRules, listWorkflowExecutions, listRecentSentEmails,
   toggleWorkflowRule, deleteWorkflowRule, runTimeBasedNow,
@@ -173,6 +174,40 @@ function RulesTab({
   );
 }
 
+const ENTITY_LABEL: Record<string, string> = {
+  inquiries: "Anfrage",
+  applications: "Application",
+  users: "User",
+  companies: "Firma",
+};
+
+function EntityLink({ entityType, entityId, linkId }: {
+  entityType: string | null;
+  entityId: string | null;
+  linkId: string | null | undefined;
+}) {
+  if (!entityType || !entityId) return <span className="text-xs text-subtle">—</span>;
+  const label = ENTITY_LABEL[entityType] ?? entityType;
+  const target = linkId ?? entityId;
+  // Detail-View versteht inquiry_id und user_id direkt; für applications wird
+  // der Sender bei der Listung schon auf inquiry_id resolved (link_id).
+  if (entityType === "applications" && !linkId) {
+    // Fallback: keine Verlinkung wenn wir die inquiry_id nicht resolven konnten
+    return (
+      <span className="text-xs text-subtle">
+        {label} · {entityId.slice(0, 8)}
+      </span>
+    );
+  }
+  return (
+    <Link href={`/admin/anfragen?id=${encodeURIComponent(target)}`}
+          className="inline-flex items-center gap-1 text-xs text-turquoise hover:text-turquoise-dark hover:underline">
+      {label} · {target.slice(0, 8)}
+      <ExternalLink className="w-3 h-3" />
+    </Link>
+  );
+}
+
 function ExecutionsTab({ executions }: { executions: WorkflowExecution[] }) {
   if (executions.length === 0) return (
     <div className="p-12 rounded-xl border border-dashed border-gray-200 text-center text-sm text-subtle">
@@ -196,7 +231,9 @@ function ExecutionsTab({ executions }: { executions: WorkflowExecution[] }) {
             <tr key={e.id} className="border-t border-gray-100">
               <td className="px-4 py-3 text-xs text-subtle whitespace-nowrap">{new Date(e.executed_at).toLocaleString("de-DE")}</td>
               <td className="px-4 py-3 text-dark">{e.rule?.name ?? e.rule_id}</td>
-              <td className="px-4 py-3 text-xs text-subtle">{e.entity_type}<ChevronRight className="w-3 h-3 inline-block" />{e.entity_id.slice(0, 8)}</td>
+              <td className="px-4 py-3">
+                <EntityLink entityType={e.entity_type} entityId={e.entity_id} linkId={e.link_id} />
+              </td>
               <td className="px-4 py-3">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                   e.status === "success" ? "bg-green-100 text-green-700" :
@@ -237,6 +274,7 @@ function SentEmailsTab({ sentEmails }: { sentEmails: SentEmail[] }) {
             <th className="text-left px-4 py-3">Zeit</th>
             <th className="text-left px-4 py-3">Empfänger</th>
             <th className="text-left px-4 py-3">Betreff</th>
+            <th className="text-left px-4 py-3">Bezug</th>
             <th className="text-left px-4 py-3">Quelle</th>
             <th className="text-left px-4 py-3">Status</th>
           </tr>
@@ -246,7 +284,10 @@ function SentEmailsTab({ sentEmails }: { sentEmails: SentEmail[] }) {
             <tr key={e.id} className="border-t border-gray-100">
               <td className="px-4 py-3 text-xs text-subtle whitespace-nowrap">{new Date(e.sent_at).toLocaleString("de-DE")}</td>
               <td className="px-4 py-3 text-dark">{e.recipient_email}</td>
-              <td className="px-4 py-3 text-subtle truncate max-w-[24rem]">{e.subject}</td>
+              <td className="px-4 py-3 text-subtle truncate max-w-[20rem]">{e.subject}</td>
+              <td className="px-4 py-3">
+                <EntityLink entityType={e.entity_type ?? null} entityId={e.entity_id ?? null} linkId={e.link_id} />
+              </td>
               <td className="px-4 py-3">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${KIND_BADGE[e.trigger_kind] ?? "bg-gray-100"}`}>
                   {e.trigger_kind}
