@@ -7,10 +7,12 @@ import {
 } from "lucide-react";
 import type { Block } from "@/lib/email-renderer";
 import { VARIABLES } from "@/lib/email-renderer";
+import type { TemplateRoute } from "@/lib/email-templates-admin";
 
 type Props = {
   blocks: Block[];
   onChange: (next: Block[]) => void;
+  routes?: TemplateRoute[];
 };
 
 const BLOCK_OPTIONS: Array<{ type: Block["type"]; label: string; icon: React.ComponentType<{ className?: string }>; create: () => Block }> = [
@@ -24,7 +26,7 @@ const BLOCK_OPTIONS: Array<{ type: Block["type"]; label: string; icon: React.Com
   { type: "spacer",    label: "Abstand",      icon: Space,               create: () => ({ type: "spacer", size: "md" }) },
 ];
 
-export default function BlockEditor({ blocks, onChange }: Props) {
+export default function BlockEditor({ blocks, onChange, routes = [] }: Props) {
   const update = (i: number, patch: Partial<Block>) => {
     const next = [...blocks];
     next[i] = { ...next[i], ...patch } as Block;
@@ -60,6 +62,7 @@ export default function BlockEditor({ blocks, onChange }: Props) {
             onUp={i > 0 ? () => move(i, -1) : undefined}
             onDown={i < blocks.length - 1 ? () => move(i, 1) : undefined}
             onRemove={() => remove(i)}
+            routes={routes}
           />
           <InsertRow onInsert={(b) => insert(i + 1, b)} />
         </div>
@@ -100,13 +103,14 @@ function InsertRow({ onInsert }: { onInsert: (b: Block) => void }) {
 }
 
 function BlockCard({
-  block, onUpdate, onUp, onDown, onRemove,
+  block, onUpdate, onUp, onDown, onRemove, routes,
 }: {
   block: Block;
   onUpdate: (p: Partial<Block>) => void;
   onUp?: () => void;
   onDown?: () => void;
   onRemove: () => void;
+  routes: TemplateRoute[];
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
@@ -119,13 +123,13 @@ function BlockCard({
         </div>
       </div>
       <div className="p-3">
-        <BlockBody block={block} onUpdate={onUpdate} />
+        <BlockBody block={block} onUpdate={onUpdate} routes={routes} />
       </div>
     </div>
   );
 }
 
-function BlockBody({ block, onUpdate }: { block: Block; onUpdate: (p: Partial<Block>) => void }) {
+function BlockBody({ block, onUpdate, routes }: { block: Block; onUpdate: (p: Partial<Block>) => void; routes: TemplateRoute[] }) {
   switch (block.type) {
     case "heading":
       return (
@@ -145,13 +149,44 @@ function BlockBody({ block, onUpdate }: { block: Block; onUpdate: (p: Partial<Bl
       return <TextWithVariablePicker value={block.text} onChange={(text) => onUpdate({ text } as never)} multiline placeholder="Text…" />;
     case "button":
       return (
-        <div className="grid gap-2 md:grid-cols-2">
-          <input value={block.label} onChange={(e) => onUpdate({ label: e.target.value } as never)}
-                 placeholder="Button-Text"
-                 className="px-3 py-2 rounded border border-gray-200 text-sm" />
-          <input value={block.url} onChange={(e) => onUpdate({ url: e.target.value } as never)}
-                 placeholder="https://..."
-                 className="px-3 py-2 rounded border border-gray-200 text-sm font-mono" />
+        <div className="space-y-2">
+          <div className="grid gap-2 md:grid-cols-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Button-Text</label>
+              <input value={block.label} onChange={(e) => onUpdate({ label: e.target.value } as never)}
+                     placeholder="z. B. Jetzt vergleichen"
+                     className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Ziel-URL</label>
+              <input value={block.url} onChange={(e) => onUpdate({ url: e.target.value } as never)}
+                     placeholder="{{link.plattform}} oder https://..."
+                     className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm font-mono" />
+            </div>
+          </div>
+          {routes.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Aus Routen wählen:</label>
+              <select value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        onUpdate({ url: `{{link.${e.target.value}}}` } as never);
+                        e.target.value = "";
+                      }}
+                      className="px-2 py-1.5 rounded border border-gray-200 text-xs flex-1 min-w-48">
+                <option value="">— Route wählen —</option>
+                {routes.map((r) => (
+                  <option key={r.id} value={r.key}>
+                    {r.label}{r.entity_type ? ` (${r.entity_type})` : ""}
+                  </option>
+                ))}
+              </select>
+              <a href="/admin/emails/routen" target="_blank" rel="noopener noreferrer"
+                 className="text-[10px] text-subtle hover:text-turquoise underline">
+                Routen verwalten ↗
+              </a>
+            </div>
+          )}
         </div>
       );
     case "divider":

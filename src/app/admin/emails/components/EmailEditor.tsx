@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save, Send, EyeOff, Trash2, Loader2, ArrowLeft, Mail as MailIcon,
@@ -8,8 +8,8 @@ import {
 import Link from "next/link";
 import {
   upsertEmailTemplate, publishEmailTemplate, unpublishEmailTemplate,
-  deleteEmailTemplate, sendTestEmail,
-  type EmailTemplate,
+  deleteEmailTemplate, sendTestEmail, listRoutes,
+  type EmailTemplate, type TemplateRoute,
 } from "@/lib/email-templates-admin";
 import BlockEditor from "./BlockEditor";
 import EmailPreview from "./EmailPreview";
@@ -36,6 +36,11 @@ export default function EmailEditor({ initial, isNew }: Props) {
   const [testEmail, setTestEmail] = useState("");
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [routes, setRoutes] = useState<TemplateRoute[]>([]);
+
+  useEffect(() => {
+    listRoutes().then(setRoutes).catch(() => {});
+  }, []);
 
   const update = <K extends keyof EmailTemplate>(k: K, v: EmailTemplate[K]) => {
     setT((prev) => ({ ...prev, [k]: v }));
@@ -176,7 +181,7 @@ export default function EmailEditor({ initial, isNew }: Props) {
 
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <h3 className="text-xs uppercase tracking-wide text-subtle font-semibold mb-3">Inhalt</h3>
-            <BlockEditor blocks={t.blocks} onChange={(blocks) => update("blocks", blocks)} />
+            <BlockEditor blocks={t.blocks} onChange={(blocks) => update("blocks", blocks)} routes={routes} />
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-4">
