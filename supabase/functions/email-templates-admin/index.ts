@@ -206,6 +206,53 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown attachment action: ${action}` }, { status: 400, headers });
     }
 
+    // -------------------- ROUTES --------------------
+    if (resource === 'route') {
+      if (action === 'list') {
+        const { data: rows, error } = await sb.from('template_routes')
+          .select('*')
+          .eq('tenant_id', TENANT_ID)
+          .order('is_protected', { ascending: false })
+          .order('key', { ascending: true });
+        if (error) throw error;
+        return Response.json({ routes: rows || [] }, { headers });
+      }
+      if (action === 'upsert') {
+        if (!data.key || !data.label || !data.url_template) {
+          return Response.json({ error: 'key, label, url_template required' }, { status: 400, headers });
+        }
+        const row: Record<string, unknown> = {
+          tenant_id: TENANT_ID,
+          key: data.key,
+          label: data.label,
+          url_template: data.url_template,
+          description: data.description ?? null,
+          entity_type: data.entity_type ?? null,
+          is_protected: false,
+        };
+        if (data.id) row.id = data.id;
+        const { data: out, error } = await sb.from('template_routes')
+          .upsert(row, { onConflict: 'tenant_id,key' })
+          .select('*').maybeSingle();
+        if (error) throw error;
+        return Response.json({ route: out }, { headers });
+      }
+      if (action === 'delete') {
+        if (!data.id) return Response.json({ error: 'id required' }, { status: 400, headers });
+        // Geschützte Routen können nicht gelöscht werden
+        const { data: existing } = await sb.from('template_routes')
+          .select('is_protected').eq('id', data.id).eq('tenant_id', TENANT_ID).maybeSingle();
+        if (existing?.is_protected) {
+          return Response.json({ error: 'Geschützte Route — nicht löschbar' }, { status: 400, headers });
+        }
+        const { error } = await sb.from('template_routes')
+          .delete().eq('id', data.id).eq('tenant_id', TENANT_ID);
+        if (error) throw error;
+        return Response.json({ ok: true }, { headers });
+      }
+      return Response.json({ error: `Unknown route action: ${action}` }, { status: 400, headers });
+    }
+
     return Response.json({ error: `Unknown resource: ${resource}` }, { status: 400, headers });
   } catch (err: any) {
     console.error('email-templates-admin error:', err);

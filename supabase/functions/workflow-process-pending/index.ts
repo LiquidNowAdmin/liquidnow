@@ -41,7 +41,8 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
 
   if (entityType === 'inquiries' || entityType === 'applications') {
     const { data } = await sb.from(entityType)
-      .select('user_id, company_id').eq('id', entityId).maybeSingle();
+      .select(entityType === 'applications' ? 'user_id, company_id, inquiry_id' : 'user_id, company_id')
+      .eq('id', entityId).maybeSingle();
     if (!data) return {};
     const [userRow, companyRow] = await Promise.all([
       sb.from('users').select('email, first_name, last_name').eq('id', (data as any).user_id).maybeSingle(),
@@ -54,6 +55,7 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
         last_name: (userRow.data as any)?.last_name ?? null,
       },
       company: { name: (companyRow.data as any)?.name ?? null },
+      entity: { type: entityType, id: entityId, inquiry_id: (data as any).inquiry_id ?? null },
     };
   }
 
@@ -67,9 +69,18 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
         first_name: (data as any).first_name,
         last_name: (data as any).last_name,
       },
+      entity: { type: 'users', id: entityId },
     };
   }
-  return {};
+  return { entity: { type: entityType, id: entityId } };
+}
+
+async function loadRoutes(tenantId: string): Promise<Array<{ key: string; url_template: string; entity_type?: string | null }>> {
+  const sb = createServiceClient();
+  const { data } = await sb.from('template_routes')
+    .select('key, url_template, entity_type')
+    .eq('tenant_id', tenantId);
+  return (data ?? []) as Array<{ key: string; url_template: string; entity_type?: string | null }>;
 }
 
 async function dispatchViaResend(opts: {
@@ -147,6 +158,7 @@ Deno.serve(async (req) => {
       }
 
       const ctx = await loadEntityContext(row.entity_type, row.entity_id);
+      ctx.routes = await loadRoutes(row.tenant_id);
       const values = resolveVariables(ctx);
       const recipient = ctx.recipient?.email || row.recipient_email;
 

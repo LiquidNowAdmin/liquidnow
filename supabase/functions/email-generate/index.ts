@@ -12,7 +12,14 @@ const VARIABLES_LIST = VARIABLES
   .map((v) => `- {{${v.key}}} — ${v.label} (z.B. "${v.example}")`)
   .join('\n');
 
-const SYSTEM_PROMPT = `Du bist E-Mail-Texter für LiqiNow — Working Capital Marktplatz für deutschen Mittelstand.
+function buildSystemPrompt(routes: Array<{ key: string; label: string; description: string | null; entity_type: string | null }>): string {
+  const routesList = routes.length
+    ? routes.map((r) => `- {{link.${r.key}}} — ${r.label}${r.entity_type ? ` (entity-aware: ${r.entity_type})` : ''}${r.description ? ` — ${r.description}` : ''}`).join('\n')
+    : '(keine — Routen werden vom Operator gepflegt)';
+  return SYSTEM_PROMPT_BASE.replace('{{ROUTES_LIST}}', routesList);
+}
+
+const SYSTEM_PROMPT_BASE = `Du bist E-Mail-Texter für LiqiNow — Working Capital Marktplatz für deutschen Mittelstand.
 Erstelle ein E-Mail-Template basierend auf der semantischen Beschreibung des Nutzers.
 
 ## ROLLE & RECHTLICHER RAHMEN
@@ -39,9 +46,20 @@ LiqiNow ist Tippgeber / Affiliate-Partner — KEINE §34c-Vermittlung, KEINE Ber
 Verwende diese Platzhalter im Template wo sinnvoll. Format: {{key}}.
 ${VARIABLES_LIST}
 
+## VERFÜGBARE LINK-VARIABLEN (für Button-URLs)
+{{ROUTES_LIST}}
+
+## REGEL FÜR LINKS / BUTTON-URLs (HART)
+- Verwende AUSSCHLIESSLICH {{link.<key>}} oder eine vollständig ausgeschriebene https://-URL.
+- NIEMALS Placeholder-Strings wie '<URL>', '<UNKNOWN>', 'URL_HIER', 'TBD' o.ä.
+- NIEMALS leere url-Strings im button-Block.
+- Wenn der Empfänger ein Operations-User (interne Mail) ist und es um eine Anfrage geht: nutze {{link.admin_inquiry}}
+- Wenn der Empfänger ein Kunde ist: nutze {{link.plattform}} oder {{link.wissen}}
+- Wenn unsicher: {{link.home}} ist immer gültig.
+
 WICHTIG:
 - Nutze IMMER {{recipient.salutation}} oder {{recipient.salutation_informal}} statt eigene Anrede zu schreiben.
-- Nutze KEINE Variablen die nicht in der Liste oben stehen.
+- Nutze KEINE Variablen die nicht in den obigen Listen stehen.
 - Geschäftsbrief-Footer (Impressum, Adresse, GF, HRB, Marke der DE GmbH) wird AUTOMATISCH angehängt — schreibe ihn NICHT ins Template.
 
 ## BLOCK-SCHEMA
@@ -71,9 +89,9 @@ async function authorize(req: Request) {
   const sb = createServiceClient();
   const { data: userData, error } = await sb.auth.getUser(token);
   if (error || !userData.user) return { ok: false as const, status: 401, msg: 'Invalid token' };
-  const { data: row } = await sb.from('users').select('role').eq('id', userData.user.id).maybeSingle();
+  const { data: row } = await sb.from('users').select('role, tenant_id').eq('id', userData.user.id).maybeSingle();
   if (row?.role !== 'operations') return { ok: false as const, status: 403, msg: 'operations role required' };
-  return { ok: true as const };
+  return { ok: true as const, tenantId: row.tenant_id as string };
 }
 
 function slugify(s: string): string {
@@ -98,6 +116,12 @@ Deno.serve(async (req) => {
 
   const auth = await authorize(req);
   if (!auth.ok) return Response.json({ error: auth.msg }, { status: auth.status, headers });
+
+  const sb = createServiceClient();
+  const { data: routes } = await sb.from('template_routes')
+    .select('key, label, description, entity_type')
+    .eq('tenant_id', auth.tenantId);
+  const SYSTEM_PROMPT = buildSystemPrompt((routes ?? []) as never);
 
   let body: any = {};
   try { body = await req.json(); } catch {}

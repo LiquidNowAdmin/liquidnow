@@ -69,7 +69,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Template not found' }, { status: 404, headers });
   }
 
-  // 2. Resolve variables and render
+  // 2. Routen laden und in Context geben — damit {{link.*}} resolved
+  const { data: routes } = await sb.from('template_routes')
+    .select('key, url_template, entity_type')
+    .eq('tenant_id', auth.tenantId);
+  recipientCtx.routes = (routes ?? []) as never;
+
+  // 3. Resolve variables and render
   const values = resolveVariables(recipientCtx);
   const blocks = (tpl.blocks ?? []) as Block[];
   const subject = tpl.subject

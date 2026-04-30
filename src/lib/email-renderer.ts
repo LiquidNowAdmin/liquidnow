@@ -37,6 +37,14 @@ export type Block =
 export function exampleVariableValues(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const v of VARIABLES) out[v.key] = v.example;
+  // Beispiel-Werte für gängige Routen (damit die Preview keine leeren Buttons zeigt)
+  out["link.home"] = "https://liqinow.de";
+  out["link.plattform"] = "https://liqinow.de/plattform";
+  out["link.wissen"] = "https://liqinow.de/ratgeber";
+  out["link.admin"] = "https://liqinow.de/admin";
+  out["link.admin_anfragen"] = "https://liqinow.de/admin/anfragen";
+  out["link.admin_inquiry"] = "https://liqinow.de/admin/anfragen?id=00000000-…";
+  out["entity.id"] = "00000000-0000-0000-0000-000000000000";
   return out;
 }
 

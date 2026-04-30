@@ -140,6 +140,33 @@ export async function deleteLibraryAttachment(id: string): Promise<void> {
   await callFn("email-templates-admin", { resource: "attachment", action: "delete", data: { id } });
 }
 
+// ----- Routes -----
+export type TemplateRoute = {
+  id: string;
+  key: string;
+  label: string;
+  url_template: string;
+  description: string | null;
+  entity_type: string | null;
+  is_protected: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listRoutes(): Promise<TemplateRoute[]> {
+  const r = await callFn("email-templates-admin", { resource: "route", action: "list" });
+  return r.routes || [];
+}
+
+export async function upsertRoute(data: Partial<TemplateRoute> & { key: string; label: string; url_template: string }): Promise<TemplateRoute> {
+  const r = await callFn("email-templates-admin", { resource: "route", action: "upsert", data });
+  return r.route;
+}
+
+export async function deleteRoute(id: string): Promise<void> {
+  await callFn("email-templates-admin", { resource: "route", action: "delete", data: { id } });
+}
+
 // ----- Test Send -----
 export async function sendTestEmail(opts: { template_slug: string; recipient_email?: string }): Promise<{ resend_id: string; sent_to: string }> {
   const r = await callFn("email-send", opts);

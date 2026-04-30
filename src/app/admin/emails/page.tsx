@@ -52,6 +52,9 @@ export default function EmailsAdminPage() {
           <button onClick={load} className="px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50" disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
+          <Link href="/admin/emails/routen" className="px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm inline-flex items-center gap-1.5">
+            🔗 Routen
+          </Link>
           <Link href="/admin/emails/bibliothek" className="px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm inline-flex items-center gap-1.5">
             <FolderOpen className="w-4 h-4" /> Anhang-Bibliothek
           </Link>

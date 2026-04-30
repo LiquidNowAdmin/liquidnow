@@ -47,7 +47,10 @@ const OPERATORS = [
   'greater_than', 'less_than', 'greater_than_or_equal', 'less_than_or_equal',
 ];
 
-function buildSystemPrompt(templates: Array<{ slug: string; name: string; type: string }>): string {
+function buildSystemPrompt(
+  templates: Array<{ slug: string; name: string; type: string }>,
+  routes: Array<{ key: string; label: string; entity_type: string | null }>,
+): string {
   const fieldDescriptions = Object.entries(ENTITY_FIELDS).map(([entity, fields]) =>
     `### ${entity}\n` + fields.map((f) => `- ${f.name}: ${f.description}${f.sample ? ` (z.B. ${f.sample})` : ''}`).join('\n')
   ).join('\n\n');
@@ -55,6 +58,10 @@ function buildSystemPrompt(templates: Array<{ slug: string; name: string; type: 
   const templateList = templates.length
     ? templates.map((t) => `- ${t.slug} (${t.type}): ${t.name}`).join('\n')
     : '(keine — ggf. Hinweis im name-Feld dass User erst ein Template anlegen muss)';
+
+  const routesList = routes.length
+    ? routes.map((r) => `- {{link.${r.key}}} — ${r.label}${r.entity_type ? ` (entity-aware: ${r.entity_type})` : ''}`).join('\n')
+    : '(keine)';
 
   return `Du bist Workflow-Automation-Architekt für LiqiNow (Working Capital Marktplatz für KMU).
 Aus einer freien deutschen Beschreibung baust du eine Workflow-Rule.
@@ -90,6 +97,9 @@ ${fieldDescriptions}
 
 ## VERFÜGBARE EMAIL-TEMPLATES (slugs)
 ${templateList}
+
+## VERFÜGBARE LINK-VARIABLEN (für Button-URLs in Templates)
+${routesList}
 
 ## REGELN
 - Wähle das Trigger-Type semantisch sinnvoll: "X angelegt" → record_created;
@@ -131,11 +141,12 @@ Deno.serve(async (req) => {
   if (!description) return Response.json({ error: 'description required' }, { status: 400, headers });
 
   const sb = createServiceClient();
-  const { data: tplRows } = await sb.from('email_templates')
-    .select('slug, name, type')
-    .eq('tenant_id', auth.tenantId)
-    .order('updated_at', { ascending: false });
+  const [{ data: tplRows }, { data: routeRows }] = await Promise.all([
+    sb.from('email_templates').select('slug, name, type').eq('tenant_id', auth.tenantId).order('updated_at', { ascending: false }),
+    sb.from('template_routes').select('key, label, entity_type').eq('tenant_id', auth.tenantId),
+  ]);
   const templates = (tplRows || []) as Array<{ slug: string; name: string; type: string }>;
+  const routes = (routeRows || []) as Array<{ key: string; label: string; entity_type: string | null }>;
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) return Response.json({ error: 'ANTHROPIC_API_KEY missing' }, { status: 500, headers });
@@ -150,7 +161,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 2000,
-      system: buildSystemPrompt(templates),
+      system: buildSystemPrompt(templates, routes),
       tools: [{
         name: 'submit_rule_draft',
         description: 'Liefere den Workflow-Rule-Entwurf basierend auf der User-Beschreibung.',

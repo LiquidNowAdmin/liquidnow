@@ -49,6 +49,10 @@ export type ResolveContext = {
   };
   company?: { name?: string | null };
   unsubscribe_url?: string | null;
+  /** Optional Entity-Bezug — nötig für entity-aware Route-Variablen wie {{link.admin_inquiry}} */
+  entity?: { type: string; id: string; inquiry_id?: string | null };
+  /** Routen-Map (key → url_template), wird vom workflow-process-pending Sender vorab geladen */
+  routes?: Array<{ key: string; url_template: string; entity_type?: string | null }>;
 };
 
 export function resolveVariables(ctx: ResolveContext): Record<string, string> {
@@ -68,7 +72,7 @@ export function resolveVariables(ctx: ResolveContext): Record<string, string> {
 
   const today = new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  return {
+  const out: Record<string, string> = {
     'recipient.first_name': first,
     'recipient.last_name': last,
     'recipient.full_name': fullName,
@@ -80,7 +84,22 @@ export function resolveVariables(ctx: ResolveContext): Record<string, string> {
     'tenant.url': 'https://liqinow.de',
     'unsubscribe.url': ctx.unsubscribe_url ?? 'https://liqinow.de/unsubscribe',
     'date.today': today,
+    'entity.id': ctx.entity?.id ?? '',
+    'entity.type': ctx.entity?.type ?? '',
   };
+
+  // Resolve link.<key> from routes (passed in by sender)
+  for (const route of ctx.routes ?? []) {
+    // Skip entity-aware routes if entity_type doesn't match
+    if (route.entity_type && route.entity_type !== ctx.entity?.type) continue;
+    const url = route.url_template.replace(/\{\{\s*entity\.([a-zA-Z_]+)\s*\}\}/g, (_, k) => {
+      if (k === 'id') return ctx.entity?.id ?? '';
+      if (k === 'inquiry_id') return ctx.entity?.inquiry_id ?? ctx.entity?.id ?? '';
+      return '';
+    });
+    out[`link.${route.key}`] = url;
+  }
+  return out;
 }
 
 /** Returns example values for use in admin preview (no real recipient context needed). */
