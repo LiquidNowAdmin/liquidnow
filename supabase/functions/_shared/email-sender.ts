@@ -6,7 +6,7 @@
 // diese Utility nutzen.
 //
 // Garantierte Verhalten (nicht überschreibbar von außen):
-//   - From:      "LiqiNow <info@liqinow.de>"
+//   - From:      "LiQiNow <info@liqinow.de>"
 //   - BCC:       ["platformmails@liqinow.de"]   ← lückenloses Mail-Archiv
 //   - Reply-To:  default "info@liqinow.de" (überschreibbar via opts.reply_to)
 //   - Logging:   jeder Send wird in sent_emails persistiert (für /admin/anfragen
@@ -15,7 +15,7 @@
 import { createServiceClient } from "./supabase-client.ts";
 
 const RESEND_API = 'https://api.resend.com/emails';
-const FROM = 'LiqiNow <info@liqinow.de>';
+const FROM = 'LiQiNow <info@liqinow.de>';
 const ARCHIVE_BCC = 'platformmails@liqinow.de';
 const DEFAULT_REPLY_TO = 'info@liqinow.de';
 

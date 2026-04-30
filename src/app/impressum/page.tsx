@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 import Logo from "@/components/Logo";
+import { COMPANY_INFO } from "@/lib/company-info";
 
 export const metadata = {
   title: "Impressum",
@@ -38,51 +39,55 @@ export default function ImpressumPage() {
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Angaben gemäß § 5 TMG</h2>
                   <p className="leading-relaxed">
-                    Deutsche Einkaufsfinanzierer GmbH<br />
-                    ABC-Straße 35<br />
-                    20354 Hamburg
+                    {COMPANY_INFO.legalName}<br />
+                    {COMPANY_INFO.hauptsitzStreet}<br />
+                    {COMPANY_INFO.hauptsitzZip} {COMPANY_INFO.hauptsitzCity}
                   </p>
                 </div>
 
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
                   <p className="leading-relaxed">
-                    <strong>Telefon:</strong> <a href="tel:+494099999400" className="text-turquoise hover:underline">040 999 999 400</a> (Mo–Fr 09:00 – 20:00 Uhr)<br />
-                    <strong>E-Mail:</strong> <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a><br />
-                    <strong>Website:</strong> <a href="https://www.liqinow.de" target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">www.liqinow.de</a>
+                    <strong>Telefon:</strong>{" "}
+                    <a href={`tel:${COMPANY_INFO.phoneE164}`} className="text-turquoise hover:underline">{COMPANY_INFO.phone}</a>{" "}
+                    ({COMPANY_INFO.phoneHours})<br />
+                    <strong>E-Mail:</strong>{" "}
+                    <a href={`mailto:${COMPANY_INFO.email}`} className="text-turquoise hover:underline">{COMPANY_INFO.email}</a><br />
+                    <strong>Website:</strong>{" "}
+                    <a href={COMPANY_INFO.url} target="_blank" rel="noopener noreferrer" className="text-turquoise hover:underline">{COMPANY_INFO.urlDisplay}</a>
                   </p>
                 </div>
 
                 <div>
-                  <h2 className="text-xl font-semibold mb-3">Postadresse Stuttgart</h2>
+                  <h2 className="text-xl font-semibold mb-3">Postadresse</h2>
                   <p className="leading-relaxed">
-                    Deutsche Einkaufsfinanzierer GmbH<br />
-                    Grabenstraße 28<br />
-                    70734 Fellbach
+                    {COMPANY_INFO.legalName}<br />
+                    {COMPANY_INFO.street}<br />
+                    {COMPANY_INFO.zip} {COMPANY_INFO.city}
                   </p>
                 </div>
 
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Vertretungsberechtigter</h2>
                   <p className="leading-relaxed">
-                    <strong>Geschäftsführender Gesellschafter:</strong> Thomas Auerbach
+                    <strong>{COMPANY_INFO.ceoTitle}:</strong> {COMPANY_INFO.ceo}
                   </p>
                 </div>
 
                 <div>
                   <h2 className="text-xl font-semibold mb-3">Registereintrag</h2>
                   <p className="leading-relaxed">
-                    <strong>Amtsgericht:</strong> Hamburg<br />
-                    <strong>Handelsregister:</strong> HRB 141686<br />
-                    <strong>Steuernummer:</strong> 48 / 714 / 03703<br />
-                    <strong>USt-IdNr.:</strong> DE306361948
+                    <strong>Amtsgericht:</strong> {COMPANY_INFO.court.replace(/^Amtsgericht\s/, "")}<br />
+                    <strong>Handelsregister:</strong> {COMPANY_INFO.hrb}<br />
+                    <strong>Steuernummer:</strong> {COMPANY_INFO.taxNumber}<br />
+                    <strong>USt-IdNr.:</strong> {COMPANY_INFO.ustId}
                   </p>
                 </div>
 
                 <div className="pt-6">
                   <h2 className="text-xl font-semibold mb-3">Hinweis</h2>
                   <p className="leading-relaxed text-subtle">
-                    LiQiNow ist ein Service der Deutschen Einkaufsfinanzierer GmbH und bietet einen Tippgeber-Service für Betriebsmittelkredite.
+                    {COMPANY_INFO.brandName} ist ein Service der {COMPANY_INFO.legalName} und bietet einen Tippgeber-Service für Betriebsmittelkredite.
                     Wir bieten keine Finanzberatung oder Kreditvermittlung im Sinne des §34c GewO an.
                   </p>
                 </div>

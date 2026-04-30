@@ -38,7 +38,7 @@ export const VARIABLES: VariableDef[] = [
   { key: 'application.volume',        label: 'Beantragter Betrag', description: 'Gewünschter Kreditbetrag in EUR',     example: '50.000 €',                                        source: 'company' },
   { key: 'application.term_months',   label: 'Laufzeit (Monate)', description: 'Gewünschte Laufzeit in Monaten',       example: '24',                                              source: 'company' },
   // Tenant / Plattform
-  { key: 'tenant.name',           label: 'Plattform-Name',    description: 'LiqiNow Platform-Name',                   example: 'LiqiNow',                                         source: 'tenant' },
+  { key: 'tenant.name',           label: 'Plattform-Name',    description: 'LiQiNow Platform-Name',                   example: 'LiQiNow',                                         source: 'tenant' },
   { key: 'tenant.url',            label: 'Plattform-URL',     description: 'Hauptdomain',                              example: 'https://liqinow.de',                              source: 'tenant' },
   // System
   { key: 'unsubscribe.url',       label: 'Abmelde-Link',      description: 'Newsletter-Abmelde-URL (Pflicht in Newslettern)', example: 'https://liqinow.de/unsubscribe?token=xyz', source: 'system' },
@@ -99,7 +99,7 @@ export function resolveVariables(ctx: ResolveContext): Record<string, string> {
     'application.product_name': a.product_name ?? '',
     'application.volume': formatEur(a.volume),
     'application.term_months': a.term_months != null ? String(a.term_months) : '',
-    'tenant.name': 'LiqiNow',
+    'tenant.name': 'LiQiNow',
     'tenant.url': 'https://liqinow.de',
     'unsubscribe.url': ctx.unsubscribe_url ?? 'https://liqinow.de/unsubscribe',
     'date.today': today,
@@ -234,17 +234,19 @@ function renderBlock(b: Block, values: Record<string, string>): string {
 // Geschäftsbrief-Footer (Compliance, hardcoded)
 // ============================================
 
+import { COMPANY_INFO } from './company-info.ts';
+
 const COMPANY = {
-  legalName: 'Deutsche Einkaufsfinanzierer GmbH',
-  brandName: 'LiQiNow',
-  address: 'Grabenstraße 28 · 70734 Fellbach',
-  phone: '040 999 999 400',
-  email: 'info@liqinow.de',
-  url: 'https://liqinow.de',
-  ceo: 'Thomas Auerbach',
-  court: 'Amtsgericht Hamburg',
-  hrb: 'HRB 141686',
-  ust: 'DE306361948',
+  legalName: COMPANY_INFO.legalName,
+  brandName: COMPANY_INFO.brandName,
+  address: COMPANY_INFO.address,
+  phone: COMPANY_INFO.phone,
+  email: COMPANY_INFO.email,
+  url: COMPANY_INFO.url,
+  ceo: COMPANY_INFO.ceo,
+  court: COMPANY_INFO.court,
+  hrb: COMPANY_INFO.hrb,
+  ust: COMPANY_INFO.ustId,
 };
 
 function renderFooter(opts: { type: 'newsletter' | 'transactional'; values: Record<string, string> }): string {
@@ -299,7 +301,7 @@ export function renderEmail(input: RenderInput): { html: string; text: string } 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="x-apple-disable-message-reformatting">
-  <title>LiqiNow</title>
+  <title>LiQiNow</title>
 </head>
 <body style="margin:0;padding:0;background:${COLOR.bg};font-family:'Inter',Helvetica,Arial,sans-serif;">
   ${preheader}
@@ -307,7 +309,12 @@ export function renderEmail(input: RenderInput): { html: string; text: string } 
     <tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;background:${COLOR.card};border-radius:16px;box-shadow:0 4px 20px rgba(36,54,80,0.06);">
         <tr><td style="padding:32px 32px 8px 32px;">
-          <a href="${COMPANY.url}" style="text-decoration:none;color:${COLOR.primary};font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em;">LiQiNow</a>
+          <a href="${COMPANY.url}" style="text-decoration:none;display:inline-block;">
+            <span style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1;">
+              <span style="color:#D4872C;">L</span><span style="color:#D4872C;">i</span><span style="color:#D4872C;">Q</span><span style="color:#D4872C;">i</span><span style="color:#507AA6;">Now</span>
+            </span>
+            <div style="margin-top:2px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;font-weight:500;color:#5b6478;letter-spacing:0.02em;">Deutsche Einkaufsfinanzierer</div>
+          </a>
         </td></tr>
         <tr><td style="padding:8px 32px 32px 32px;">
           ${body}
