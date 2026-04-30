@@ -109,8 +109,8 @@ function BlockCard({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+    <div className="rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100 rounded-t-xl">
         <span className="text-[10px] uppercase tracking-wide font-semibold text-subtle">{block.type}</span>
         <div className="inline-flex gap-0.5">
           {onUp && <button onClick={onUp} className="p-1 rounded hover:bg-gray-200" title="Nach oben"><ArrowUp className="w-3.5 h-3.5 text-subtle" /></button>}
@@ -252,7 +252,7 @@ function TextWithVariablePicker({
           <Sparkles className="w-3 h-3" /> Variable einfügen
         </button>
         {open && (
-          <div className="absolute z-10 mt-1 w-80 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+          <div className="absolute z-50 mt-1 w-80 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
             {VARIABLES.map((v) => (
               <button
                 key={v.key}

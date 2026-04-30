@@ -32,6 +32,11 @@ export const VARIABLES: VariableDef[] = [
   { key: 'recipient.salutation_informal', label: 'Anrede (informell)', description: 'Informelle Anrede',                example: 'Hallo Anna',                                       source: 'recipient' },
   // Company
   { key: 'company.name',          label: 'Firmenname',        description: 'Firma des Empfängers',                    example: 'Müller Handelsgesellschaft mbH',                  source: 'company' },
+  // Application (nur befüllt wenn entity_type='applications')
+  { key: 'application.provider_name', label: 'Bank/Anbieter',  description: 'Name des Finanzierungspartners',          example: 'Qred',                                            source: 'company' },
+  { key: 'application.product_name',  label: 'Produkt-Name',   description: 'Bezeichnung des Finanzierungs-Produkts',  example: 'Betriebsmittelkredit Premium',                    source: 'company' },
+  { key: 'application.volume',        label: 'Beantragter Betrag', description: 'Gewünschter Kreditbetrag in EUR',     example: '50.000 €',                                        source: 'company' },
+  { key: 'application.term_months',   label: 'Laufzeit (Monate)', description: 'Gewünschte Laufzeit in Monaten',       example: '24',                                              source: 'company' },
   // Tenant / Plattform
   { key: 'tenant.name',           label: 'Plattform-Name',    description: 'LiqiNow Platform-Name',                   example: 'LiqiNow',                                         source: 'tenant' },
   { key: 'tenant.url',            label: 'Plattform-URL',     description: 'Hauptdomain',                              example: 'https://liqinow.de',                              source: 'tenant' },
@@ -48,6 +53,12 @@ export type ResolveContext = {
     salutation_gender?: 'male' | 'female' | 'neutral' | null;
   };
   company?: { name?: string | null };
+  application?: {
+    provider_name?: string | null;
+    product_name?: string | null;
+    volume?: number | null;
+    term_months?: number | null;
+  };
   unsubscribe_url?: string | null;
   /** Optional Entity-Bezug — nötig für entity-aware Route-Variablen wie {{link.admin_inquiry}} */
   entity?: { type: string; id: string; inquiry_id?: string | null };
@@ -72,6 +83,10 @@ export function resolveVariables(ctx: ResolveContext): Record<string, string> {
 
   const today = new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
 
+  const a = ctx.application ?? {};
+  const formatEur = (v: number | null | undefined) =>
+    typeof v === 'number' ? v.toLocaleString('de-DE') + ' €' : '';
+
   const out: Record<string, string> = {
     'recipient.first_name': first,
     'recipient.last_name': last,
@@ -80,6 +95,10 @@ export function resolveVariables(ctx: ResolveContext): Record<string, string> {
     'recipient.salutation': salutation,
     'recipient.salutation_informal': salutationInformal,
     'company.name': c.name ?? '',
+    'application.provider_name': a.provider_name ?? '',
+    'application.product_name': a.product_name ?? '',
+    'application.volume': formatEur(a.volume),
+    'application.term_months': a.term_months != null ? String(a.term_months) : '',
     'tenant.name': 'LiqiNow',
     'tenant.url': 'https://liqinow.de',
     'unsubscribe.url': ctx.unsubscribe_url ?? 'https://liqinow.de/unsubscribe',
