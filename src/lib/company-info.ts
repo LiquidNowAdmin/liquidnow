@@ -8,16 +8,16 @@ export const COMPANY_INFO = {
   brandName: "LiQiNow",
   brandTagline: "ist eine Marke der Deutschen Einkaufsfinanzierer GmbH",
 
-  // Geschäftsadresse (für Footer + Geschäftsbrief — Postadresse, kurze Form)
-  address: "Grabenstraße 28 · 70734 Fellbach",
-  street: "Grabenstraße 28",
-  zip: "70734",
-  city: "Fellbach",
+  // Hauptsitz / Geschäftssitz (legal § 5 TMG) — für Footer + Geschäftsbrief
+  address: "ABC-Straße 35 · 20354 Hamburg",
+  street: "ABC-Straße 35",
+  zip: "20354",
+  city: "Hamburg",
 
-  // Hauptsitz (für Impressum)
-  hauptsitzStreet: "ABC-Straße 35",
-  hauptsitzZip: "20354",
-  hauptsitzCity: "Hamburg",
+  // Postadresse (separater Versandpunkt, nur im Impressum angezeigt)
+  postStreet: "Grabenstraße 28",
+  postZip: "70734",
+  postCity: "Fellbach",
 
   // Kontakt
   phone: "040 999 999 400",

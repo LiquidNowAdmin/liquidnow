@@ -40,8 +40,8 @@ export default function ImpressumPage() {
                   <h2 className="text-xl font-semibold mb-3">Angaben gemäß § 5 TMG</h2>
                   <p className="leading-relaxed">
                     {COMPANY_INFO.legalName}<br />
-                    {COMPANY_INFO.hauptsitzStreet}<br />
-                    {COMPANY_INFO.hauptsitzZip} {COMPANY_INFO.hauptsitzCity}
+                    {COMPANY_INFO.street}<br />
+                    {COMPANY_INFO.zip} {COMPANY_INFO.city}
                   </p>
                 </div>
 
@@ -62,8 +62,8 @@ export default function ImpressumPage() {
                   <h2 className="text-xl font-semibold mb-3">Postadresse</h2>
                   <p className="leading-relaxed">
                     {COMPANY_INFO.legalName}<br />
-                    {COMPANY_INFO.street}<br />
-                    {COMPANY_INFO.zip} {COMPANY_INFO.city}
+                    {COMPANY_INFO.postStreet}<br />
+                    {COMPANY_INFO.postZip} {COMPANY_INFO.postCity}
                   </p>
                 </div>
 
