@@ -16,10 +16,12 @@ import FunnelWidget from "@/components/FunnelWidget";
 import UseCaseSlider from "@/components/UseCaseSlider";
 import { faqItems } from "@/lib/data";
 import customerImg from "../../img/category/customer.png";
+import JsonLd, { faqSchema } from "@/components/JsonLd";
 
 export default function Home() {
   return (
     <>
+      <JsonLd data={faqSchema(faqItems)} />
       <Navigation />
 
       <main>

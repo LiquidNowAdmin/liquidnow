@@ -3,6 +3,13 @@ import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 import Logo from "@/components/Logo";
 
+export const metadata = {
+  title: "Impressum",
+  description: "Impressum der LiQiNow Plattform der Deutschen Einkaufsfinanzierer GmbH",
+  alternates: { canonical: "/impressum" },
+  robots: { index: false, follow: true },
+};
+
 export default function ImpressumPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#F5DEB3]/10 to-white">

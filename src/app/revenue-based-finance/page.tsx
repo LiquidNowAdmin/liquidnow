@@ -5,10 +5,17 @@ import AnimateOnScroll from "@/components/AnimateOnScroll";
 import RBFCalculator from "@/components/RBFCalculator";
 
 export const metadata: Metadata = {
-  title:
-    "Revenue-Based Finance: Was es kostet, wann es passt | LiqiNow Ratgeber",
+  title: "Revenue-Based Finance: Kosten, Mechanik, Vergleich",
   description:
     "Fundierter Ratgeber zu Revenue-Based Finance: Mechanik, Kostenrechner, Vergleich mit Kredit & Kontokorrent, ehrliche Einordnung. F\u00fcr Unternehmer, die informierte Entscheidungen treffen.",
+  alternates: { canonical: "/revenue-based-finance" },
+  openGraph: {
+    title: "Revenue-Based Finance \u2013 Was es kostet, wann es passt",
+    description:
+      "Fundierter Ratgeber: Mechanik, Kostenrechner, Vergleich mit Kredit & Kontokorrent.",
+    url: "/revenue-based-finance",
+    type: "article",
+  },
 };
 
 export default function RevenueBasedFinancePage() {

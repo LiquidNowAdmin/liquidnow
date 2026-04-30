@@ -4,8 +4,10 @@ import Footer from "@/components/Footer";
 import Logo from "@/components/Logo";
 
 export const metadata = {
-  title: "Datenschutzerklärung – LiQiNow",
+  title: "Datenschutzerklärung",
   description: "Datenschutzerklärung der LiQiNow Plattform der Deutschen Einkaufsfinanzierer GmbH",
+  alternates: { canonical: "/datenschutz" },
+  robots: { index: false, follow: true },
 };
 
 export default function DatenschutzPage() {

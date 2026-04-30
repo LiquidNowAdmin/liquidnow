@@ -4,8 +4,10 @@ import Footer from "@/components/Footer";
 import Logo from "@/components/Logo";
 
 export const metadata = {
-  title: "Allgemeine Geschäftsbedingungen – LiQiNow",
+  title: "Allgemeine Geschäftsbedingungen",
   description: "AGB der LiQiNow Plattform der Deutschen Einkaufsfinanzierer GmbH",
+  alternates: { canonical: "/agb" },
+  robots: { index: false, follow: true },
 };
 
 export default function AGBPage() {

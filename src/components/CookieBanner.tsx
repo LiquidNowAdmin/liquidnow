@@ -19,40 +19,32 @@ export default function CookieBanner() {
     }
   }, []);
 
+  const applyConsent = (granted: boolean) => {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      updateConsent?: (g: boolean) => void;
+      sendPageLoadTracking?: () => void;
+    };
+    if (typeof w.updateConsent === "function") w.updateConsent(granted);
+    if (granted && typeof w.sendPageLoadTracking === "function") w.sendPageLoadTracking();
+  };
+
   const handleAccept = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
     setIsVisible(false);
-
-    // Google Tag laden
-    if (typeof window !== "undefined" && typeof (window as any).loadGoogleTag === "function") {
-      (window as any).loadGoogleTag();
-    }
-
-    // Verzögertes Page Load Tracking senden
-    if (typeof window !== "undefined" && typeof (window as any).sendPageLoadTracking === "function") {
-      (window as any).sendPageLoadTracking();
-    }
+    applyConsent(true);
   };
 
   const handleAnalyticsOnly = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
     setIsVisible(false);
-
-    // Google Tag laden
-    if (typeof window !== "undefined" && typeof (window as any).loadGoogleTag === "function") {
-      (window as any).loadGoogleTag();
-    }
-
-    // Verzögertes Page Load Tracking senden
-    if (typeof window !== "undefined" && typeof (window as any).sendPageLoadTracking === "function") {
-      (window as any).sendPageLoadTracking();
-    }
+    applyConsent(true);
   };
 
   const handleDecline = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "declined");
     setIsVisible(false);
-    // Kein Tracking wird geladen
+    applyConsent(false);
   };
 
   return (
