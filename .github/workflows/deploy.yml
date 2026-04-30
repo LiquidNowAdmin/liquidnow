@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Trigger reason (z. B. article-publish: <slug>)"
+        required: false
+        default: "manual"
+  repository_dispatch:
+    types: [article_publish, article_unpublish]
 
 jobs:
   build-and-deploy:
