@@ -173,6 +173,42 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return Response.json({ sent_emails: rows || [] }, { headers });
       }
+      if (action === 'list_by_lead') {
+        // Liefert ALLE sent_emails die zum Lead gehören:
+        //   - entity_type='inquiries' AND entity_id=<inquiry_id>
+        //   - entity_type='users'     AND entity_id=<inquiry.user_id>
+        //   - entity_type='applications' AND entity_id IN (apps für diesen Lead)
+        if (!data.inquiry_id && !data.user_id) {
+          return Response.json({ error: 'inquiry_id or user_id required' }, { status: 400, headers });
+        }
+
+        let userId = data.user_id as string | undefined;
+        let appIds: string[] = [];
+        if (data.inquiry_id) {
+          const { data: inq } = await sb.from('inquiries')
+            .select('user_id').eq('id', data.inquiry_id).maybeSingle();
+          if (inq) userId = (inq as { user_id: string }).user_id;
+          const { data: apps } = await sb.from('applications')
+            .select('id').eq('inquiry_id', data.inquiry_id);
+          appIds = (apps as Array<{ id: string }> || []).map((a) => a.id);
+        }
+
+        // Build OR-filter: 1-3 sub-clauses
+        const orParts: string[] = [];
+        if (data.inquiry_id) orParts.push(`and(entity_type.eq.inquiries,entity_id.eq.${data.inquiry_id})`);
+        if (userId)          orParts.push(`and(entity_type.eq.users,entity_id.eq.${userId})`);
+        if (appIds.length)   orParts.push(`and(entity_type.eq.applications,entity_id.in.(${appIds.join(',')}))`);
+
+        if (orParts.length === 0) return Response.json({ sent_emails: [] }, { headers });
+
+        const { data: rows, error } = await sb.from('sent_emails')
+          .select('id, recipient_email, recipient_name, subject, status, error_message, trigger_kind, template_slug, sent_at, entity_type, entity_id')
+          .eq('tenant_id', TENANT_ID)
+          .or(orParts.join(','))
+          .order('sent_at', { ascending: false });
+        if (error) throw error;
+        return Response.json({ sent_emails: rows || [] }, { headers });
+      }
       if (action === 'list_recent') {
         const { data: rows, error } = await sb.from('sent_emails')
           .select('id, recipient_email, subject, status, trigger_kind, template_slug, entity_type, entity_id, sent_at')

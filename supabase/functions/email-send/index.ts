@@ -16,11 +16,12 @@ async function authorize(req: Request) {
   const sb = createServiceClient();
   const { data: userData, error } = await sb.auth.getUser(token);
   if (error || !userData.user) return { ok: false as const, status: 401, msg: 'Invalid token' };
-  const { data: row } = await sb.from('users').select('role, tenant_id, email, first_name, last_name')
+  const { data: row } = await sb.from('users').select('id, role, tenant_id, email, first_name, last_name')
     .eq('id', userData.user.id).maybeSingle();
   if (row?.role !== 'operations') return { ok: false as const, status: 403, msg: 'operations role required' };
   return {
     ok: true as const,
+    userId: row.id as string,
     tenantId: row.tenant_id as string,
     operatorEmail: row.email as string,
     operatorFirstName: row.first_name as string | null,
@@ -49,18 +50,70 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch {}
   const slug = String(body?.template_slug || '').trim();
-  const recipientEmail = String(body?.recipient_email || '').trim() || auth.operatorEmail;
-  const recipientCtx: ResolveContext = body?.recipient_context ?? {
-    recipient: {
-      email: recipientEmail,
-      first_name: auth.operatorFirstName,
-      last_name: auth.operatorLastName,
-    },
-  };
+  const triggerKind = (body?.trigger_kind || 'test') as 'test' | 'manual' | 'transactional';
+  const entity = body?.entity as { type: string; id: string } | undefined;
 
   if (!slug) return Response.json({ error: 'template_slug required' }, { status: 400, headers });
 
   const sb = createServiceClient();
+
+  // Recipient-Context bestimmen:
+  //   - Wenn entity gegeben: Lead-Daten aus DB laden
+  //   - Sonst: Test-Send an Operator (default)
+  let recipientEmail: string;
+  let recipientCtx: ResolveContext;
+  let entityInquiryId: string | null = null;
+
+  if (entity?.type && entity?.id) {
+    if (entity.type === 'inquiries' || entity.type === 'applications') {
+      const cols = entity.type === 'applications' ? 'user_id, company_id, inquiry_id' : 'user_id, company_id';
+      const { data: row } = await sb.from(entity.type).select(cols).eq('id', entity.id).maybeSingle();
+      if (!row) return Response.json({ error: 'Entity nicht gefunden' }, { status: 404, headers });
+      entityInquiryId = (row as { inquiry_id?: string | null }).inquiry_id ?? null;
+      const [{ data: u }, { data: c }] = await Promise.all([
+        sb.from('users').select('email, first_name, last_name').eq('id', (row as { user_id: string }).user_id).maybeSingle(),
+        sb.from('companies').select('name').eq('id', (row as { company_id: string }).company_id).maybeSingle(),
+      ]);
+      recipientEmail = String(body?.recipient_email || '').trim() || (u as { email?: string } | null)?.email || '';
+      recipientCtx = {
+        recipient: {
+          email: recipientEmail,
+          first_name: (u as { first_name?: string | null } | null)?.first_name ?? null,
+          last_name: (u as { last_name?: string | null } | null)?.last_name ?? null,
+        },
+        company: { name: (c as { name?: string | null } | null)?.name ?? null },
+        entity: { type: entity.type, id: entity.id, inquiry_id: entityInquiryId },
+      };
+    } else if (entity.type === 'users') {
+      const { data: u } = await sb.from('users')
+        .select('email, first_name, last_name').eq('id', entity.id).maybeSingle();
+      recipientEmail = String(body?.recipient_email || '').trim() || (u as { email?: string } | null)?.email || '';
+      recipientCtx = {
+        recipient: {
+          email: recipientEmail,
+          first_name: (u as { first_name?: string | null } | null)?.first_name ?? null,
+          last_name: (u as { last_name?: string | null } | null)?.last_name ?? null,
+        },
+        entity: { type: 'users', id: entity.id },
+      };
+    } else {
+      recipientEmail = String(body?.recipient_email || '').trim() || auth.operatorEmail;
+      recipientCtx = body?.recipient_context ?? { recipient: { email: recipientEmail } };
+    }
+  } else {
+    recipientEmail = String(body?.recipient_email || '').trim() || auth.operatorEmail;
+    recipientCtx = body?.recipient_context ?? {
+      recipient: {
+        email: recipientEmail,
+        first_name: auth.operatorFirstName,
+        last_name: auth.operatorLastName,
+      },
+    };
+  }
+
+  if (!recipientEmail) {
+    return Response.json({ error: 'Kein Empfänger ermittelbar' }, { status: 400, headers });
+  }
 
   // 1. Load template
   const { data: tpl, error: tplErr } = await sb.from('email_templates')
@@ -118,11 +171,13 @@ Deno.serve(async (req) => {
     tags: [
       { name: 'template_slug', value: slug },
       { name: 'template_type', value: tpl.type },
-      { name: 'send_kind', value: 'test' },
+      { name: 'send_kind', value: triggerKind },
     ],
-    trigger_kind: 'test',
+    trigger_kind: triggerKind,
     template_slug: slug,
     template_id: tpl.id,
+    entity: entity?.type && entity?.id ? { type: entity.type, id: entity.id } : null,
+    sent_by: auth.userId,
   });
 
   if (!result.ok) {

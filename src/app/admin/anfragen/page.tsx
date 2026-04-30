@@ -291,6 +291,143 @@ function CompanyEmptyState({ userId, onCreated }: {
   );
 }
 
+// Modal: Manueller E-Mail-Versand aus Anfragen-Detail. Picks aus
+// /admin/emails-Templates, lädt Lead-Context server-seitig, schickt via
+// email-send mit trigger_kind='manual'.
+function SendEmailModal({
+  entity,
+  recipientEmail,
+  onClose,
+  onSent,
+}: {
+  entity: { type: string; id: string } | null;
+  recipientEmail: string;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [templates, setTemplates] = useState<Array<{ id: string; slug: string; name: string; subject: string; published: boolean; type: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSlug, setSelectedSlug] = useState<string>("");
+  const [overrideEmail, setOverrideEmail] = useState(recipientEmail);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setError("Nicht authentifiziert"); setLoading(false); return; }
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-templates-admin`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resource: "template", action: "list" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      const list = (json.templates ?? []) as Array<{ id: string; slug: string; name: string; subject: string; published: boolean; type: string }>;
+      setTemplates(list);
+      const firstReady = list.find((t) => t.published);
+      if (firstReady) setSelectedSlug(firstReady.slug);
+      setLoading(false);
+    })();
+  }, []);
+
+  const send = async () => {
+    if (!selectedSlug || !overrideEmail.trim()) { setError("Template + Empfänger sind Pflicht"); return; }
+    setBusy(true); setError(null);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Nicht authentifiziert");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-send`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          template_slug: selectedSlug,
+          recipient_email: overrideEmail.trim(),
+          entity: entity ?? undefined,
+          trigger_kind: "manual",
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `Send failed (${res.status})`);
+      onSent();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Versand fehlgeschlagen");
+    } finally { setBusy(false); }
+  };
+
+  const draftSubject = templates.find((t) => t.slug === selectedSlug)?.subject ?? "";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 50 }} onClick={onClose}>
+      <div className="admin-chart-card" style={{ maxWidth: "32rem", width: "100%", padding: "1.25rem" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", margin: 0 }}>E-Mail an Lead senden</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)" }}>✕</button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: "1rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>Lade Templates…</div>
+        ) : (
+          <>
+            <div style={{ marginBottom: "0.875rem" }}>
+              <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Template</label>
+              {templates.length === 0 ? (
+                <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginTop: "0.5rem" }}>
+                  Noch keine Templates angelegt. Geh zu <a href="/admin/emails" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>/admin/emails</a>.
+                </p>
+              ) : (
+                <select value={selectedSlug} onChange={(e) => setSelectedSlug(e.target.value)}
+                        style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem" }}>
+                  <option value="">— wählen —</option>
+                  {templates.map((t) => (
+                    <option key={t.slug} value={t.slug}>
+                      {t.name} {!t.published && "· Entwurf"} · {t.type === "newsletter" ? "Newsletter" : "Transaktional"}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {draftSubject && (
+                <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                  Betreff: <em style={{ color: "var(--color-dark)" }}>{draftSubject}</em>
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: "0.875rem" }}>
+              <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Empfänger</label>
+              <input type="email" value={overrideEmail} onChange={(e) => setOverrideEmail(e.target.value)}
+                     style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem" }} />
+              <p style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                Variablen werden mit Lead-Daten aufgelöst. BCC immer auf <code style={{ background: "rgba(0,0,0,0.04)", padding: "0 0.25rem", borderRadius: "0.125rem" }}>platformmails@liqinow.de</code>.
+              </p>
+            </div>
+
+            {error && (
+              <div style={{ padding: "0.5rem 0.75rem", background: "rgba(220,38,38,0.08)", color: "rgba(220,38,38,0.9)", borderRadius: "0.375rem", fontSize: "0.8125rem", marginBottom: "0.875rem" }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button onClick={onClose} disabled={busy}
+                      style={{ padding: "0.5rem 0.875rem", border: "1px solid var(--color-border)", background: "transparent", borderRadius: "0.375rem", fontSize: "0.8125rem", color: "var(--color-subtle)", cursor: "pointer" }}>
+                Abbrechen
+              </button>
+              <button onClick={send} disabled={busy || !selectedSlug || !overrideEmail.trim()}
+                      style={{ padding: "0.5rem 0.875rem", border: "1px solid var(--color-turquoise)", background: "var(--color-turquoise)", color: "#fff", borderRadius: "0.375rem", fontSize: "0.8125rem", fontWeight: 600, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                {busy ? "Sende…" : "Jetzt senden"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AnfragenContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -336,17 +473,19 @@ function AnfragenContent() {
   useEffect(() => {
     if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); setSentEmails([]); return; }
     const supabase = createClient();
-    // Load sent emails for the inquiry (or user) entity
+    // Load sent emails for the lead — kombiniert inquiry/users/applications
     (async () => {
-      const entityType = selected.inquiry_id ? "inquiries" : "users";
-      const entityId = selected.inquiry_id ?? selected.user_id;
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { setSentEmails([]); return; }
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workflow-rules-admin`, {
         method: "POST",
         headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
-        body: JSON.stringify({ resource: "sent_email", action: "list_by_entity", data: { entity_type: entityType, entity_id: entityId } }),
+        body: JSON.stringify({
+          resource: "sent_email",
+          action: "list_by_lead",
+          data: { inquiry_id: selected.inquiry_id, user_id: selected.user_id },
+        }),
       });
       if (res.ok) {
         const json = await res.json();
@@ -695,6 +834,34 @@ function AnfragenContent() {
               );
             })}
           </div>
+        )}
+
+        {showSendModal && selected && (
+          <SendEmailModal
+            entity={selected.inquiry_id ? { type: "inquiries", id: selected.inquiry_id } : { type: "users", id: selected.user_id }}
+            recipientEmail={(userDetail?.email as string) || selected.user_email || ""}
+            onClose={() => setShowSendModal(false)}
+            onSent={async () => {
+              setShowSendModal(false);
+              // Refresh sent_emails Liste
+              const supabase = createClient();
+              const { data: { session } } = await supabase.auth.getSession();
+              const token = session?.access_token;
+              if (!token) return;
+              const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workflow-rules-admin`, {
+                method: "POST",
+                headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  resource: "sent_email", action: "list_by_lead",
+                  data: { inquiry_id: selected.inquiry_id, user_id: selected.user_id },
+                }),
+              });
+              if (res.ok) {
+                const json = await res.json();
+                setSentEmails(json.sent_emails ?? []);
+              }
+            }}
+          />
         )}
       </>
     );
