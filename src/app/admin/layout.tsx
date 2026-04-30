@@ -140,7 +140,18 @@ export default function AdminLayout({
         <nav className="admin-sidebar-nav">
           {navGroups.map((group, gi) => (
             <div key={gi} className="admin-nav-group">
-              {group.label && <div className="admin-nav-section-label">{group.label}</div>}
+              {group.label && (
+                <div style={{
+                  padding: "0.625rem 1.5rem 0.375rem",
+                  fontSize: "0.6875rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "rgba(255, 255, 255, 0.35)",
+                }}>
+                  {group.label}
+                </div>
+              )}
               {group.items.map((item) => {
                 const isActive =
                   item.href === "/admin"
