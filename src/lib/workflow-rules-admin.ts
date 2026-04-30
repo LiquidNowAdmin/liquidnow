@@ -60,6 +60,8 @@ export type WorkflowRule = {
   repeat_interval_days?: number | null;
   /** Maximale Wiederholungen (zählt den Erstlauf mit). NULL = unbegrenzt. */
   repeat_max?: number | null;
+  /** Anti-Spam-Scope: max 1 Mail pro Entity (default), User, Anfrage oder Firma. */
+  dedupe_scope?: "entity" | "user" | "inquiry" | "company";
   created_at?: string;
   updated_at?: string;
 };

@@ -227,6 +227,23 @@ export default function RuleBuilder({ initial, onClose, onSaved }: Props) {
             </>
           )}
 
+          {/* Dedupe-Scope (Anti-Spam) */}
+          <div className="rounded-xl border border-gray-200 p-4 bg-gray-50/50 space-y-2">
+            <h4 className="text-xs uppercase tracking-wide text-subtle font-semibold">Anti-Spam — wie oft maximal feuern?</h4>
+            <select value={r.dedupe_scope ?? "entity"}
+                    onChange={(e) => setR((p) => ({ ...p, dedupe_scope: e.target.value as never }))}
+                    className="w-full px-3 py-2 rounded border border-gray-200 text-sm">
+              <option value="entity">Pro Entity (Standard) — z. B. 1× pro Application</option>
+              <option value="user">Pro User — alle Entities desselben Users gelten als 1</option>
+              <option value="inquiry">Pro Anfrage — alle Applications zu einer Anfrage gelten als 1</option>
+              <option value="company">Pro Firma — alle Entities derselben Firma gelten als 1</option>
+            </select>
+            <p className="text-xs text-subtle">
+              💡 Beispiel: User hat 5 offene Applications → mit „Pro User" bekommt er nur 1 Reminder, nicht 5.
+              Bei time-based Rules wird zusätzlich das Repeat-Intervall berücksichtigt (z. B. „pro User max 1 alle 7 Tage").
+            </p>
+          </div>
+
           {/* Conditions */}
           <div className="rounded-xl border border-gray-200 p-4 bg-gray-50/50">
             <div className="flex items-center justify-between mb-3">

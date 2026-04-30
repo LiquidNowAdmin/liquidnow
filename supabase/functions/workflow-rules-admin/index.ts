@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
           actions: data.actions ?? [],
           repeat_interval_days: data.repeat_interval_days ?? null,
           repeat_max: data.repeat_max ?? null,
+          dedupe_scope: data.dedupe_scope ?? 'entity',
           created_by: USER_ID,
         };
         if (data.id) row.id = data.id;
