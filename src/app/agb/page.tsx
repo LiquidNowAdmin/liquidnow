@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
 import Logo from "@/components/Logo";
+import { COMPANY_INFO } from "@/lib/company-info";
 
 export const metadata = {
   title: "Allgemeine Geschäftsbedingungen",
@@ -39,7 +40,7 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">§ 1 Geltungsbereich</h2>
                   <p>
-                    (1) Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung der Plattform LiQiNow (erreichbar unter www.liqinow.de), betrieben von der Deutschen Einkaufsfinanzierer GmbH, ABC-Straße 35, 20354 Hamburg (nachfolgend „Betreiber").
+                    (1) Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung der Plattform LiQiNow (erreichbar unter {COMPANY_INFO.urlDisplay}), betrieben von der {COMPANY_INFO.legalName}, {COMPANY_INFO.street}, {COMPANY_INFO.zip} {COMPANY_INFO.city} (nachfolgend „Betreiber").
                   </p>
                   <p className="mt-2">
                     (2) LiQiNow ist ein digitaler Marktplatz, der gewerblichen Nutzern den Vergleich und die Anfrage von Working-Capital-Finanzierungslösungen bei Drittanbietern (Banken und Fintechs) ermöglicht.
@@ -234,10 +235,10 @@ export default function AGBPage() {
                 <section>
                   <h2 className="text-xl font-semibold mb-3">Kontakt</h2>
                   <p>
-                    Deutsche Einkaufsfinanzierer GmbH<br />
-                    ABC-Straße 35, 20354 Hamburg<br />
-                    E-Mail: <a href="mailto:info@liqinow.de" className="text-turquoise hover:underline">info@liqinow.de</a><br />
-                    Telefon: 040 999 999 400
+                    {COMPANY_INFO.legalName}<br />
+                    {COMPANY_INFO.street}, {COMPANY_INFO.zip} {COMPANY_INFO.city}<br />
+                    E-Mail: <a href={`mailto:${COMPANY_INFO.email}`} className="text-turquoise hover:underline">{COMPANY_INFO.email}</a><br />
+                    Telefon: <a href={`tel:${COMPANY_INFO.phoneE164}`} className="text-turquoise hover:underline">{COMPANY_INFO.phone}</a>
                   </p>
                 </section>
 

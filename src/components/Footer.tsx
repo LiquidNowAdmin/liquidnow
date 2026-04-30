@@ -1,4 +1,5 @@
 import Logo from "@/components/Logo";
+import { COMPANY_INFO } from "@/lib/company-info";
 
 export default function Footer() {
   return (
@@ -30,12 +31,17 @@ export default function Footer() {
             <h4 className="footer-heading">Kontakt</h4>
             <ul className="space-y-3">
               <li>
-                <a href="mailto:info@liqinow.de" className="footer-link">
-                  info@liqinow.de
+                <a href={`tel:${COMPANY_INFO.phoneE164}`} className="footer-link">
+                  {COMPANY_INFO.phone}
                 </a>
               </li>
               <li>
-                <span className="footer-text">Mo–Fr 09:00 – 20:00 Uhr</span>
+                <a href={`mailto:${COMPANY_INFO.email}`} className="footer-link">
+                  {COMPANY_INFO.email}
+                </a>
+              </li>
+              <li>
+                <span className="footer-text">{COMPANY_INFO.phoneHours}</span>
               </li>
             </ul>
           </div>

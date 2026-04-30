@@ -5,6 +5,7 @@ import { Menu, X, LogOut, User as UserIcon, FolderOpen, Phone } from "lucide-rea
 import Logo from "@/components/Logo";
 import UserMenu from "@/components/UserMenu";
 import { createClient } from "@/lib/supabase";
+import { COMPANY_INFO } from "@/lib/company-info";
 import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
@@ -65,17 +66,17 @@ export default function Navigation() {
             Jetzt vergleichen
           </a>
           <UserMenu />
-          <a href="tel:+494099999400" className="nav-phone">
+          <a href={`tel:${COMPANY_INFO.phoneE164}`} className="nav-phone">
             <Phone className="h-5 w-5 shrink-0" />
             <div className="nav-phone-text">
-              <span className="nav-phone-number">040 999 999 400</span>
-              <span className="nav-phone-hours">Mo–Fr 09:00 – 20:00 Uhr</span>
+              <span className="nav-phone-number">{COMPANY_INFO.phone}</span>
+              <span className="nav-phone-hours">{COMPANY_INFO.phoneHours}</span>
             </div>
           </a>
         </div>
 
         <div className="flex items-center gap-4 md:hidden">
-          <a href="tel:+494099999400" className="text-dark" aria-label="Anrufen">
+          <a href={`tel:${COMPANY_INFO.phoneE164}`} className="text-dark" aria-label="Anrufen">
             <Phone className="h-5 w-5" />
           </a>
           <button
