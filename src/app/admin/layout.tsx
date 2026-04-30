@@ -16,14 +16,28 @@ import {
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/anbieter", label: "Anbieter", icon: Building2 },
-  { href: "/admin/produkte", label: "Produkte", icon: Package },
-  { href: "/admin/anfragen", label: "Anfragen", icon: FileText },
-  { href: "/admin/emails", label: "E-Mail Templates", icon: Mail },
-  { href: "/admin/autopilot", label: "Automatisierung", icon: Zap },
-  { href: "/admin/ratgeber", label: "Ratgeber", icon: BookOpen },
+type NavItem = { href: string; label: string; icon: typeof LayoutDashboard };
+type NavGroup = { kind: "section"; label?: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  {
+    kind: "section",
+    items: [
+      { href: "/admin",          label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/anfragen", label: "Anfragen",  icon: FileText },
+    ],
+  },
+  {
+    kind: "section",
+    label: "Konfiguration",
+    items: [
+      { href: "/admin/anbieter",  label: "Anbieter",         icon: Building2 },
+      { href: "/admin/autopilot", label: "Automatisierung",  icon: Zap },
+      { href: "/admin/emails",    label: "E-Mail Templates", icon: Mail },
+      { href: "/admin/produkte",  label: "Produkte",         icon: Package },
+      { href: "/admin/ratgeber",  label: "Ratgeber",         icon: BookOpen },
+    ],
+  },
 ];
 
 export default function AdminLayout({
@@ -124,22 +138,27 @@ export default function AdminLayout({
         </div>
 
         <nav className="admin-sidebar-nav">
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href + "/") || pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`admin-nav-link ${isActive ? "admin-nav-link-active" : ""}`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+          {navGroups.map((group, gi) => (
+            <div key={gi} className="admin-nav-group">
+              {group.label && <div className="admin-nav-section-label">{group.label}</div>}
+              {group.items.map((item) => {
+                const isActive =
+                  item.href === "/admin"
+                    ? pathname === "/admin"
+                    : pathname.startsWith(item.href + "/") || pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`admin-nav-link ${isActive ? "admin-nav-link-active" : ""}`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="admin-sidebar-footer">
