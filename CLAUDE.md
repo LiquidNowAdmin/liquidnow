@@ -40,6 +40,20 @@
 - **application**: applications, offers, status logs, document assignments
 - **provider**: providers, products (global with tenant filter)
 - **document**: documents (attached to company, selectable per application)
+- **email**: email_templates (block-based, KI-generiert), email_attachments_library
+
+### Email-Versand (zwingend)
+- **NIEMALS Resend (oder anderen Mail-Provider) direkt aus einer Edge Function aufrufen** — immer über `supabase/functions/_shared/email-sender.ts`
+- Die zentrale Sender-Utility hängt **immer** ein BCC auf `platformmails@liqinow.de` an (Compliance/Archiv) — diese Garantie wäre bei Direkt-Aufrufen weg
+- From-Adresse, BCC und Default-Reply-To sind im Sender hardcoded und NICHT überschreibbar von außen
+- E-Mail-Inhalte werden block-basiert in der Datenbank gehalten (`email_templates.blocks` jsonb), gerendert von `_shared/template-variables.ts:renderEmail()`
+- Geschäftsbrief-Footer (Impressum, GF, HRB, USt-IdNr., „Marke der Deutschen Einkaufsfinanzierer GmbH") wird vom Renderer **automatisch** angehängt — KI/Editor schreibt ihn nicht selbst
+
+### Template-Variablen (E-Mail, später PDF, …)
+- Single Source of Truth: `supabase/functions/_shared/template-variables.ts` (Edge) + `src/lib/email-renderer.ts` (Frontend-Mirror)
+- Keys mit Punkt-Notation: `{{recipient.first_name}}`, `{{company.name}}`, `{{tenant.name}}`, `{{unsubscribe.url}}`
+- Auflösung via `template-variables` Edge Function (`action: 'resolve'`)
+- Niemals neue Variablen ohne Eintrag in `VARIABLES` einführen
 
 ### Provider Integration Conventions
 - Edge Function pro Provider: `provider-{slug}/index.ts` (z.B. `provider-qred`, `provider-youlend`)
@@ -56,7 +70,10 @@
 
 ### Component System
 - ONE global set of UI components defined as CSS classes in `globals.css`
-- NEVER use inline CSS (except dynamic values like slider progress)
+- **ALWAYS reuse existing CSS classes / Tailwind tokens from `globals.css`** — never invent new patterns when one exists
+- **NEVER hardcode hex color values** in JSX/TSX. Use the CSS variables / Tailwind tokens defined under `@theme inline` in `globals.css` (`bg-turquoise`, `text-dark`, `text-subtle`, `bg-sand-beige`, etc.)
+- **NEVER use inline CSS** (except for dynamic computed values like slider progress that can't be expressed via classes)
+- Before adding new colors or styles: check `globals.css` first — if a token doesn't exist for what you need, **extend the token system**, don't bypass it
 - ONE radio button component, ONE input field, ONE select — no variants
 - **NEVER nest boxes inside boxes** (no card inside card, no bordered container inside bordered container) — use dividers/spacing instead
 - Every funnel step explains itself: headline = what to do, subtext = why, CTA = what happens next
@@ -67,7 +84,8 @@
 - Each step is a dedicated route (e.g., `/antrag`, `/antrag/zweck`, etc.)
 
 ### Design Tokens
-- Colors: Slate Blue (#8890A8), Light Slate (#C8CEDF), Deep Shadow (#3D3F52), Olive (#9BAA28), Tennis Yellow-Green (#C4D42B), Warm Cream (#EDE6DB)
+- Source of truth: `--color-*` variables defined in `globals.css` (`@theme inline` block at the top)
+- Never duplicate or hardcode hex values from those tokens — use the Tailwind class names that Tailwind v4 auto-generates from them (`bg-turquoise`, `text-turquoise-dark`, `bg-sand-beige`, `text-dark`, `text-subtle`, …)
 - Solid colors for buttons/badges (gradients only for decorative elements)
 
 ## Tech Stack
