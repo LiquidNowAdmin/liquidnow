@@ -168,6 +168,7 @@ function AnfragenContent() {
   const [documents, setDocuments] = useState<Array<{ id: string; name: string; doc_type: string | null; file_path: string; file_size: number | null; mime_type: string | null; created_at: string; valid_until: string | null }>>([]);
   const [userDetail, setUserDetail] = useState<Record<string, unknown> | null>(null);
   const [companyDetail, setCompanyDetail] = useState<Record<string, unknown> | null>(null);
+  const [sentEmails, setSentEmails] = useState<Array<{ id: string; recipient_email: string; subject: string; status: string; trigger_kind: string; template_slug: string | null; sent_at: string }>>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [days, setDays] = useState<number | null>(null);
@@ -198,8 +199,27 @@ function AnfragenContent() {
 
   // Load documents + user + company details
   useEffect(() => {
-    if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); return; }
+    if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); setSentEmails([]); return; }
     const supabase = createClient();
+    // Load sent emails for the inquiry (or user) entity
+    (async () => {
+      const entityType = selected.inquiry_id ? "inquiries" : "users";
+      const entityId = selected.inquiry_id ?? selected.user_id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setSentEmails([]); return; }
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/workflow-rules-admin`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
+        body: JSON.stringify({ resource: "sent_email", action: "list_by_entity", data: { entity_type: entityType, entity_id: entityId } }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setSentEmails(json.sent_emails ?? []);
+      } else {
+        setSentEmails([]);
+      }
+    })();
     (async () => {
       // Load user
       const { data: user } = await supabase
@@ -459,6 +479,52 @@ function AnfragenContent() {
                       style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)", padding: 0, flexShrink: 0, display: "flex" }}>
                       <Trash2 style={{ width: "0.75rem", height: "0.75rem" }} />
                     </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Sent emails section */}
+        {sentEmails.length > 0 && (
+          <>
+            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem", marginTop: "2rem" }}>
+              Versendete E-Mails ({sentEmails.length})
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {sentEmails.map((email) => {
+                const statusColor =
+                  email.status === "sent"   ? "rgba(34, 197, 94, 0.8)"  :
+                  email.status === "failed" ? "rgba(220, 38, 38, 0.8)"  :
+                                              "rgba(107, 114, 128, 0.8)";
+                const kindLabel: Record<string, string> = {
+                  workflow:      "Auto",
+                  manual:        "Manuell",
+                  test:          "Test",
+                  transactional: "System",
+                };
+                return (
+                  <div key={email.id} className="admin-chart-card" style={{ padding: "0.75rem 1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <Send style={{ width: "1rem", height: "1rem", color: "var(--color-subtle)", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {email.subject || <em>(kein Betreff)</em>}
+                        </p>
+                        <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                          → {email.recipient_email}
+                          {email.template_slug ? ` · ${email.template_slug}` : ""}
+                          {" · "}{formatDate(email.sent_at)}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: "var(--color-subtle)", background: "rgba(107,114,128,0.08)", whiteSpace: "nowrap" }}>
+                        {kindLabel[email.trigger_kind] ?? email.trigger_kind}
+                      </span>
+                      <span style={{ fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", color: statusColor, background: "rgba(0,0,0,0.04)", whiteSpace: "nowrap" }}>
+                        {email.status}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
