@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Trash2, Power, Pencil, Mail, Clock, Zap, ChevronRight, Play, ExternalLink } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Power, Pencil, Copy, Mail, Clock, Zap, ChevronRight, Play, ExternalLink } from "lucide-react";
 import {
   listWorkflowRules, listWorkflowExecutions, listRecentSentEmails,
-  toggleWorkflowRule, deleteWorkflowRule, runTimeBasedNow,
+  toggleWorkflowRule, deleteWorkflowRule, runTimeBasedNow, upsertWorkflowRule,
   type WorkflowRule, type WorkflowExecution, type SentEmail,
 } from "@/lib/workflow-rules-admin";
 import RuleBuilder from "./components/RuleBuilder";
@@ -88,6 +88,12 @@ export default function AutopilotPage() {
           onEdit={(r) => { setEditing(r); setShowBuilder(true); }}
           onToggle={async (r) => { await toggleWorkflowRule(r.id!); load(); }}
           onDelete={async (r) => { if (confirm(`Rule "${r.name}" löschen?`)) { await deleteWorkflowRule(r.id!); load(); } }}
+          onDuplicate={async (r) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id, created_at, updated_at, ...rest } = r;
+            await upsertWorkflowRule({ ...rest, name: `${r.name} (Kopie)`, is_active: false });
+            load();
+          }}
         />
       )}
       {tab === "executions" && <ExecutionsTab executions={executions} />}
@@ -105,13 +111,14 @@ export default function AutopilotPage() {
 }
 
 function RulesTab({
-  rules, loading, onEdit, onToggle, onDelete,
+  rules, loading, onEdit, onToggle, onDelete, onDuplicate,
 }: {
   rules: WorkflowRule[];
   loading: boolean;
   onEdit: (r: WorkflowRule) => void;
   onToggle: (r: WorkflowRule) => Promise<void>;
   onDelete: (r: WorkflowRule) => Promise<void>;
+  onDuplicate: (r: WorkflowRule) => Promise<void>;
 }) {
   if (loading && rules.length === 0) return <div className="p-12 text-center text-subtle">Lade…</div>;
   if (rules.length === 0) return (
@@ -157,6 +164,9 @@ function RulesTab({
                 <div className="inline-flex gap-1">
                   <button onClick={() => onToggle(r)} className="p-1.5 rounded hover:bg-gray-100" title={r.is_active ? "Pausieren" : "Aktivieren"}>
                     <Power className={`w-4 h-4 ${r.is_active ? "text-green-600" : "text-subtle"}`} />
+                  </button>
+                  <button onClick={() => onDuplicate(r)} className="p-1.5 rounded hover:bg-gray-100" title="Duplizieren">
+                    <Copy className="w-4 h-4 text-subtle" />
                   </button>
                   <button onClick={() => onEdit(r)} className="p-1.5 rounded hover:bg-gray-100" title="Bearbeiten">
                     <Pencil className="w-4 h-4 text-subtle" />

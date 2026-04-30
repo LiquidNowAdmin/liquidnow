@@ -52,8 +52,14 @@ Deno.serve(async (req) => {
   const slug = String(body?.template_slug || '').trim();
   const triggerKind = (body?.trigger_kind || 'test') as 'test' | 'manual' | 'transactional';
   const entity = body?.entity as { type: string; id: string } | undefined;
+  const freetext = body?.freetext as { subject: string; body_text: string; type?: 'newsletter' | 'transactional' } | undefined;
 
-  if (!slug) return Response.json({ error: 'template_slug required' }, { status: 400, headers });
+  if (!slug && !freetext) {
+    return Response.json({ error: 'template_slug oder freetext erforderlich' }, { status: 400, headers });
+  }
+  if (freetext && (!freetext.subject || !freetext.body_text)) {
+    return Response.json({ error: 'freetext braucht subject + body_text' }, { status: 400, headers });
+  }
 
   const sb = createServiceClient();
 
@@ -115,11 +121,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Kein Empfänger ermittelbar' }, { status: 400, headers });
   }
 
-  // 1. Load template
-  const { data: tpl, error: tplErr } = await sb.from('email_templates')
-    .select('*').eq('tenant_id', auth.tenantId).eq('slug', slug).maybeSingle();
-  if (tplErr || !tpl) {
-    return Response.json({ error: 'Template not found' }, { status: 404, headers });
+  // 1. Load template (nur wenn nicht Freitext)
+  let tpl: { id: string; type: 'newsletter'|'transactional'; subject: string; preheader: string; blocks: Block[]; attachments: any[] } | null = null;
+  if (slug) {
+    const { data, error: tplErr } = await sb.from('email_templates')
+      .select('*').eq('tenant_id', auth.tenantId).eq('slug', slug).maybeSingle();
+    if (tplErr || !data) return Response.json({ error: 'Template not found' }, { status: 404, headers });
+    tpl = data as never;
   }
 
   // 2. Routen laden und in Context geben — damit {{link.*}} resolved
@@ -128,22 +136,53 @@ Deno.serve(async (req) => {
     .eq('tenant_id', auth.tenantId);
   recipientCtx.routes = (routes ?? []) as never;
 
-  // 3. Resolve variables and render
+  // 3. Resolve variables and render — Template oder Freitext
   const values = resolveVariables(recipientCtx);
-  const blocks = (tpl.blocks ?? []) as Block[];
-  const subject = tpl.subject
-    ? tpl.subject.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_: string, k: string) => values[k] ?? '')
-    : '(kein Betreff)';
-  const { html, text } = renderEmail({
-    blocks,
-    type: tpl.type,
-    preheader: tpl.preheader,
-    values,
-  });
+  let subject: string;
+  let html: string;
+  let text: string;
+  let renderType: 'newsletter' | 'transactional';
 
-  // 3. Resolve attachments
+  if (tpl) {
+    const blocks = (tpl.blocks ?? []) as Block[];
+    subject = tpl.subject
+      ? tpl.subject.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_: string, k: string) => values[k] ?? '')
+      : '(kein Betreff)';
+    renderType = tpl.type;
+    const rendered = renderEmail({ blocks, type: renderType, preheader: tpl.preheader, values });
+    html = rendered.html;
+    text = rendered.text;
+  } else if (freetext) {
+    // Freitext → in Paragraph-Blocks splitten (eine Zeile pro Block, Leerzeilen ignoriert)
+    const paragraphs = freetext.body_text
+      .split(/\n{2,}/)              // doppelte Newlines = neuer Paragraph
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const blocks: Block[] = paragraphs.map((p) => ({ type: 'paragraph', text: p }));
+    subject = freetext.subject.replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_: string, k: string) => values[k] ?? '');
+    renderType = freetext.type ?? 'transactional';
+    const rendered = renderEmail({ blocks, type: renderType, values });
+    html = rendered.html;
+    text = rendered.text;
+  } else {
+    return Response.json({ error: 'Weder Template noch Freitext' }, { status: 400, headers });
+  }
+
+  // 4. Resolve attachments — Template-Anhänge + zusätzliche Body-Anhänge
+  // (für Freitext oder On-Top auf Template). Body-Format:
+  //   attachments: [{ storage_path, filename?, mime_type? }, ...]
+  const attachmentSources: Array<{ storage_path: string; filename?: string; mime_type?: string }> = [];
+  for (const att of ((tpl?.attachments ?? []) as any[])) {
+    if (att?.storage_path) attachmentSources.push(att);
+  }
+  if (Array.isArray(body?.attachments)) {
+    for (const att of body.attachments) {
+      if (att?.storage_path) attachmentSources.push(att);
+    }
+  }
+
   const attachments: EmailAttachment[] = [];
-  for (const att of (tpl.attachments ?? []) as any[]) {
+  for (const att of attachmentSources) {
     if (!att?.storage_path) continue;
     try {
       const { data: file } = await sb.storage.from('email-attachments').download(att.storage_path);
@@ -169,13 +208,13 @@ Deno.serve(async (req) => {
     text,
     attachments: attachments.length ? attachments : undefined,
     tags: [
-      { name: 'template_slug', value: slug },
-      { name: 'template_type', value: tpl.type },
+      { name: 'template_slug', value: slug || 'freetext' },
+      { name: 'template_type', value: renderType },
       { name: 'send_kind', value: triggerKind },
     ],
     trigger_kind: triggerKind,
-    template_slug: slug,
-    template_id: tpl.id,
+    template_slug: slug || null,
+    template_id: tpl?.id ?? null,
     entity: entity?.type && entity?.id ? { type: entity.type, id: entity.id } : null,
     sent_by: auth.userId,
   });

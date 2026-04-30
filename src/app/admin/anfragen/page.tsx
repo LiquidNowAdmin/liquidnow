@@ -305,12 +305,21 @@ function SendEmailModal({
   onClose: () => void;
   onSent: () => void;
 }) {
+  const [mode, setMode] = useState<"template" | "freetext">("template");
   const [templates, setTemplates] = useState<Array<{ id: string; slug: string; name: string; subject: string; published: boolean; type: string }>>([]);
+  const [library, setLibrary] = useState<Array<{ id: string; filename: string; storage_path: string; mime_type: string; size_bytes: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlug, setSelectedSlug] = useState<string>("");
   const [overrideEmail, setOverrideEmail] = useState(recipientEmail);
+  const [freetextSubject, setFreetextSubject] = useState("");
+  const [freetextBody, setFreetextBody] = useState("");
+  const [selectedAttachments, setSelectedAttachments] = useState<Array<{ storage_path: string; filename: string; mime_type: string }>>([]);
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   useEffect(() => {
     const supabase = createClient();
@@ -318,37 +327,91 @@ function SendEmailModal({
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) { setError("Nicht authentifiziert"); setLoading(false); return; }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-templates-admin`, {
-        method: "POST",
-        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
-        body: JSON.stringify({ resource: "template", action: "list" }),
-      });
-      const json = await res.json().catch(() => ({}));
-      const list = (json.templates ?? []) as Array<{ id: string; slug: string; name: string; subject: string; published: boolean; type: string }>;
+      const headers = { "content-type": "application/json", apikey: anonKey, authorization: `Bearer ${token}` };
+
+      const [tplRes, libRes] = await Promise.all([
+        fetch(`${supabaseUrl}/functions/v1/email-templates-admin`, {
+          method: "POST", headers,
+          body: JSON.stringify({ resource: "template", action: "list" }),
+        }),
+        fetch(`${supabaseUrl}/functions/v1/email-templates-admin`, {
+          method: "POST", headers,
+          body: JSON.stringify({ resource: "attachment", action: "list" }),
+        }),
+      ]);
+      const tplJson = await tplRes.json().catch(() => ({}));
+      const libJson = await libRes.json().catch(() => ({}));
+      const list = (tplJson.templates ?? []) as Array<{ id: string; slug: string; name: string; subject: string; published: boolean; type: string }>;
       setTemplates(list);
+      setLibrary((libJson.attachments ?? []) as never);
       const firstReady = list.find((t) => t.published);
       if (firstReady) setSelectedSlug(firstReady.slug);
       setLoading(false);
     })();
-  }, []);
+  }, [supabaseUrl, anonKey]);
 
-  const send = async () => {
-    if (!selectedSlug || !overrideEmail.trim()) { setError("Template + Empfänger sind Pflicht"); return; }
-    setBusy(true); setError(null);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setError(null);
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error("Nicht authentifiziert");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/email-send`, {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (const b of bytes) bin += String.fromCharCode(b);
+      const content_b64 = btoa(bin);
+      const res = await fetch(`${supabaseUrl}/functions/v1/email-templates-admin`, {
         method: "POST",
-        headers: { "content-type": "application/json", apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, authorization: `Bearer ${token}` },
+        headers: { "content-type": "application/json", apikey: anonKey, authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          template_slug: selectedSlug,
-          recipient_email: overrideEmail.trim(),
-          entity: entity ?? undefined,
-          trigger_kind: "manual",
+          resource: "attachment", action: "upload",
+          data: { filename: file.name, mime_type: file.type || "application/octet-stream", content_b64 },
         }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.attachment) throw new Error(json?.error || "Upload fehlgeschlagen");
+      const a = json.attachment as { id: string; filename: string; storage_path: string; mime_type: string; size_bytes: number };
+      setLibrary((prev) => [a, ...prev]);
+      setSelectedAttachments((prev) => [...prev, { storage_path: a.storage_path, filename: a.filename, mime_type: a.mime_type }]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const send = async () => {
+    setError(null);
+    if (!overrideEmail.trim()) { setError("Empfänger ist Pflicht"); return; }
+    if (mode === "template" && !selectedSlug) { setError("Bitte ein Template wählen"); return; }
+    if (mode === "freetext" && (!freetextSubject.trim() || !freetextBody.trim())) {
+      setError("Betreff + Text sind Pflicht"); return;
+    }
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Nicht authentifiziert");
+
+      const body: Record<string, unknown> = {
+        recipient_email: overrideEmail.trim(),
+        entity: entity ?? undefined,
+        trigger_kind: "manual",
+        attachments: selectedAttachments.length ? selectedAttachments : undefined,
+      };
+      if (mode === "template") body.template_slug = selectedSlug;
+      else body.freetext = { subject: freetextSubject.trim(), body_text: freetextBody, type: "transactional" };
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/email-send`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: anonKey, authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || `Send failed (${res.status})`);
@@ -360,40 +423,104 @@ function SendEmailModal({
 
   const draftSubject = templates.find((t) => t.slug === selectedSlug)?.subject ?? "";
 
+  const tabBtn = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: "0.5rem 0.75rem", fontSize: "0.8125rem", fontWeight: 600,
+    border: "none", background: "transparent", cursor: "pointer",
+    color: active ? "var(--color-dark)" : "var(--color-subtle)",
+    borderBottom: active ? "2px solid var(--color-turquoise)" : "2px solid transparent",
+  });
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 50 }} onClick={onClose}>
-      <div className="admin-chart-card" style={{ maxWidth: "32rem", width: "100%", padding: "1.25rem" }} onClick={(e) => e.stopPropagation()}>
+      <div className="admin-chart-card" style={{ maxWidth: "36rem", width: "100%", padding: "1.25rem", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
           <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", margin: 0 }}>E-Mail an Lead senden</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-subtle)" }}>✕</button>
         </div>
 
         {loading ? (
-          <div style={{ padding: "1rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>Lade Templates…</div>
+          <div style={{ padding: "1rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>Lade…</div>
         ) : (
           <>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--color-border)", marginBottom: "1rem" }}>
+              <button style={tabBtn(mode === "template")} onClick={() => setMode("template")}>📄 Aus Template</button>
+              <button style={tabBtn(mode === "freetext")} onClick={() => setMode("freetext")}>✍️ Freitext</button>
+            </div>
+
+            {mode === "template" ? (
+              <div style={{ marginBottom: "0.875rem" }}>
+                <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Template</label>
+                {templates.length === 0 ? (
+                  <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginTop: "0.5rem" }}>
+                    Noch keine Templates angelegt. Geh zu <a href="/admin/emails" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>/admin/emails</a>.
+                  </p>
+                ) : (
+                  <select value={selectedSlug} onChange={(e) => setSelectedSlug(e.target.value)}
+                          style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem" }}>
+                    <option value="">— wählen —</option>
+                    {templates.map((t) => (
+                      <option key={t.slug} value={t.slug}>
+                        {t.name} {!t.published && "· Entwurf"} · {t.type === "newsletter" ? "Newsletter" : "Transaktional"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {draftSubject && (
+                  <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+                    Betreff: <em style={{ color: "var(--color-dark)" }}>{draftSubject}</em>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: "0.875rem" }}>
+                  <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Betreff</label>
+                  <input type="text" value={freetextSubject} onChange={(e) => setFreetextSubject(e.target.value)}
+                         placeholder="z. B. Rückfrage zu Ihrer Anfrage"
+                         style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem" }} />
+                </div>
+                <div style={{ marginBottom: "0.875rem" }}>
+                  <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Text</label>
+                  <textarea value={freetextBody} onChange={(e) => setFreetextBody(e.target.value)} rows={8}
+                            placeholder={"Sehr geehrte/r {{recipient.salutation}},\n\n…\n\nMit freundlichen Grüßen\nIhr LiQiNow-Team"}
+                            style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem", fontFamily: "var(--font-inter, inherit)", resize: "vertical" }} />
+                  <p style={{ marginTop: "0.25rem", fontSize: "0.6875rem", color: "var(--color-subtle)" }}>
+                    Header + Footer (Logo, Impressum) werden automatisch ergänzt. Variablen wie <code style={{ background: "rgba(0,0,0,0.04)", padding: "0 0.25rem", borderRadius: "0.125rem" }}>{`{{recipient.first_name}}`}</code> oder <code style={{ background: "rgba(0,0,0,0.04)", padding: "0 0.25rem", borderRadius: "0.125rem" }}>{`{{application.provider_name}}`}</code> funktionieren.
+                  </p>
+                </div>
+              </>
+            )}
+
             <div style={{ marginBottom: "0.875rem" }}>
-              <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Template</label>
-              {templates.length === 0 ? (
-                <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)", marginTop: "0.5rem" }}>
-                  Noch keine Templates angelegt. Geh zu <a href="/admin/emails" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>/admin/emails</a>.
-                </p>
-              ) : (
-                <select value={selectedSlug} onChange={(e) => setSelectedSlug(e.target.value)}
-                        style={{ width: "100%", marginTop: "0.25rem", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", border: "1px solid var(--color-border)", borderRadius: "0.375rem" }}>
-                  <option value="">— wählen —</option>
-                  {templates.map((t) => (
-                    <option key={t.slug} value={t.slug}>
-                      {t.name} {!t.published && "· Entwurf"} · {t.type === "newsletter" ? "Newsletter" : "Transaktional"}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {draftSubject && (
-                <p style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
-                  Betreff: <em style={{ color: "var(--color-dark)" }}>{draftSubject}</em>
-                </p>
-              )}
+              <label style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", textTransform: "uppercase", fontWeight: 600 }}>Anhänge ({selectedAttachments.length})</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.25rem" }}>
+                {selectedAttachments.map((a, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.375rem 0.5rem", background: "var(--color-light-bg)", borderRadius: "0.25rem", fontSize: "0.75rem" }}>
+                    <span>📎 {a.filename}</span>
+                    <button onClick={() => setSelectedAttachments((prev) => prev.filter((_, k) => k !== i))}
+                            style={{ background: "none", border: "none", color: "var(--color-subtle)", cursor: "pointer" }}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+                {library.length > 0 && (
+                  <select value=""
+                          onChange={(e) => {
+                            const a = library.find((x) => x.id === e.target.value);
+                            if (a && !selectedAttachments.some((s) => s.storage_path === a.storage_path)) {
+                              setSelectedAttachments((prev) => [...prev, { storage_path: a.storage_path, filename: a.filename, mime_type: a.mime_type }]);
+                            }
+                          }}
+                          style={{ flex: 1, minWidth: "10rem", padding: "0.375rem 0.5rem", fontSize: "0.75rem", border: "1px solid var(--color-border)", borderRadius: "0.25rem" }}>
+                    <option value="">+ Aus Bibliothek hinzufügen</option>
+                    {library.map((a) => <option key={a.id} value={a.id}>{a.filename}</option>)}
+                  </select>
+                )}
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", padding: "0.375rem 0.625rem", border: "1px dashed var(--color-border)", borderRadius: "0.25rem", fontSize: "0.75rem", color: "var(--color-subtle)", cursor: uploading ? "wait" : "pointer" }}>
+                  {uploading ? "Lade hoch…" : "+ Datei hochladen"}
+                  <input type="file" disabled={uploading} onChange={handleFileUpload} style={{ display: "none" }} />
+                </label>
+              </div>
             </div>
 
             <div style={{ marginBottom: "0.875rem" }}>
@@ -416,7 +543,7 @@ function SendEmailModal({
                       style={{ padding: "0.5rem 0.875rem", border: "1px solid var(--color-border)", background: "transparent", borderRadius: "0.375rem", fontSize: "0.8125rem", color: "var(--color-subtle)", cursor: "pointer" }}>
                 Abbrechen
               </button>
-              <button onClick={send} disabled={busy || !selectedSlug || !overrideEmail.trim()}
+              <button onClick={send} disabled={busy || !overrideEmail.trim()}
                       style={{ padding: "0.5rem 0.875rem", border: "1px solid var(--color-turquoise)", background: "var(--color-turquoise)", color: "#fff", borderRadius: "0.375rem", fontSize: "0.8125rem", fontWeight: 600, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
                 {busy ? "Sende…" : "Jetzt senden"}
               </button>

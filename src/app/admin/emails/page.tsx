@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Eye, EyeOff, Trash2, Mail, FileText, FolderOpen } from "lucide-react";
+import { Plus, RefreshCw, Eye, EyeOff, Trash2, Copy, Mail, FileText, FolderOpen } from "lucide-react";
 import {
   listEmailTemplates,
+  getEmailTemplate,
+  upsertEmailTemplate,
   publishEmailTemplate,
   unpublishEmailTemplate,
   deleteEmailTemplate,
@@ -31,6 +33,24 @@ export default function EmailsAdminPage() {
       else await publishEmailTemplate(t.slug);
       load();
     } catch (err) { alert(err instanceof Error ? err.message : "Fehler"); }
+  };
+
+  const duplicate = async (t: EmailTemplateListItem) => {
+    try {
+      const full = await getEmailTemplate(t.slug);
+      if (!full) throw new Error("Template nicht gefunden");
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, created_at, updated_at, published, slug, name, ...rest } = full;
+      await upsertEmailTemplate({
+        ...rest,
+        slug: `${slug}-kopie`,
+        name: `${name} (Kopie)`,
+        published: false,
+      });
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Duplizieren fehlgeschlagen");
+    }
   };
 
   const remove = async (t: EmailTemplateListItem) => {
@@ -105,7 +125,7 @@ export default function EmailsAdminPage() {
                     {t.type === "newsletter" ? "Newsletter" : "Transaktional"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-subtle truncate max-w-[28rem]">{t.subject || <em>—</em>}</td>
+                <td className="px-4 py-3 text-subtle truncate max-w-md">{t.subject || <em>—</em>}</td>
                 <td className="px-4 py-3">
                   {t.published ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
@@ -120,6 +140,9 @@ export default function EmailsAdminPage() {
                 <td className="px-4 py-3 text-subtle text-xs">{new Date(t.updated_at).toLocaleDateString("de-DE")}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="inline-flex gap-1">
+                    <button onClick={() => duplicate(t)} className="p-1.5 rounded hover:bg-gray-100" title="Duplizieren">
+                      <Copy className="w-4 h-4 text-subtle" />
+                    </button>
                     <button onClick={() => togglePublish(t)} className="p-1.5 rounded hover:bg-gray-100" title={t.published ? "Auf Entwurf setzen" : "Bereit-stellen"}>
                       {t.published ? <EyeOff className="w-4 h-4 text-subtle" /> : <Eye className="w-4 h-4 text-subtle" />}
                     </button>

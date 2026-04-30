@@ -173,6 +173,22 @@ export async function sendTestEmail(opts: { template_slug: string; recipient_ema
   return { resend_id: r.resend_id, sent_to: r.sent_to };
 }
 
+// ----- Manual / Freetext Send aus Anfrage-Detail -----
+export type SendEmailOpts = {
+  // Entweder Template ODER Freitext
+  template_slug?: string;
+  freetext?: { subject: string; body_text: string; type?: "newsletter" | "transactional" };
+  recipient_email?: string;
+  entity?: { type: string; id: string };
+  trigger_kind?: "manual" | "test" | "transactional";
+  attachments?: Array<{ storage_path: string; filename?: string; mime_type?: string }>;
+};
+
+export async function sendEmail(opts: SendEmailOpts): Promise<{ resend_id: string; sent_to: string }> {
+  const r = await callFn("email-send", opts);
+  return { resend_id: r.resend_id, sent_to: r.sent_to };
+}
+
 // ----- Generator (streaming) -----
 export type EmailGeneratorResult = {
   slug: string;
