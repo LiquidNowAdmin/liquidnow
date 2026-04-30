@@ -40,7 +40,7 @@ export type WorkflowAction = {
   action_type: "send_email";
   config: {
     template_slug: string;
-    recipient_type: "entity_email" | "custom";
+    recipient_type: "entity_email" | "custom" | "operations_team";
     custom_email?: string;
     needs_template_creation?: boolean;
   };

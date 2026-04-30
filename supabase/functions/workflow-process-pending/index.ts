@@ -1,31 +1,33 @@
 // workflow-process-pending: holt sent_emails-Rows mit status='queued',
-// rendert die Templates mit aufgelösten Variablen und schickt via _shared/email-sender.ts
-// (das hängt BCC + Log-Update automatisch dran).
-//
-// Wird vom Cron-Job alle 2 Minuten gerufen (siehe workflow_time_based_and_triggers.sql).
-// Authentifizierung: Service-Role-Token vom Cron — wir prüfen nur dass der Aufrufer
-// Service-Role-Permissions hat (sb.auth.getUser sieht das).
+// rendert Templates und dispatcht via Resend. Aktualisiert die EXISTIERENDE
+// Row (sent/failed) statt sie zu löschen — so bleibt der Audit-Trail intakt.
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import {
   renderEmail, resolveVariables, type Block, type ResolveContext,
 } from '../_shared/template-variables.ts';
-import { sendEmail } from '../_shared/email-sender.ts';
 
 const BATCH_SIZE = 25;
+const RESEND_API = 'https://api.resend.com/emails';
+const FROM = 'LiqiNow <info@liqinow.de>';
+const ARCHIVE_BCC = 'platformmails@liqinow.de';
+const DEFAULT_REPLY_TO = 'info@liqinow.de';
+
+function decodeJwtRole(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return (JSON.parse(json) as { role?: string }).role ?? null;
+  } catch { return null; }
+}
 
 async function authorize(req: Request): Promise<boolean> {
-  // Cron sendet das service_role-JWT. Wir akzeptieren wenn der Token gleich
-  // dem Service-Role-Key der Function ist. Sonst nur 'authenticated' user
-  // mit role=operations (für manuelles Triggern aus Admin).
   const auth = req.headers.get('authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '');
   if (!token) return false;
-
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (token === serviceKey) return true;
-
+  if (decodeJwtRole(token) === 'service_role') return true;
   const sb = createServiceClient();
   const { data: u } = await sb.auth.getUser(token);
   if (!u?.user) return false;
@@ -37,12 +39,9 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
   if (!entityType || !entityId) return {};
   const sb = createServiceClient();
 
-  // Resolve recipient + company aus den Hauptentitäten
   if (entityType === 'inquiries' || entityType === 'applications') {
     const { data } = await sb.from(entityType)
-      .select('user_id, company_id')
-      .eq('id', entityId)
-      .maybeSingle();
+      .select('user_id, company_id').eq('id', entityId).maybeSingle();
     if (!data) return {};
     const [userRow, companyRow] = await Promise.all([
       sb.from('users').select('email, first_name, last_name').eq('id', (data as any).user_id).maybeSingle(),
@@ -60,9 +59,7 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
 
   if (entityType === 'users') {
     const { data } = await sb.from('users')
-      .select('email, first_name, last_name')
-      .eq('id', entityId)
-      .maybeSingle();
+      .select('email, first_name, last_name').eq('id', entityId).maybeSingle();
     if (!data) return {};
     return {
       recipient: {
@@ -75,23 +72,51 @@ async function loadEntityContext(entityType: string | null, entityId: string | n
   return {};
 }
 
+async function dispatchViaResend(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  try {
+    const res = await fetch(RESEND_API, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM,
+        to: [opts.to],
+        bcc: [ARCHIVE_BCC],
+        reply_to: DEFAULT_REPLY_TO,
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: (data?.message || data?.name || `Resend ${res.status}`) + ` :: ${JSON.stringify(data).slice(0, 300)}` };
+    }
+    return { ok: true, id: data?.id || '' };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
   const headers = corsHeaders(req.headers.get('origin'));
 
-  if (req.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405, headers });
-  }
-
-  if (!(await authorize(req))) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401, headers });
-  }
+  if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405, headers });
+  if (!(await authorize(req))) return Response.json({ error: 'Unauthorized' }, { status: 401, headers });
 
   const sb = createServiceClient();
 
-  // Hole bis zu BATCH_SIZE gequeuete Mails. Wir markieren sie sofort als 'sending'
-  // damit parallele Cron-Runs sie nicht doppelt versenden.
   const { data: queued, error } = await sb.from('sent_emails')
     .select('id, tenant_id, recipient_email, template_id, template_slug, entity_type, entity_id, trigger_rule_id')
     .eq('status', 'queued')
@@ -109,22 +134,21 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   let failed = 0;
+  const errors: Array<{ id: string; error: string }> = [];
 
   for (const row of queued) {
     try {
-      // Template laden
       const { data: tpl } = await sb.from('email_templates')
-        .select('*')
-        .eq('id', row.template_id)
-        .maybeSingle();
+        .select('*').eq('id', row.template_id).maybeSingle();
       if (!tpl) {
         await sb.from('sent_emails').update({ status: 'failed', error_message: 'template missing' }).eq('id', row.id);
-        failed++; continue;
+        failed++; errors.push({ id: row.id, error: 'template missing' });
+        continue;
       }
 
-      // Entity-Context laden
       const ctx = await loadEntityContext(row.entity_type, row.entity_id);
       const values = resolveVariables(ctx);
+      const recipient = ctx.recipient?.email || row.recipient_email;
 
       const subject = (tpl.subject ?? '').replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_: string, k: string) => values[k] ?? '');
       const { html, text } = renderEmail({
@@ -134,36 +158,39 @@ Deno.serve(async (req) => {
         values,
       });
 
-      // Recipient: bevorzugt aus Context (frischer), fallback auf gespeicherte recipient_email
-      const recipient = ctx.recipient?.email || row.recipient_email;
+      const recipientName = ctx.recipient ? [ctx.recipient.first_name, ctx.recipient.last_name].filter(Boolean).join(' ') || null : null;
 
-      // Wir wollen DASS sendEmail() die LOG-Row schreibt — daher löschen wir die alte
-      // 'sending'-Zeile UND machen einen frischen Send. Sauberer als Update.
-      await sb.from('sent_emails').delete().eq('id', row.id);
+      const result = await dispatchViaResend({ to: recipient, subject, html, text });
 
-      const result = await sendEmail({
-        tenant_id: row.tenant_id,
-        to: recipient,
-        subject,
-        html,
-        text,
-        trigger_kind: 'workflow',
-        trigger_rule_id: row.trigger_rule_id,
-        template_slug: row.template_slug,
-        template_id: row.template_id,
-        entity: row.entity_type && row.entity_id ? { type: row.entity_type, id: row.entity_id } : null,
-        recipient_name: ctx.recipient ? [ctx.recipient.first_name, ctx.recipient.last_name].filter(Boolean).join(' ') || null : null,
-      });
-
-      if (result.ok) sent++; else failed++;
+      if (result.ok) {
+        await sb.from('sent_emails').update({
+          status: 'sent',
+          subject,
+          body_html: html,
+          body_text: text,
+          recipient_email: recipient,
+          recipient_name: recipientName,
+          resend_id: result.id,
+        }).eq('id', row.id);
+        sent++;
+      } else {
+        await sb.from('sent_emails').update({
+          status: 'failed',
+          subject,
+          body_html: html,
+          body_text: text,
+          recipient_email: recipient,
+          recipient_name: recipientName,
+          error_message: result.error.slice(0, 1000),
+        }).eq('id', row.id);
+        failed++; errors.push({ id: row.id, error: result.error });
+      }
     } catch (err) {
-      await sb.from('sent_emails').update({
-        status: 'failed',
-        error_message: String(err),
-      }).eq('id', row.id);
-      failed++;
+      const msg = String(err).slice(0, 1000);
+      await sb.from('sent_emails').update({ status: 'failed', error_message: msg }).eq('id', row.id);
+      failed++; errors.push({ id: row.id, error: msg });
     }
   }
 
-  return Response.json({ ok: true, processed: queued.length, sent, failed }, { headers });
+  return Response.json({ ok: true, processed: queued.length, sent, failed, errors }, { headers });
 });

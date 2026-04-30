@@ -371,9 +371,10 @@ function ActionRow({
         <div>
           <label className="text-[10px] text-subtle uppercase">Empfänger</label>
           <select value={action.config.recipient_type}
-                  onChange={(e) => onChange({ ...action, config: { ...action.config, recipient_type: e.target.value as "entity_email" | "custom" } })}
+                  onChange={(e) => onChange({ ...action, config: { ...action.config, recipient_type: e.target.value as "entity_email" | "custom" | "operations_team" } })}
                   className="w-full mt-1 px-2 py-1.5 rounded border border-gray-200 text-sm">
             <option value="entity_email">Entity-E-Mail (Kunde)</option>
+            <option value="operations_team">Ops-Team (alle role=operations)</option>
             <option value="custom">Custom (feste Adresse)</option>
           </select>
         </div>

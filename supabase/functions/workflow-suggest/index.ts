@@ -81,8 +81,10 @@ ${fieldDescriptions}
   action_type: 'send_email',
   config: {
     template_slug: '<existierender slug>',
-    recipient_type: 'entity_email' | 'custom',
+    recipient_type: 'entity_email' | 'operations_team' | 'custom',
     custom_email: '<adresse>'           // nur bei recipient_type='custom'
+    // operations_team = an alle User mit role='operations' im Tenant
+    // → für interne Notifications ("neuer Lead", "Status-Eskalation")
   }
 }
 
@@ -199,7 +201,7 @@ Deno.serve(async (req) => {
                     type: 'object',
                     properties: {
                       template_slug: { type: 'string' },
-                      recipient_type: { type: 'string', enum: ['entity_email', 'custom'] },
+                      recipient_type: { type: 'string', enum: ['entity_email', 'operations_team', 'custom'] },
                       custom_email: { type: 'string' },
                       needs_template_creation: { type: 'boolean' },
                     },
