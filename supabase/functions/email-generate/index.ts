@@ -125,29 +125,66 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch {}
-  const type = String(body?.type || '').trim();
-  const intent = String(body?.intent || '').trim();
-  const ctaLabel = String(body?.cta_label || '').trim();
-  const ctaUrl = String(body?.cta_url || '').trim();
-  const audience = String(body?.audience || '').trim();
 
-  if (!intent || !type || (type !== 'newsletter' && type !== 'transactional')) {
-    return Response.json({ error: 'type (newsletter|transactional) and intent required' }, { status: 400, headers });
-  }
-
+  const mode = (body?.mode === 'refine' ? 'refine' : 'generate') as 'generate' | 'refine';
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) {
     return Response.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500, headers });
   }
 
-  const userPrompt = [
-    `E-Mail-Typ: ${type}`,
-    audience ? `Zielgruppe: ${audience}` : '',
-    `Intent: ${intent}`,
-    ctaLabel || ctaUrl ? `CTA: ${ctaLabel || '(Label fehlt)'} → ${ctaUrl || '(URL fehlt)'}` : 'Kein expliziter CTA angegeben — schlage einen sinnvollen vor (Label + URL).',
-    '',
-    'Erstelle jetzt das vollständige E-Mail-Template via Tool submit_email_template.',
-  ].filter(Boolean).join('\n');
+  let userPrompt: string;
+  let messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+  if (mode === 'refine') {
+    const existingTemplate = body?.existing_template;
+    const userMessage = String(body?.user_message || '').trim();
+    const chatHistory: Array<{ role: 'user' | 'assistant'; content: string }> = Array.isArray(body?.chat_history) ? body.chat_history : [];
+
+    if (!existingTemplate || !userMessage) {
+      return Response.json({ error: 'existing_template + user_message required for refine mode' }, { status: 400, headers });
+    }
+
+    // Build conversation: system has refine instruction, first user msg has the template.
+    // Following messages alternate user/assistant from chat_history, then current user_message.
+    const tplJson = JSON.stringify({
+      slug: existingTemplate.slug,
+      name: existingTemplate.name,
+      type: existingTemplate.type,
+      subject: existingTemplate.subject,
+      preheader: existingTemplate.preheader,
+      blocks: existingTemplate.blocks,
+      cta_label: existingTemplate.cta_label,
+      cta_url: existingTemplate.cta_url,
+    }, null, 2);
+
+    messages = [
+      { role: 'user', content: `Hier ist mein aktuelles E-Mail-Template:\n\n\`\`\`json\n${tplJson}\n\`\`\`\n\nIch werde dir gleich Änderungswünsche schicken. Wende die Änderungen an und liefere die KOMPLETTE überarbeitete Version via Tool submit_email_template. Behalte was gut ist, ändere nur was relevant ist.` },
+      { role: 'assistant', content: 'Verstanden, ich habe das Template. Schick mir deine Änderungswünsche.' },
+      ...chatHistory,
+      { role: 'user', content: userMessage },
+    ];
+    userPrompt = '';  // not used in refine mode (messages array is used)
+  } else {
+    const type = String(body?.type || '').trim();
+    const intent = String(body?.intent || '').trim();
+    const ctaLabel = String(body?.cta_label || '').trim();
+    const ctaUrl = String(body?.cta_url || '').trim();
+    const audience = String(body?.audience || '').trim();
+
+    if (!intent || !type || (type !== 'newsletter' && type !== 'transactional')) {
+      return Response.json({ error: 'type (newsletter|transactional) and intent required' }, { status: 400, headers });
+    }
+
+    userPrompt = [
+      `E-Mail-Typ: ${type}`,
+      audience ? `Zielgruppe: ${audience}` : '',
+      `Intent: ${intent}`,
+      ctaLabel || ctaUrl ? `CTA: ${ctaLabel || '(Label fehlt)'} → ${ctaUrl || '(URL fehlt)'}` : 'Kein expliziter CTA angegeben — schlage einen sinnvollen vor (Label + URL).',
+      '',
+      'Erstelle jetzt das vollständige E-Mail-Template via Tool submit_email_template.',
+    ].filter(Boolean).join('\n');
+    messages = [{ role: 'user', content: userPrompt }];
+  }
 
   let upstream: Response;
   try {
@@ -162,10 +199,12 @@ Deno.serve(async (req) => {
         model: MODEL,
         max_tokens: 8000,
         stream: true,
-        system: SYSTEM_PROMPT,
+        system: mode === 'refine'
+          ? SYSTEM_PROMPT + '\n\n## REFINE-MODUS\nDu erhältst ein bestehendes Template und Änderungswünsche. Wende die gewünschten Änderungen an und liefere die VOLLSTÄNDIGE überarbeitete Version. Felder die nicht erwähnt sind: unverändert lassen. Im `assistant_message`-Feld erkläre kurz (1-2 Sätze) was du geändert hast.'
+          : SYSTEM_PROMPT,
         tools: [{
           name: 'submit_email_template',
-          description: 'Übermittle das fertig generierte E-Mail-Template.',
+          description: 'Übermittle das fertig generierte oder überarbeitete E-Mail-Template.',
           input_schema: {
             type: 'object',
             properties: {
@@ -206,12 +245,16 @@ Deno.serve(async (req) => {
                   },
                 },
               },
+              assistant_message: {
+                type: 'string',
+                description: 'Im Refine-Modus: kurze Erklärung was geändert wurde (1-2 Sätze, Deutsch).',
+              },
             },
             required: ['slug', 'name', 'subject', 'preheader', 'blocks', 'variables_used'],
           },
         }],
         tool_choice: { type: 'tool', name: 'submit_email_template' },
-        messages: [{ role: 'user', content: userPrompt }],
+        messages,
       }),
     });
   } catch (err) {

@@ -182,7 +182,66 @@ export type EmailGeneratorResult = {
   blocks: Block[];
   variables_used: string[];
   suggested_attachments?: Array<{ filename: string; description: string }>;
+  /** Refine-Modus: KI-Erklärung was geändert wurde */
+  assistant_message?: string;
 };
+
+export async function streamEmailRefinement(opts: {
+  existing_template: Partial<EmailTemplate>;
+  user_message: string;
+  chat_history: Array<{ role: "user" | "assistant"; content: string }>;
+  onText?: (chunk: string) => void;
+  onResult: (template: EmailGeneratorResult) => void;
+  onError: (msg: string) => void;
+  signal?: AbortSignal;
+}) {
+  const headers = await authHeader();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/email-generate`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      mode: "refine",
+      existing_template: opts.existing_template,
+      user_message: opts.user_message,
+      chat_history: opts.chat_history,
+    }),
+    signal: opts.signal,
+  });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => "");
+    opts.onError(text || `Refine failed (${res.status})`);
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl;
+    while ((nl = buffer.indexOf("\n\n")) !== -1) {
+      const ev = buffer.slice(0, nl);
+      buffer = buffer.slice(nl + 2);
+      let eventName = "message";
+      const dataLines: string[] = [];
+      for (const line of ev.split("\n")) {
+        if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+        else if (line.startsWith("data: ")) dataLines.push(line.slice(6));
+      }
+      const data = dataLines.join("\n");
+      if (!data) continue;
+      try {
+        const j = JSON.parse(data);
+        if (eventName === "result" && j?.template) opts.onResult(j.template);
+        else if (eventName === "error") opts.onError(j?.error || "Unbekannter Fehler");
+        else if (j?.type === "content_block_delta" && j?.delta?.type === "input_json_delta") {
+          if (opts.onText && typeof j.delta.partial_json === "string") opts.onText(j.delta.partial_json);
+        }
+      } catch { /* ignore */ }
+    }
+  }
+}
 
 export async function streamEmailGeneration(opts: {
   type: "newsletter" | "transactional";

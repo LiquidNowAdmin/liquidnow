@@ -14,6 +14,8 @@ import {
 import BlockEditor from "./BlockEditor";
 import EmailPreview from "./EmailPreview";
 import AttachmentPicker from "./AttachmentPicker";
+import AIAssistantPanel from "./AIAssistantPanel";
+import { Sparkles } from "lucide-react";
 
 function slugify(s: string): string {
   return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -33,6 +35,7 @@ export default function EmailEditor({ initial, isNew }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const update = <K extends keyof EmailTemplate>(k: K, v: EmailTemplate[K]) => {
     setT((prev) => ({ ...prev, [k]: v }));
@@ -101,6 +104,12 @@ export default function EmailEditor({ initial, isNew }: Props) {
           <ArrowLeft className="w-4 h-4" /> Zurück
         </Link>
         <div className="flex gap-2">
+          <button onClick={() => setAiOpen(!aiOpen)} disabled={busy}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold inline-flex items-center gap-1.5 transition-colors ${
+                    aiOpen ? "bg-turquoise text-white" : "border border-turquoise text-turquoise hover:bg-turquoise-light/40"
+                  }`}>
+            <Sparkles className="w-4 h-4" /> KI-Assistent
+          </button>
           <button onClick={handleSave} disabled={busy}
                   className="px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
             <Save className="w-4 h-4" /> Speichern
@@ -205,6 +214,22 @@ export default function EmailEditor({ initial, isNew }: Props) {
           <EmailPreview blocks={t.blocks} type={t.type} preheader={t.preheader} />
         </div>
       </div>
+
+      {aiOpen && (
+        <AIAssistantPanel
+          template={t}
+          onApply={(result) => {
+            setT((prev) => ({
+              ...prev,
+              subject: result.subject ?? prev.subject,
+              preheader: result.preheader ?? prev.preheader,
+              blocks: Array.isArray(result.blocks) ? result.blocks : prev.blocks,
+              variables_used: result.variables_used ?? prev.variables_used,
+            }));
+          }}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
     </div>
   );
 }
