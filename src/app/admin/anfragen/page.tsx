@@ -134,8 +134,8 @@ function InlineField({ label, value, onSave, type = "text", placeholder }: {
   }
 
   return (
-    <div data-inline-field style={{ padding: "0.625rem 0.875rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
-      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-subtle)", whiteSpace: "nowrap" }}>{label}</span>
+    <div data-inline-field style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
+      <span style={{ fontSize: "0.625rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{label}</span>
       {editing ? (
         <input
           type={type}
@@ -145,11 +145,12 @@ function InlineField({ label, value, onSave, type = "text", placeholder }: {
           onBlur={commit}
           autoFocus
           placeholder={placeholder}
-          style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", textAlign: "right", border: "1px solid var(--color-turquoise)", borderRadius: "0.25rem", padding: "0.125rem 0.375rem", background: "#fff", outline: "none" }}
+          style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--color-dark)", border: "1px solid var(--color-turquoise)", borderRadius: "0.25rem", padding: "0.25rem 0.375rem", background: "#fff", outline: "none", minHeight: "1.625rem" }}
         />
       ) : (
         <button type="button" onClick={startEdit}
-          style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 600, color: display === "–" ? "var(--color-border)" : "var(--color-dark)", textAlign: "right", background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.375rem" }}>
+          className="anfragen-inline-value"
+          style={{ fontSize: "0.8125rem", fontWeight: 500, color: display === "–" ? "var(--color-border)" : "var(--color-dark)", textAlign: "left", background: "none", border: "1px solid transparent", borderRadius: "0.25rem", cursor: "text", padding: "0.25rem 0.375rem", minHeight: "1.625rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {display}
         </button>
       )}
@@ -302,12 +303,15 @@ function AnfragenContent() {
           <InfoCard icon={FileText} label="Zweck" value={selected.purpose ?? "–"} />
         </div>
 
-        {/* User & Company details with inline edit */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "2rem" }}>
+        {/* User & Company details with inline edit — kompakt */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2rem" }}>
           {userDetail && (
-            <div>
-              <h3 style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.625rem" }}>Nutzer</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+            <section className="anfragen-detail-card">
+              <header className="anfragen-detail-card-header">
+                <User style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)" }} />
+                <h3>Nutzer</h3>
+              </header>
+              <div className="anfragen-detail-grid">
                 {(() => {
                   const supabase = createClient();
                   const meta = (userDetail.metadata as Record<string, unknown>) || {};
@@ -323,22 +327,29 @@ function AnfragenContent() {
                   return <>
                     <InlineField label="Vorname" value={userDetail.first_name as string} onSave={v => saveUser("first_name", v)} />
                     <InlineField label="Nachname" value={userDetail.last_name as string} onSave={v => saveUser("last_name", v)} />
-                    <InlineField label="E-Mail" value={userDetail.email as string} onSave={v => saveUser("email", v)} type="email" />
+                    <div style={{ gridColumn: "span 2" }}>
+                      <InlineField label="E-Mail" value={userDetail.email as string} onSave={v => saveUser("email", v)} type="email" />
+                    </div>
                     <InlineField label="Telefon" value={userDetail.phone as string} onSave={v => saveUser("phone", v)} type="tel" />
                     <InlineField label="Geburtsdatum" value={meta.date_of_birth as string} onSave={v => saveUserMeta("date_of_birth", v)} type="date" />
-                    <InlineField label="Straße" value={meta.street as string} onSave={v => saveUserMeta("street", v)} />
+                    <div style={{ gridColumn: "span 2" }}>
+                      <InlineField label="Straße" value={meta.street as string} onSave={v => saveUserMeta("street", v)} />
+                    </div>
                     <InlineField label="PLZ" value={meta.zip as string} onSave={v => saveUserMeta("zip", v)} />
                     <InlineField label="Stadt" value={meta.city as string} onSave={v => saveUserMeta("city", v)} />
                   </>;
                 })()}
               </div>
-            </div>
+            </section>
           )}
 
           {companyDetail && (
-            <div>
-              <h3 style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--color-dark)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.625rem" }}>Unternehmen</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+            <section className="anfragen-detail-card">
+              <header className="anfragen-detail-card-header">
+                <Building2 style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-subtle)" }} />
+                <h3>Unternehmen</h3>
+              </header>
+              <div className="anfragen-detail-grid">
                 {(() => {
                   const supabase = createClient();
                   const addr = (companyDetail.address as Record<string, string>) || {};
@@ -354,21 +365,27 @@ function AnfragenContent() {
                     setCompanyDetail(prev => prev ? { ...prev, address: newAddr } : prev);
                   }
                   return <>
-                    <InlineField label="Name" value={companyDetail.name as string} onSave={v => saveCompany("name", v)} />
+                    <div style={{ gridColumn: "span 2" }}>
+                      <InlineField label="Name" value={companyDetail.name as string} onSave={v => saveCompany("name", v)} />
+                    </div>
                     <InlineField label="Rechtsform" value={companyDetail.legal_form as string} onSave={v => saveCompany("legal_form", v)} />
                     <InlineField label="HRB" value={companyDetail.hrb as string} onSave={v => saveCompany("hrb", v)} />
-                    <InlineField label="USt-IdNr." value={companyDetail.ust_id as string} onSave={v => saveCompany("ust_id", v)} />
+                    <InlineField label="USt-IdNr." value={companyDetail.ust_id as string} onSave={v => saveCompany("ust_id", v)} type="text" />
                     <InlineField label="Crefo" value={companyDetail.crefo as string} onSave={v => saveCompany("crefo", v)} />
-                    <InlineField label="Website" value={companyDetail.website as string} onSave={v => saveCompany("website", v)} />
                     <InlineField label="Branche" value={companyDetail.industry as string} onSave={v => saveCompany("industry", v)} />
                     <InlineField label="Jahresumsatz" value={companyDetail.annual_revenue as number} onSave={v => saveCompany("annual_revenue", v)} type="number" />
-                    <InlineField label="Straße" value={addr.street} onSave={v => saveAddress("street", v)} />
+                    <div style={{ gridColumn: "span 2" }}>
+                      <InlineField label="Website" value={companyDetail.website as string} onSave={v => saveCompany("website", v)} />
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <InlineField label="Straße" value={addr.street} onSave={v => saveAddress("street", v)} />
+                    </div>
                     <InlineField label="PLZ" value={addr.zip} onSave={v => saveAddress("zip", v)} />
                     <InlineField label="Stadt" value={addr.city} onSave={v => saveAddress("city", v)} />
                   </>;
                 })()}
               </div>
-            </div>
+            </section>
           )}
         </div>
 

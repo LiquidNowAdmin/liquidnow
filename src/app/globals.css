@@ -4989,3 +4989,43 @@ button, .btn, label, .badge, .trust-item {
   font-style: italic;
   color: #4b5563;
 }
+
+/* === Admin /anfragen Detail-Cards (Nutzer/Unternehmen) === */
+
+.anfragen-detail-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.anfragen-detail-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.anfragen-detail-card-header h3 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.anfragen-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem 0.875rem;
+}
+
+.anfragen-inline-value:hover {
+  background: var(--color-light-bg);
+  border-color: var(--color-border) !important;
+}
