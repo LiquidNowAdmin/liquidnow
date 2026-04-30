@@ -174,9 +174,10 @@ Deno.serve(async (req) => {
         return Response.json({ sent_emails: rows || [] }, { headers });
       }
       if (action === 'list_by_lead') {
-        // Liefert ALLE sent_emails die zum Lead gehören:
-        //   - entity_type='inquiries' AND entity_id=<inquiry_id>
-        //   - entity_type='users'     AND entity_id=<inquiry.user_id>
+        // Liefert ALLE sent_emails die zum Lead gehören (3 Sub-Queries + merge,
+        // da PostgREST nested OR-AND-Syntax fragil ist):
+        //   - entity_type='inquiries'    AND entity_id=<inquiry_id>
+        //   - entity_type='users'        AND entity_id=<inquiry.user_id>
         //   - entity_type='applications' AND entity_id IN (apps für diesen Lead)
         if (!data.inquiry_id && !data.user_id) {
           return Response.json({ error: 'inquiry_id or user_id required' }, { status: 400, headers });
@@ -193,21 +194,29 @@ Deno.serve(async (req) => {
           appIds = (apps as Array<{ id: string }> || []).map((a) => a.id);
         }
 
-        // Build OR-filter: 1-3 sub-clauses
-        const orParts: string[] = [];
-        if (data.inquiry_id) orParts.push(`and(entity_type.eq.inquiries,entity_id.eq.${data.inquiry_id})`);
-        if (userId)          orParts.push(`and(entity_type.eq.users,entity_id.eq.${userId})`);
-        if (appIds.length)   orParts.push(`and(entity_type.eq.applications,entity_id.in.(${appIds.join(',')}))`);
-
-        if (orParts.length === 0) return Response.json({ sent_emails: [] }, { headers });
-
-        const { data: rows, error } = await sb.from('sent_emails')
-          .select('id, recipient_email, recipient_name, subject, status, error_message, trigger_kind, template_slug, sent_at, entity_type, entity_id')
-          .eq('tenant_id', TENANT_ID)
-          .or(orParts.join(','))
-          .order('sent_at', { ascending: false });
-        if (error) throw error;
-        return Response.json({ sent_emails: rows || [] }, { headers });
+        const cols = 'id, recipient_email, recipient_name, subject, status, error_message, trigger_kind, template_slug, sent_at, entity_type, entity_id';
+        const queries: Promise<{ data: unknown[] | null }>[] = [];
+        if (data.inquiry_id) {
+          queries.push(sb.from('sent_emails').select(cols)
+            .eq('tenant_id', TENANT_ID).eq('entity_type', 'inquiries').eq('entity_id', data.inquiry_id) as never);
+        }
+        if (userId) {
+          queries.push(sb.from('sent_emails').select(cols)
+            .eq('tenant_id', TENANT_ID).eq('entity_type', 'users').eq('entity_id', userId) as never);
+        }
+        if (appIds.length) {
+          queries.push(sb.from('sent_emails').select(cols)
+            .eq('tenant_id', TENANT_ID).eq('entity_type', 'applications').in('entity_id', appIds) as never);
+        }
+        const results = await Promise.all(queries);
+        const merged = results.flatMap((r) => (r.data ?? []) as Array<{ id: string; sent_at: string }>);
+        // Dedup nach id, sort by sent_at desc
+        const seen = new Set<string>();
+        const unique = merged.filter((r) => {
+          if (seen.has(r.id)) return false;
+          seen.add(r.id); return true;
+        }).sort((a, b) => (b.sent_at > a.sent_at ? 1 : -1));
+        return Response.json({ sent_emails: unique }, { headers });
       }
       if (action === 'list_recent') {
         const { data: rows, error } = await sb.from('sent_emails')
