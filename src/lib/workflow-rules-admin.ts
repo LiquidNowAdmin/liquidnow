@@ -56,6 +56,10 @@ export type WorkflowRule = {
   time_config?: TimeConfig | null;
   conditions: ConditionGroup;
   actions: WorkflowAction[];
+  /** nur für time_based: Wiederholungs-Intervall in Tagen. NULL = einmalig. */
+  repeat_interval_days?: number | null;
+  /** Maximale Wiederholungen (zählt den Erstlauf mit). NULL = unbegrenzt. */
+  repeat_max?: number | null;
   created_at?: string;
   updated_at?: string;
 };

@@ -97,6 +97,8 @@ Deno.serve(async (req) => {
           time_config: data.time_config ?? null,
           conditions: data.conditions ?? { match_type: 'all', conditions: [] },
           actions: data.actions ?? [],
+          repeat_interval_days: data.repeat_interval_days ?? null,
+          repeat_max: data.repeat_max ?? null,
           created_by: USER_ID,
         };
         if (data.id) row.id = data.id;

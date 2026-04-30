@@ -43,7 +43,7 @@ export default function AutopilotPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-dark inline-flex items-center gap-2">
-            <Zap className="w-6 h-6 text-turquoise" /> Autopilot
+            <Zap className="w-6 h-6 text-turquoise" /> Automatisierung
           </h1>
           <p className="text-sm text-subtle">Regeln für automatisierte E-Mails — record_created &amp; zeitgesteuert</p>
         </div>

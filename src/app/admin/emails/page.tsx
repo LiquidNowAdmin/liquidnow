@@ -45,7 +45,7 @@ export default function EmailsAdminPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-dark">E-Mails</h1>
+          <h1 className="text-2xl font-bold text-dark">E-Mail Templates</h1>
           <p className="text-sm text-subtle">{loading ? "Lade…" : `${items.length} Templates`}</p>
         </div>
         <div className="flex gap-2">

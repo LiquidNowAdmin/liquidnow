@@ -21,6 +21,27 @@ const ENTITY_FIELDS: Record<EntityType, string[]> = {
   users:        ["email", "role", "first_name", "last_name", "created_at"],
 };
 
+// Status-Werte pro Entity (für days_in_status-Dropdown)
+const STATUS_VALUES_BY_ENTITY: Record<EntityType, string[]> = {
+  inquiries:    ["new", "contacted", "qualified", "lost"],
+  applications: ["new", "inquired", "signed", "closed", "rejected"],
+  users:        ["lead", "operations"],
+};
+
+// Felder mit Status-Charakter (= worauf days_in_status sich bezieht)
+const STATUS_FIELDS_BY_ENTITY: Record<EntityType, string[]> = {
+  inquiries:    ["status"],
+  applications: ["status"],
+  users:        ["role"],
+};
+
+// Datums-/Timestamp-Felder pro Entity (für days_after_field)
+const DATE_FIELDS_BY_ENTITY: Record<EntityType, string[]> = {
+  inquiries:    ["created_at", "updated_at", "status_last_changed_at"],
+  applications: ["created_at", "updated_at", "status_last_changed_at"],
+  users:        ["created_at"],
+};
+
 const OPERATOR_LABELS: Record<ConditionOperator, string> = {
   equals: "ist gleich",
   not_equals: "ist nicht gleich",
@@ -172,7 +193,18 @@ export default function RuleBuilder({ initial, onClose, onSaved }: Props) {
             <div>
               <label className="text-xs uppercase tracking-wide text-subtle font-semibold">Trigger *</label>
               <select value={r.trigger_type}
-                      onChange={(e) => update("trigger_type", e.target.value as TriggerType)}
+                      onChange={(e) => {
+                        const newType = e.target.value as TriggerType;
+                        const statusField = STATUS_FIELDS_BY_ENTITY[r.entity_type]?.[0] ?? "status";
+                        const statusVal = STATUS_VALUES_BY_ENTITY[r.entity_type]?.[0] ?? "";
+                        setR((p) => ({
+                          ...p,
+                          trigger_type: newType,
+                          time_config: newType === "time_based"
+                            ? (p.time_config ?? { type: "days_in_status", status_field: statusField, status_value: statusVal, days: 1 })
+                            : null,
+                        }));
+                      }}
                       className="w-full mt-1 px-3 py-2 rounded border border-gray-200">
                 <option value="record_created">Record erstellt</option>
                 <option value="time_based">Zeitbasiert</option>
@@ -181,11 +213,18 @@ export default function RuleBuilder({ initial, onClose, onSaved }: Props) {
           </div>
 
           {r.trigger_type === "time_based" && (
-            <TimeConfigForm
-              value={r.time_config}
-              onChange={(c) => update("time_config", c)}
-              fields={fields}
-            />
+            <>
+              <TimeConfigForm
+                value={r.time_config}
+                onChange={(c) => update("time_config", c)}
+                entityType={r.entity_type}
+              />
+              <RepeatConfigForm
+                intervalDays={r.repeat_interval_days ?? null}
+                maxRepeats={r.repeat_max ?? null}
+                onChange={(interval, max) => setR((p) => ({ ...p, repeat_interval_days: interval, repeat_max: max }))}
+              />
+            </>
           )}
 
           {/* Conditions */}
@@ -200,7 +239,7 @@ export default function RuleBuilder({ initial, onClose, onSaved }: Props) {
               </select>
             </div>
             {r.conditions.conditions.map((c, i) => (
-              <ConditionRow key={i} condition={c} fields={fields}
+              <ConditionRow key={i} condition={c} fields={fields} entityType={r.entity_type}
                 onChange={(next) => {
                   const list = [...r.conditions.conditions]; list[i] = next;
                   update("conditions", { ...r.conditions, conditions: list });
@@ -250,64 +289,162 @@ export default function RuleBuilder({ initial, onClose, onSaved }: Props) {
   );
 }
 
-function TimeConfigForm({
-  value, onChange, fields,
+function RepeatConfigForm({
+  intervalDays, maxRepeats, onChange,
 }: {
-  value: WorkflowRule["time_config"];
-  onChange: (next: WorkflowRule["time_config"]) => void;
-  fields: string[];
+  intervalDays: number | null;
+  maxRepeats: number | null;
+  onChange: (intervalDays: number | null, maxRepeats: number | null) => void;
 }) {
-  const t = value?.type ?? "days_in_status";
+  const enabled = intervalDays != null;
   return (
     <div className="rounded-xl border border-gray-200 p-4 bg-gray-50/50 space-y-3">
-      <h4 className="text-xs uppercase tracking-wide text-subtle font-semibold">Zeit-Konfiguration</h4>
-      <select value={t}
-              onChange={(e) => onChange(e.target.value === "days_in_status"
-                ? { type: "days_in_status", status_field: "status", status_value: "", days: 1 }
-                : { type: "days_after_field", field: "created_at", days: 1 })}
-              className="w-full px-3 py-2 rounded border border-gray-200 text-sm">
-        <option value="days_in_status">Tage im Status</option>
-        <option value="days_after_field">Tage nach Datums-Feld</option>
-      </select>
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs uppercase tracking-wide text-subtle font-semibold">Wiederholungen</h4>
+        <label className="flex items-center gap-2 text-xs text-subtle">
+          <input type="checkbox" checked={enabled}
+                 onChange={(e) => onChange(e.target.checked ? 7 : null, e.target.checked ? 3 : null)} />
+          Wiederholt feuern
+        </label>
+      </div>
 
-      {t === "days_in_status" && value && "status_value" in value && (
-        <div className="grid grid-cols-3 gap-2">
-          <input value={value.status_field}
-                 onChange={(e) => onChange({ ...value, status_field: e.target.value })}
-                 placeholder="status_field" className="px-3 py-2 rounded border border-gray-200 text-sm" />
-          <input value={value.status_value}
-                 onChange={(e) => onChange({ ...value, status_value: e.target.value })}
-                 placeholder="status_value" className="px-3 py-2 rounded border border-gray-200 text-sm" />
-          <input type="number" value={value.days}
-                 onChange={(e) => onChange({ ...value, days: parseInt(e.target.value) || 1 })}
-                 placeholder="Tage" className="px-3 py-2 rounded border border-gray-200 text-sm" />
-        </div>
-      )}
-      {t === "days_after_field" && value && "field" in value && (
+      {enabled ? (
         <div className="grid grid-cols-2 gap-2">
-          <select value={value.field}
-                  onChange={(e) => onChange({ ...value, field: e.target.value })}
-                  className="px-3 py-2 rounded border border-gray-200 text-sm">
-            {fields.filter((f) => f.endsWith("_at") || f.includes("date")).map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <input type="number" value={value.days}
-                 onChange={(e) => onChange({ ...value, days: parseInt(e.target.value) || 1 })}
-                 placeholder="Tage" className="px-3 py-2 rounded border border-gray-200 text-sm" />
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Intervall (Tage)</label>
+            <input type="number" min={1} value={intervalDays ?? 7}
+                   onChange={(e) => onChange(parseInt(e.target.value) || 1, maxRepeats)}
+                   className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Max. Wiederholungen</label>
+            <input type="number" min={1}
+                   value={maxRepeats ?? ""}
+                   placeholder="leer = unbegrenzt"
+                   onChange={(e) => onChange(intervalDays, e.target.value ? parseInt(e.target.value) : null)}
+                   className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm" />
+          </div>
         </div>
+      ) : (
+        <p className="text-xs text-subtle">Standard: Rule feuert pro Entity nur einmal.</p>
+      )}
+      {enabled && (
+        <p className="text-xs text-subtle">
+          💡 Beispiel „alle 7 Tage, max 3 Mal": Erinnerung am Tag 7, 14, 21 — danach Stop.
+          <strong> Erstlauf zählt mit</strong>, also „max 3" = insgesamt 3 Mails.
+        </p>
       )}
     </div>
   );
 }
 
+function TimeConfigForm({
+  value, onChange, entityType,
+}: {
+  value: WorkflowRule["time_config"];
+  onChange: (next: WorkflowRule["time_config"]) => void;
+  entityType: EntityType;
+}) {
+  const statusFields = STATUS_FIELDS_BY_ENTITY[entityType] ?? ["status"];
+  const statusValues = STATUS_VALUES_BY_ENTITY[entityType] ?? [];
+  const dateFields = DATE_FIELDS_BY_ENTITY[entityType] ?? ["created_at"];
+
+  // Stelle sicher dass value gesetzt ist (Default: days_in_status mit ersten Werten)
+  const cur = value ?? { type: "days_in_status" as const, status_field: statusFields[0], status_value: statusValues[0] ?? "", days: 1 };
+
+  const handleTypeChange = (newType: "days_in_status" | "days_after_field") => {
+    if (newType === "days_in_status") {
+      onChange({ type: "days_in_status", status_field: statusFields[0], status_value: statusValues[0] ?? "", days: 1 });
+    } else {
+      onChange({ type: "days_after_field", field: dateFields[0], days: 1 });
+    }
+  };
+
+  const parseDays = (s: string) => {
+    const n = parseInt(s, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 p-4 bg-gray-50/50 space-y-3">
+      <h4 className="text-xs uppercase tracking-wide text-subtle font-semibold">Zeit-Konfiguration</h4>
+      <div>
+        <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Modus</label>
+        <select value={cur.type}
+                onChange={(e) => handleTypeChange(e.target.value as "days_in_status" | "days_after_field")}
+                className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm">
+          <option value="days_in_status">Seit X Tagen im Status</option>
+          <option value="days_after_field">X Tage nach Datums-Feld</option>
+        </select>
+      </div>
+
+      {cur.type === "days_in_status" && "status_value" in cur && (
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Feld</label>
+            <select value={cur.status_field}
+                    onChange={(e) => onChange({ ...cur, status_field: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm">
+              {statusFields.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Wert</label>
+            <select value={cur.status_value}
+                    onChange={(e) => onChange({ ...cur, status_value: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm">
+              {statusValues.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Tage</label>
+            <input type="number" min={0} value={cur.days}
+                   onChange={(e) => onChange({ ...cur, days: parseDays(e.target.value) })}
+                   className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm" />
+          </div>
+        </div>
+      )}
+      {cur.type === "days_after_field" && "field" in cur && (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Datums-Feld</label>
+            <select value={cur.field}
+                    onChange={(e) => onChange({ ...cur, field: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm">
+              {dateFields.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wide text-subtle font-semibold">Tage</label>
+            <input type="number" min={0} value={cur.days}
+                   onChange={(e) => onChange({ ...cur, days: parseDays(e.target.value) })}
+                   className="w-full mt-1 px-3 py-2 rounded border border-gray-200 text-sm" />
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-subtle">
+        💡 0 Tage = sofort beim nächsten Cron-Lauf, sobald Bedingung erfüllt.
+      </p>
+    </div>
+  );
+}
+
 function ConditionRow({
-  condition, fields, onChange, onRemove,
+  condition, fields, entityType, onChange, onRemove,
 }: {
   condition: Condition;
   fields: string[];
+  entityType: EntityType;
   onChange: (next: Condition) => void;
   onRemove: () => void;
 }) {
   const showValue = !["is_null", "is_not_null"].includes(condition.operator);
+  const valueOptions = ((): string[] => {
+    if ((STATUS_FIELDS_BY_ENTITY[entityType] ?? []).includes(condition.field)) {
+      return STATUS_VALUES_BY_ENTITY[entityType] ?? [];
+    }
+    return [];
+  })();
   return (
     <div className="flex gap-2 items-center mb-2">
       <select value={condition.field}
@@ -323,8 +460,17 @@ function ConditionRow({
         ))}
       </select>
       {showValue && (
-        <input value={condition.value ?? ""} onChange={(e) => onChange({ ...condition, value: e.target.value })}
-               placeholder="Wert" className="flex-1 px-2 py-1.5 rounded border border-gray-200 text-sm" />
+        valueOptions.length > 0 ? (
+          <select value={condition.value ?? ""}
+                  onChange={(e) => onChange({ ...condition, value: e.target.value })}
+                  className="flex-1 px-2 py-1.5 rounded border border-gray-200 text-sm">
+            <option value="">— wählen —</option>
+            {valueOptions.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        ) : (
+          <input value={condition.value ?? ""} onChange={(e) => onChange({ ...condition, value: e.target.value })}
+                 placeholder="Wert" className="flex-1 px-2 py-1.5 rounded border border-gray-200 text-sm" />
+        )
       )}
       <button onClick={onRemove} className="p-1.5 rounded hover:bg-red-50">
         <Trash2 className="w-3.5 h-3.5 text-red-500" />

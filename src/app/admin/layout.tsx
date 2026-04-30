@@ -21,8 +21,8 @@ const navItems = [
   { href: "/admin/anbieter", label: "Anbieter", icon: Building2 },
   { href: "/admin/produkte", label: "Produkte", icon: Package },
   { href: "/admin/anfragen", label: "Anfragen", icon: FileText },
-  { href: "/admin/emails", label: "E-Mails", icon: Mail },
-  { href: "/admin/autopilot", label: "Autopilot", icon: Zap },
+  { href: "/admin/emails", label: "E-Mail Templates", icon: Mail },
+  { href: "/admin/autopilot", label: "Automatisierung", icon: Zap },
   { href: "/admin/ratgeber", label: "Ratgeber", icon: BookOpen },
 ];
 
