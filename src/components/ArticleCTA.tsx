@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useTracking } from "@/lib/tracking";
+import FunnelWidget from "@/components/FunnelWidget";
 
 type Props = {
   variant?: "default" | "compact";
@@ -13,9 +14,12 @@ type Props = {
 
 /**
  * Single source of truth for in-article CTAs.
- * - Copy + visual identical across all articles.
- * - Click is tracked centrally via useTracking() → marketing-track Edge Function.
- * - To change copy/destination/styling, change ONLY this component.
+ * - `default` (mid-article): renders the FunnelWidget so users can start the
+ *   funnel without leaving the article. Click on the widget's "Vergleichen"
+ *   CTA fires cta_click via our tracking provider.
+ * - `compact` (footer): simple button with tracked click.
+ *
+ * To change copy/destination/styling, edit ONLY this component.
  */
 export default function ArticleCTA({ variant = "default", articleSlug, position = "mid_article" }: Props) {
   const { trackEvent } = useTracking();
@@ -31,30 +35,68 @@ export default function ArticleCTA({ variant = "default", articleSlug, position 
 
   if (variant === "compact") {
     return (
-      <Link href="/plattform" onClick={handleClick}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#9BAA28] hover:bg-[#C4D42B] text-white font-semibold transition-colors">
-        Jetzt Finanzierungsangebote vergleichen
+      <Link
+        href="/plattform"
+        onClick={handleClick}
+        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-turquoise hover:bg-turquoise-dark text-white font-semibold transition-colors"
+      >
+        Jetzt Finanzierungsoptionen vergleichen
         <ArrowRight className="w-4 h-4" />
       </Link>
     );
   }
 
+  // Default: mid-article funnel widget — fires the same tracking event when
+  // the user submits the funnel from inside the article.
   return (
-    <aside className="my-10 not-prose">
-      <div className="rounded-2xl bg-gradient-to-br from-[#9BAA28] to-[#C4D42B] p-6 md:p-8 text-white shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h3 className="text-lg md:text-xl font-bold mb-1">In 3 Minuten zum passenden Angebot</h3>
-            <p className="text-sm md:text-base text-white/90">
-              Vergleichen Sie kostenlos Betriebsmittelkredite, Einkaufsfinanzierung und Factoring –
-              für KMU mit Köpfchen.
-            </p>
+    <aside
+      className="my-12 not-prose"
+      onClickCapture={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('a[href="/plattform"], a[href^="/plattform"], button[type="submit"]')) {
+          handleClick();
+        }
+      }}
+    >
+      <div className="rounded-3xl bg-turquoise-light p-5 md:p-6 overflow-hidden">
+        <div className="grid md:grid-cols-[1fr_22rem] gap-5 md:gap-6 items-stretch">
+          {/* Left column: lady fills column, text overlays lower portion with soft fade */}
+          <div className="relative flex flex-col justify-end overflow-hidden rounded-2xl min-h-96 md:min-h-96">
+            <div
+              className="absolute inset-0 flex justify-center pointer-events-none select-none"
+              aria-hidden="true"
+            >
+              <img
+                src="/frau.png"
+                alt=""
+                className="h-full w-auto object-contain object-bottom"
+                style={{
+                  maskImage: "linear-gradient(to bottom, black 45%, transparent 95%)",
+                  WebkitMaskImage: "linear-gradient(to bottom, black 45%, transparent 95%)",
+                }}
+              />
+            </div>
+            <div className="relative z-10 text-left px-2 pb-1">
+              <span className="inline-block text-xs font-semibold uppercase tracking-wide text-turquoise mb-2">
+                Direkt loslegen
+              </span>
+              <h3
+                className="font-heading font-bold tracking-tight leading-tight text-dark text-4xl md:text-6xl mb-4"
+                style={{
+                  textShadow:
+                    "0 0 30px rgba(224, 234, 243, 0.9), 0 0 60px rgba(224, 234, 243, 0.7), 0 0 100px rgba(224, 234, 243, 0.5)",
+                }}
+              >
+                In 3 Minuten zum <span className="text-turquoise">passenden Angebot</span>
+              </h3>
+              <p className="text-sub">
+                Vergleichen Sie kostenlos Finanzierungsoptionen – schnell,
+                transparent und ohne SCHUFA-Auswirkung.
+              </p>
+            </div>
           </div>
-          <Link href="/plattform" onClick={handleClick}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-white/95 text-[#3D3F52] font-semibold whitespace-nowrap transition-colors shrink-0">
-            Jetzt vergleichen
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+
+          <FunnelWidget />
         </div>
       </div>
     </aside>

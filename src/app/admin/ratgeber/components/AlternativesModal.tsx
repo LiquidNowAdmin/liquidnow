@@ -53,7 +53,7 @@ export default function AlternativesModal({ field, article, onClose, onPick }: P
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#9BAA28]" />
+            <Sparkles className="w-5 h-5 text-[#507AA6]" />
             <h3 className="font-semibold text-dark">Alternativen für {FIELD_LABELS[field]}</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -72,7 +72,7 @@ export default function AlternativesModal({ field, article, onClose, onPick }: P
                 <li key={i}>
                   <button
                     onClick={() => { onPick(a); onClose(); }}
-                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-[#9BAA28] hover:bg-[#EDE6DB]/20 transition-colors"
+                    className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-[#507AA6] hover:bg-[#ECF1F7]/20 transition-colors"
                   >
                     {Array.isArray(a) ? (
                       <div className="flex flex-wrap gap-1.5">

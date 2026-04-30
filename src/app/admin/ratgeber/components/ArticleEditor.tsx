@@ -201,7 +201,7 @@ export default function ArticleEditor({ initial, isNew, prefillTopic, prefillFoc
       <div className="flex items-center justify-between">
         <label className="text-xs uppercase tracking-wide text-subtle font-semibold">{label}</label>
         <button type="button" onClick={() => setAltsField(field)}
-                className="text-xs text-[#9BAA28] hover:text-[#C4D42B] inline-flex items-center gap-1">
+                className="text-xs text-[#507AA6] hover:text-[#243650] inline-flex items-center gap-1">
           <Sparkles className="w-3 h-3" /> Alternativen
         </button>
       </div>
@@ -227,7 +227,7 @@ export default function ArticleEditor({ initial, isNew, prefillTopic, prefillFoc
             </button>
           ) : (
             <button onClick={handlePublish} disabled={busy}
-                    className="px-4 py-2 rounded-lg bg-[#9BAA28] hover:bg-[#C4D42B] text-white text-sm inline-flex items-center gap-1.5">
+                    className="px-4 py-2 rounded-lg bg-[#507AA6] hover:bg-[#243650] text-white text-sm inline-flex items-center gap-1.5">
               <Send className="w-4 h-4" /> Veröffentlichen
             </button>
           )}
@@ -242,21 +242,21 @@ export default function ArticleEditor({ initial, isNew, prefillTopic, prefillFoc
       {error && <div className="p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
 
       {isNew && (
-        <section className="mb-8 p-6 bg-[#EDE6DB]/20 rounded-2xl border border-[#EDE6DB]/60">
+        <section className="mb-8 p-6 bg-[#ECF1F7]/20 rounded-2xl border border-[#ECF1F7]/60">
           <h2 className="text-lg font-semibold text-dark mb-2 inline-flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#9BAA28]" /> Mit KI generieren
+            <Sparkles className="w-5 h-5 text-[#507AA6]" /> Mit KI generieren
           </h2>
           <p className="text-sm text-subtle mb-4">Sonnet 4.6 schreibt einen vollständigen Ratgeber-Artikel zum Thema. Du kannst ihn anschließend bearbeiten.</p>
           <div className="grid gap-3 md:grid-cols-2">
             <input value={topic} onChange={(e) => setTopic(e.target.value)} disabled={generating}
                    placeholder="Thema (z. B. Betriebsmittelkredit für Handwerker)"
-                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#9BAA28]" />
+                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#507AA6]" />
             <input value={focusKw} onChange={(e) => setFocusKw(e.target.value)} disabled={generating}
                    placeholder="Focus Keyword (optional)"
-                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#9BAA28]" />
+                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#507AA6]" />
           </div>
           {prefillNotes && (
-            <div className="mt-3 p-3 rounded-lg bg-white/60 border border-[#EDE6DB] text-xs text-subtle">
+            <div className="mt-3 p-3 rounded-lg bg-white/60 border border-[#ECF1F7] text-xs text-subtle">
               <strong className="text-dark">Topic-Hinweis:</strong> {prefillNotes}
             </div>
           )}

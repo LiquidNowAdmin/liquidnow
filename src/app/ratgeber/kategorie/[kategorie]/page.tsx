@@ -18,8 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ kategorie
   const cat = cats.find((c) => c.slug === kategorie);
   if (!cat) return { title: "Kategorie nicht gefunden" };
   return {
-    title: `${cat.name} – Ratgeber`,
-    description: cat.description || `Artikel zum Thema ${cat.name} im LiqiNow Ratgeber.`,
+    title: `${cat.name} – Wissen`,
+    description: cat.description || `Artikel zum Thema ${cat.name} im LiqiNow Wissen.`,
     alternates: { canonical: `/ratgeber/kategorie/${cat.slug}` },
   };
 }
@@ -37,7 +37,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ kateg
       <JsonLd
         data={breadcrumbSchema([
           { name: "Start", url: "/" },
-          { name: "Ratgeber", url: "/ratgeber" },
+          { name: "Wissen", url: "/ratgeber" },
           { name: cat.name, url: `/ratgeber/kategorie/${cat.slug}` },
         ])}
       />
@@ -45,7 +45,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ kateg
       <main className="pt-32 pb-20 min-h-screen">
         <div className="container mx-auto px-4 max-w-5xl">
           <nav aria-label="Breadcrumb" className="text-sm text-subtle mb-6">
-            <Link href="/ratgeber" className="hover:text-dark">Ratgeber</Link>
+            <Link href="/ratgeber" className="hover:text-dark">Wissen</Link>
             <span className="mx-2">/</span>
             <span>{cat.name}</span>
           </nav>
@@ -63,7 +63,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ kateg
                 <li key={a.id}>
                   <Link
                     href={`/ratgeber/${a.slug}`}
-                    className="block bg-white rounded-2xl p-6 hover:shadow-lg transition-shadow border border-[#EDE6DB]/40"
+                    className="block bg-white rounded-2xl p-6 hover:shadow-lg transition-shadow border border-[#ECF1F7]/40"
                   >
                     <h2 className="text-lg font-semibold text-dark mb-2">{a.title}</h2>
                     <p className="text-sm text-subtle line-clamp-3">{a.excerpt}</p>

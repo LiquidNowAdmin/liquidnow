@@ -17,6 +17,7 @@ import UseCaseSlider from "@/components/UseCaseSlider";
 import { faqItems } from "@/lib/data";
 import customerImg from "../../img/category/customer.png";
 import JsonLd, { faqSchema } from "@/components/JsonLd";
+import WissenSection from "@/components/WissenSection";
 
 export default function Home() {
   return (
@@ -214,6 +215,9 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* === WISSEN (Latest 4 Articles) === */}
+        <WissenSection />
 
         {/* === FAQ === */}
         <section id="faq" className="section bg-white">

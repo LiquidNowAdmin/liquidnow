@@ -66,7 +66,7 @@ export default function CategoriesPage() {
                   placeholder="Beschreibung (optional, für Kategorie-Übersichtsseite)"
                   className="w-full px-4 py-2 rounded-lg border border-gray-200 mb-3" />
         <button onClick={add} disabled={!name.trim()}
-                className="px-4 py-2 rounded-lg bg-[#9BAA28] hover:bg-[#C4D42B] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
+                className="px-4 py-2 rounded-lg bg-[#507AA6] hover:bg-[#243650] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
           <Plus className="w-4 h-4" /> Anlegen
         </button>
       </div>

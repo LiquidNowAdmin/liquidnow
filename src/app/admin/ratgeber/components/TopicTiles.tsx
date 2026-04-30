@@ -85,7 +85,7 @@ export default function TopicTiles({ topics, existingArticleTitles, onChange }: 
                    className={`group relative rounded-xl border p-4 transition-all cursor-pointer ${
                      done
                        ? "bg-emerald-50/40 border-emerald-200 opacity-70"
-                       : "bg-white border-gray-200 hover:border-[#9BAA28] hover:shadow-md"
+                       : "bg-white border-gray-200 hover:border-[#507AA6] hover:shadow-md"
                    }`}
                    onClick={() => openGenerator(t)}>
                 <div className="flex items-start justify-between mb-2 gap-2">
@@ -190,7 +190,7 @@ function SuggestModal({ existingTopics, existingArticles, onClose, onAccepted }:
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#9BAA28]" />
+            <Sparkles className="w-5 h-5 text-[#507AA6]" />
             <h3 className="font-semibold text-dark">KI-Topic-Vorschläge</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
@@ -204,10 +204,10 @@ function SuggestModal({ existingTopics, existingArticles, onClose, onAccepted }:
               {suggestions.map((s, i) => (
                 <li key={i}>
                   <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selected.has(i) ? "border-[#9BAA28] bg-[#EDE6DB]/20" : "border-gray-200 hover:bg-gray-50"
+                    selected.has(i) ? "border-[#507AA6] bg-[#ECF1F7]/20" : "border-gray-200 hover:bg-gray-50"
                   }`}>
                     <input type="checkbox" checked={selected.has(i)} onChange={() => toggle(i)}
-                           className="mt-1 w-4 h-4 accent-[#9BAA28]" />
+                           className="mt-1 w-4 h-4 accent-[#507AA6]" />
                     <div className="flex-1">
                       <div className="font-medium text-dark text-sm">{s.label}</div>
                       {s.notes && <div className="text-xs text-subtle mt-0.5">{s.notes}</div>}
@@ -241,7 +241,7 @@ function SuggestModal({ existingTopics, existingArticles, onClose, onAccepted }:
           <div className="flex gap-2">
             <button onClick={onClose} className="px-3 py-1.5 text-sm text-subtle hover:text-dark">Abbrechen</button>
             <button onClick={accept} disabled={selected.size === 0 || saving || loading}
-                    className="px-4 py-1.5 rounded-lg bg-[#9BAA28] hover:bg-[#C4D42B] text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">
+                    className="px-4 py-1.5 rounded-lg bg-[#507AA6] hover:bg-[#243650] text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               {selected.size} übernehmen
             </button>
@@ -345,7 +345,7 @@ function TopicEditModal({ initial, onClose, onSaved }: {
         <div className="px-6 py-3 border-t border-gray-100 flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-1.5 text-sm text-subtle hover:text-dark">Abbrechen</button>
           <button onClick={save} disabled={busy}
-                  className="px-4 py-1.5 rounded-lg bg-[#9BAA28] hover:bg-[#C4D42B] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
+                  className="px-4 py-1.5 rounded-lg bg-[#507AA6] hover:bg-[#243650] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Speichern
           </button>
         </div>

@@ -68,7 +68,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         data={[
           breadcrumbSchema([
             { name: "Start", url: "/" },
-            { name: "Ratgeber", url: "/ratgeber" },
+            { name: "Wissen", url: "/ratgeber" },
             { name: article.category_name, url: `/ratgeber/kategorie/${article.category_slug}` },
             { name: article.title, url: `/ratgeber/${article.slug}` },
           ]),
@@ -79,7 +79,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <main className="pt-32 pb-20 min-h-screen">
         <article className="container mx-auto px-4 max-w-3xl">
           <nav aria-label="Breadcrumb" className="text-sm text-subtle mb-6">
-            <Link href="/ratgeber" className="hover:text-dark">Ratgeber</Link>
+            <Link href="/ratgeber" className="hover:text-dark">Wissen</Link>
             <span className="mx-2">/</span>
             <Link href={`/ratgeber/kategorie/${article.category_slug}`} className="hover:text-dark">
               {article.category_name}
@@ -97,7 +97,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             articleSlug={article.slug}
           />
 
-          <aside className="mt-12 p-6 rounded-2xl bg-[#EDE6DB]/30 border border-[#EDE6DB]/60 text-sm text-subtle">
+          <aside className="mt-12 p-6 rounded-2xl bg-[#ECF1F7]/30 border border-[#ECF1F7]/60 text-sm text-subtle">
             <strong className="text-dark">Hinweis:</strong> LiqiNow ist Tippgeber und arbeitet mit
             Finanzierungspartnern zusammen. Wir leiten Ihre Anfrage an passende Anbieter weiter.
             Konditionen sind marktabhängig und individuell. Dieser Beitrag ersetzt keine

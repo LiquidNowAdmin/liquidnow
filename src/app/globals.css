@@ -4956,21 +4956,34 @@ button, .btn, label, .badge, .trust-item {
   font-style: italic;
 }
 
-.article-body a,
-.article-preview a {
-  color: #9BAA28;
+.article-body a:not(.btn),
+.article-preview a:not(.btn) {
+  color: #507AA6;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.article-body a:hover,
-.article-preview a:hover {
-  color: #C4D42B;
+.article-body a:not(.btn):hover,
+.article-preview a:not(.btn):hover {
+  color: #243650;
+}
+
+/* Buttons inside the article body keep their button styles (white text, gradient) */
+.article-body a.btn,
+.article-preview a.btn {
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.article-body a.btn:hover,
+.article-preview a.btn:hover {
+  color: #ffffff;
+  text-decoration: none;
 }
 
 .article-body blockquote,
 .article-preview blockquote {
-  border-left: 3px solid #C4D42B;
+  border-left: 3px solid #243650;
   padding-left: 1rem;
   margin: 1.5rem 0;
   font-style: italic;

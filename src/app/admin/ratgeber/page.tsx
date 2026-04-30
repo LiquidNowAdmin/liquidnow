@@ -85,7 +85,7 @@ export default function RatgeberAdminPage() {
           <Link href="/admin/ratgeber/kategorien" className="px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm">
             Kategorien
           </Link>
-          <Link href="/admin/ratgeber/neu" className="px-4 py-2 rounded-lg bg-[#9BAA28] hover:bg-[#C4D42B] text-white text-sm font-semibold inline-flex items-center gap-1.5">
+          <Link href="/admin/ratgeber/neu" className="px-4 py-2 rounded-lg bg-[#507AA6] hover:bg-[#243650] text-white text-sm font-semibold inline-flex items-center gap-1.5">
             <Plus className="w-4 h-4" /> Neuer Artikel
           </Link>
         </div>

@@ -73,7 +73,7 @@ export default function ArticleBody({ html, bodyImages, articleSlug, preview = f
           if (preview) {
             // Static preview in admin — no tracking, no Link interactivity
             return (
-              <aside key={seg.key} className="my-10 rounded-2xl bg-gradient-to-br from-[#9BAA28] to-[#C4D42B] p-6 text-white">
+              <aside key={seg.key} className="my-10 rounded-2xl bg-gradient-to-br from-[#507AA6] to-[#243650] p-6 text-white">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <h3 className="font-bold mb-1">In 3 Minuten zum passenden Angebot</h3>
