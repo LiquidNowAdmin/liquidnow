@@ -4888,3 +4888,91 @@ button, .btn, label, .badge, .trust-item {
   }
 }
 
+
+/* === Ratgeber-Artikel: Inhalts-Styles (public + admin preview) === */
+
+.article-body,
+.article-preview {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.article-body h2,
+.article-preview h2 {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--color-dark);
+  margin-top: 2.25rem;
+  margin-bottom: 1rem;
+  line-height: 1.25;
+}
+
+.article-body h3,
+.article-preview h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.article-body p,
+.article-preview p {
+  margin-bottom: 1.25rem;
+}
+
+.article-body ul,
+.article-preview ul,
+.article-body ol,
+.article-preview ol {
+  margin: 1rem 0 1.25rem 1.5rem;
+  padding-left: 0.5rem;
+}
+
+.article-body ul,
+.article-preview ul {
+  list-style: disc;
+}
+
+.article-body ol,
+.article-preview ol {
+  list-style: decimal;
+}
+
+.article-body li,
+.article-preview li {
+  margin-bottom: 0.5rem;
+}
+
+.article-body strong,
+.article-preview strong {
+  font-weight: 600;
+  color: var(--color-dark);
+}
+
+.article-body em,
+.article-preview em {
+  font-style: italic;
+}
+
+.article-body a,
+.article-preview a {
+  color: #9BAA28;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-body a:hover,
+.article-preview a:hover {
+  color: #C4D42B;
+}
+
+.article-body blockquote,
+.article-preview blockquote {
+  border-left: 3px solid #C4D42B;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: #4b5563;
+}

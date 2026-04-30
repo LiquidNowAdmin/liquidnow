@@ -8,6 +8,7 @@ import {
   Building2,
   Package,
   FileText,
+  BookOpen,
   LogOut,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/admin/anbieter", label: "Anbieter", icon: Building2 },
   { href: "/admin/produkte", label: "Produkte", icon: Package },
   { href: "/admin/anfragen", label: "Anfragen", icon: FileText },
+  { href: "/admin/ratgeber", label: "Ratgeber", icon: BookOpen },
 ];
 
 export default function AdminLayout({
