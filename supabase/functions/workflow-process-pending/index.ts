@@ -4,15 +4,12 @@
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
+import { dispatchEmail } from '../_shared/email-sender.ts';
 import {
   renderEmail, resolveVariables, type Block, type ResolveContext,
 } from '../_shared/template-variables.ts';
 
 const BATCH_SIZE = 25;
-const RESEND_API = 'https://api.resend.com/emails';
-const FROM = 'LiqiNow <info@liqinow.de>';
-const ARCHIVE_BCC = 'platformmails@liqinow.de';
-const DEFAULT_REPLY_TO = 'info@liqinow.de';
 
 function decodeJwtRole(token: string): string | null {
   try {
@@ -83,41 +80,6 @@ async function loadRoutes(tenantId: string): Promise<Array<{ key: string; url_te
   return (data ?? []) as Array<{ key: string; url_template: string; entity_type?: string | null }>;
 }
 
-async function dispatchViaResend(opts: {
-  to: string;
-  subject: string;
-  html: string;
-  text: string;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const apiKey = Deno.env.get('RESEND_API_KEY');
-  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
-  try {
-    const res = await fetch(RESEND_API, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: FROM,
-        to: [opts.to],
-        bcc: [ARCHIVE_BCC],
-        reply_to: DEFAULT_REPLY_TO,
-        subject: opts.subject,
-        html: opts.html,
-        text: opts.text,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return { ok: false, error: (data?.message || data?.name || `Resend ${res.status}`) + ` :: ${JSON.stringify(data).slice(0, 300)}` };
-    }
-    return { ok: true, id: data?.id || '' };
-  } catch (err) {
-    return { ok: false, error: String(err) };
-  }
-}
-
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -172,7 +134,7 @@ Deno.serve(async (req) => {
 
       const recipientName = ctx.recipient ? [ctx.recipient.first_name, ctx.recipient.last_name].filter(Boolean).join(' ') || null : null;
 
-      const result = await dispatchViaResend({ to: recipient, subject, html, text });
+      const result = await dispatchEmail({ to: recipient, subject, html, text });
 
       if (result.ok) {
         await sb.from('sent_emails').update({

@@ -60,6 +60,59 @@ export type SendEmailResult = {
   error?: string;
 };
 
+export type DispatchEmailInput = {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  reply_to?: string;
+  attachments?: EmailAttachment[];
+  tags?: Array<{ name: string; value: string }>;
+};
+
+export type DispatchEmailResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string };
+
+// Low-Level-Dispatch: feuert direkt auf Resend mit den fixen FROM-/BCC-/Reply-To-
+// Garantien, schreibt aber NICHT in sent_emails. Reserviert für Worker, die
+// bereits eine sent_emails-Row haben und ihren Status selbst pflegen
+// (z.B. workflow-process-pending). Für alles andere: sendEmail() nutzen.
+export async function dispatchEmail(opts: DispatchEmailInput): Promise<DispatchEmailResult> {
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+
+  const body: Record<string, unknown> = {
+    from: FROM,
+    to: Array.isArray(opts.to) ? opts.to : [opts.to],
+    bcc: [ARCHIVE_BCC],
+    reply_to: opts.reply_to ?? DEFAULT_REPLY_TO,
+    subject: opts.subject,
+    html: opts.html,
+  };
+  if (opts.text)        body.text = opts.text;
+  if (opts.attachments) body.attachments = opts.attachments;
+  if (opts.tags)        body.tags = opts.tags;
+
+  try {
+    const res = await fetch(RESEND_API, {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${apiKey}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data?.message || data?.name || `Resend ${res.status}` };
+    }
+    return { ok: true, id: data?.id || '' };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
 export async function sendEmail(opts: SendEmailInput): Promise<SendEmailResult> {
   const apiKey = Deno.env.get('RESEND_API_KEY');
   if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
