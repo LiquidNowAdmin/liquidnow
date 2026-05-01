@@ -1875,9 +1875,32 @@ function MyApplicationsList({ applications, offers, statusLabels, formatCurrency
     if (pendingFiles.length === 0) return;
     setUploading(true); setUploadResults([]);
     try {
-      // 1. Save to Supabase Storage
+      // 1. Save to Supabase Storage + documents table
+      const { data: app } = await supabase.from("applications")
+        .select("tenant_id, company_id, user_id")
+        .eq("id", appId)
+        .maybeSingle();
+
       for (const file of pendingFiles) {
-        await supabase.storage.from("documents").upload(`bank-statements/${appId}/${file.name}`, file, { upsert: true });
+        const path = `bank-statements/${appId}/${file.name}`;
+        const { error: storageErr } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
+        if (storageErr || !app) continue;
+        const { data: existing } = await supabase.from("documents")
+          .select("id")
+          .eq("file_path", path)
+          .maybeSingle();
+        if (existing) continue;
+        await supabase.from("documents").insert({
+          tenant_id: app.tenant_id,
+          company_id: app.company_id,
+          uploaded_by: app.user_id,
+          name: file.name,
+          doc_type: "bank_statement",
+          category: "bank_statement",
+          file_path: path,
+          file_size: file.size,
+          mime_type: file.type,
+        });
       }
 
       const slug = PROVIDER_SLUGS[providerName];
