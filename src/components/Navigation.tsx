@@ -124,6 +124,14 @@ export default function Navigation() {
             <a href="/plattform" onClick={() => setMobileOpen(false)} className="btn btn-primary btn-lg mt-2 w-full max-w-xs text-center">
               Jetzt vergleichen
             </a>
+            <a href={`tel:${COMPANY_INFO.phoneE164}`}
+               onClick={() => setMobileOpen(false)}
+               className="flex items-center gap-2 mt-2 text-dark"
+               style={{ fontSize: "0.9375rem" }}>
+              <Phone className="h-4 w-4 text-turquoise" />
+              <span style={{ fontWeight: 600 }}>{COMPANY_INFO.phone}</span>
+              <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)" }}>· {COMPANY_INFO.phoneHours}</span>
+            </a>
           </div>
         </div>
       )}
