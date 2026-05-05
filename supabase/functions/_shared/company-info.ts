@@ -16,7 +16,7 @@ export const COMPANY_INFO = {
   postCity: 'Fellbach',
 
   phone: '040 999 999 400',
-  phoneE164: '+494099999400',
+  phoneE164: '+4940999999400',
   phoneHours: 'Mo–Fr 09:00 – 20:00 Uhr',
   email: 'info@liqinow.de',
   url: 'https://liqinow.de',
