@@ -3583,9 +3583,8 @@ function PlattformContent() {
                                       <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-turquoise)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.375rem" }}>Für ein Angebot</p>
                                       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
                                         {([
-                                          { title: "Zahlungsdaten", sub: "Open Banking (empfohlen) – oder PDF-Kontoauszüge: 3 Monate (<50k € mtl. Umsatz), 6 Monate (<100k €), 12 Monate (>100k €)." },
-                                          { title: "Proof of Trade", sub: "Unternehmens-Website. Falls keine vorhanden (z. B. Einzelhandel): aktuelle Lieferantenrechnung." },
-                                          { title: "Unternehmensgrunddaten", sub: "Rechtlicher Name (Unternehmen / Partnerschaft / Einzelunternehmer) sowie Geburtsdatum und Wohnadresse aller Geschäftsführer und wirtschaftlich Berechtigten." },
+                                          { title: "Kontoauszüge (PDF)", sub: "3 Monate (<50k € mtl. Umsatz), 6 Monate (<100k €), 12 Monate (>100k €). Alternative: Open Banking direkt verbinden — dann kein Upload nötig." },
+                                          { title: "Lieferantenrechnung (Proof of Trade)", sub: "Nur erforderlich, wenn keine Unternehmens-Website vorhanden ist (z. B. Einzelhandel)." },
                                         ]).map((d) => (
                                           <div key={d.title} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
                                             <Check style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)", flexShrink: 0, marginTop: "0.125rem" }} />
@@ -3602,7 +3601,6 @@ function PlattformContent() {
                                       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                                         {([
                                           { title: "BWA & SuSa", sub: "Wird bei Angeboten ab 100.000 € angefragt." },
-                                          { title: "Onfido-ID-Verifizierung", sub: "Wird bei Angeboten ab 100.000 € angefragt." },
                                           { title: "Bestätigung der Dispolinie", sub: "Wird bei höheren Angeboten gelegentlich angefragt, um den Rahmen zu erweitern." },
                                         ]).map((d) => (
                                           <div key={d.title} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", opacity: 0.85 }}>
