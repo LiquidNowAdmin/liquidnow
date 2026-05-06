@@ -5158,3 +5158,52 @@ button, .btn, label, .badge, .trust-item {
 .anfragen-detail-address:focus-within .anfragen-detail-address-fields {
   display: grid;
 }
+
+/* ── Sofort-Antrag (API banks): animated gradient border ── */
+.offer-card-instant-wrap {
+  position: relative;
+  border-radius: calc(1.25rem + 3px);
+  padding: 3px;
+  background: linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.offer-card-instant-wrap > .offer-card-instant-spinner {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 240deg,
+    #ffffff 300deg,
+    #C2D8EC 330deg,
+    transparent 360deg
+  );
+  animation: border-rotate 3s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.offer-card-instant-wrap > .offer-card {
+  position: relative;
+  z-index: 1;
+  border-radius: 1.25rem;
+}
+
+.offer-instant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7AA0C4 0%, var(--color-turquoise) 100%);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 0.25rem;
+  width: fit-content;
+}

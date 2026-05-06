@@ -1125,6 +1125,23 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   onContinue={(estimate) => { setBedarfVolume(estimate); setStep(3); }}
                                   onEstimateChange={onEstimateChange}
                                 />
+                              ) : isIwoca ? (
+                                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                                  <label style={LABEL_STYLE}>Wie viel Kapital benötigen Sie?</label>
+                                  <div style={{ position: "relative", marginTop: "0.375rem" }}>
+                                    <GermanNumberInput
+                                      value={bedarfVolume} min={offer.min_volume} max={offer.max_volume} step={1000}
+                                      onChange={n => setBedarfVolume(n ?? offer.min_volume)}
+                                      onEnter={() => { trackEvent("funnel_step", { step: "anfrage", volume: bedarfVolume }); setStep(3); }}
+                                      className="admin-input" style={{ width: "100%", paddingRight: "2rem" }}
+                                    />
+                                    <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", fontSize: "0.875rem", color: "var(--color-subtle)", pointerEvents: "none" }}>€</span>
+                                  </div>
+                                  <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", marginTop: "0.25rem" }}>{formatCurrency(offer.min_volume)} – {formatCurrency(offer.max_volume)}</p>
+                                  <button type="button" onClick={() => { trackEvent("funnel_step", { step: "anfrage", volume: bedarfVolume }); setStep(3); }} className="btn btn-primary btn-md" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem" }}>
+                                    Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                  </button>
+                                </motion.div>
                               ) : (
                                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                                   <label style={LABEL_STYLE}>Wie viel Kapital benötigen Sie?</label>
@@ -1230,7 +1247,50 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                           )}
 
                           {/* Step 3: Ihr Unternehmen — full version (all providers) */}
-                          {i === 3 && (
+                          {/* Step 3: iwoca slim — Firmenname + Rechtsform only */}
+                          {i === 3 && isIwoca && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                              <div ref={suggestionsRef} style={{ position: "relative" }}>
+                                <FunnelField label="Firmenname" value={orgName} onChange={handleOrgNameChange} placeholder="Firmenname eingeben…" required />
+                                {showSuggestions && companySuggestions.length > 0 && (
+                                  <div style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
+                                    background: "#fff", border: "1px solid var(--color-border)", borderRadius: "0.75rem",
+                                    boxShadow: "0 8px 24px rgba(0,0,0,0.12)", marginTop: "0.25rem", overflow: "hidden",
+                                  }}>
+                                    {companySuggestions.map((c, idx) => (
+                                      <button key={idx} type="button" onClick={() => selectCompany(c)}
+                                        style={{ width: "100%", textAlign: "left", padding: "0.625rem 0.875rem", background: "none", border: "none", cursor: "pointer", borderBottom: idx < companySuggestions.length - 1 ? "1px solid var(--color-border)" : "none", fontSize: "0.875rem", color: "var(--color-dark)" }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = "var(--color-light-bg)")}
+                                        onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                                        <span style={{ fontWeight: 600 }}>{c.name}</span>
+                                        <span style={{ display: "block", fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "0.125rem" }}>
+                                          {[c.street_address, c.house_number].filter(Boolean).join(" ")}{c.zip_code || c.city ? ", " : ""}{[c.zip_code, c.city].filter(Boolean).join(" ")}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <label style={LABEL_STYLE}>Rechtsform<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
+                                <select value={ylCompanyType} onChange={e => setYlCompanyType(e.target.value)} className="admin-input" style={{ width: "100%" }}>
+                                  <option value="">Bitte wählen…</option>
+                                  {YL_COMPANY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                              </div>
+                              <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.5rem" }}>
+                                <button type="button" onClick={() => setStep(1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button" onClick={() => { if (orgName && ylCompanyType) { trackEvent("funnel_step", { step: "unternehmen", orgName }); setStep(4); } }} disabled={!orgName || !ylCompanyType} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {i === 3 && !isIwoca && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
                               {/* Mode: Search by name */}
@@ -1386,12 +1446,11 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 4: iwoca slim form (Anrede, Name, Email, Telefon) */}
+                          {/* Step 4: iwoca slim form (Anrede, Name, Telefon) — Email aus Account */}
                           {i === 4 && !submitted && isIwoca && (() => {
                             const phoneDigits = applicantPhone.replace(/\D/g, "");
                             const phoneValid = phoneDigits.length >= 8 && phoneDigits.length <= 15;
-                            const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(applicantEmail);
-                            const valid = applicantSalutation && firstName && lastName && emailValid && phoneValid;
+                            const valid = applicantSalutation && firstName && lastName && phoneValid;
                             return (
                               <div onKeyDown={stepKeyDown(() => { if (valid) setStep(5); })} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
                                 <div>
@@ -1408,10 +1467,6 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   <FunnelField label="Nachname" name="family-name" autoComplete="family-name" value={lastName} onChange={setLastName} placeholder="Schmidt" required />
                                 </div>
                                 <div>
-                                  <FunnelField label="E-Mail" name="email" autoComplete="email" value={applicantEmail} onChange={setApplicantEmail} placeholder="hans@example.de" required />
-                                  {applicantEmail && !emailValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige E-Mail eingeben</p>}
-                                </div>
-                                <div>
                                   <FunnelField label="Telefon" name="tel" autoComplete="tel" value={applicantPhone} onChange={setApplicantPhone} placeholder="+49 170 1234567" hint="Internationales Format mit Ländervorwahl" required />
                                   {applicantPhone && !phoneValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige Telefonnummer eingeben (8-15 Ziffern)</p>}
                                 </div>
@@ -1419,7 +1474,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                   <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                     <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
                                   </button>
-                                  <button type="button" onClick={() => { if (valid) { trackEvent("funnel_step", { step: "persoenliche_daten" }); setStep(5); } }} disabled={!valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  <button type="button" onClick={() => { if (valid) { if (!applicantEmail && user?.email) setApplicantEmail(user.email); trackEvent("funnel_step", { step: "persoenliche_daten" }); setStep(5); } }} disabled={!valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
                                     Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
                                   </button>
                                 </div>
@@ -1462,7 +1517,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                 <ol style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: 0, margin: 0, listStyle: "none" }}>
                                   {[
                                     "Sie werden direkt zu iwoca weitergeleitet",
-                                    "Antrag in 5 Minuten online ausfüllen",
+                                    "Antrag bei iwoca abschließen",
                                     "Kreditentscheidung in 24 Stunden",
                                     "Auszahlung innerhalb von 48 Stunden",
                                   ].map((s, idx) => (
@@ -1983,8 +2038,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             ); })(
                           )}
 
-                          {/* Navigation: Step 3 (Unternehmen) */}
-                          {i === 3 && (
+                          {/* Navigation: Step 3 (Unternehmen) — skipped for iwoca (has own nav) */}
+                          {i === 3 && !isIwoca && (
                             <div style={{ display: "flex", gap: "0.625rem", marginTop: "1.25rem" }}>
                               <button type="button" onClick={() => setStep(s => s - 1)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
                                 <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
@@ -2578,6 +2633,11 @@ function PlattformContent() {
     const aMatch = matchesAll(a) ? 0 : 1;
     const bMatch = matchesAll(b) ? 0 : 1;
     if (aMatch !== bMatch) return aMatch - bMatch;
+
+    // API-Banken (Sofort-Antrag) immer vor Klickout-Anbietern
+    const aInstant = !!PROVIDER_SLUGS[a.provider_name] ? 0 : 1;
+    const bInstant = !!PROVIDER_SLUGS[b.provider_name] ? 0 : 1;
+    if (aInstant !== bInstant) return aInstant - bInstant;
 
     if (sortBy === "rate") return a.interest_rate_from - b.interest_rate_from;
     if (sortBy === "term") return b.max_term_months - a.max_term_months;
@@ -3266,7 +3326,10 @@ function PlattformContent() {
                         exit={{ opacity: 0, scale: 0.97, y: -8 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                       >
-                      <div className="offer-card" style={!matchesAll(offer) && !isSelected ? { opacity: 0.45 } : undefined}>
+                      {(() => {
+                        const isInstantApply = !!PROVIDER_SLUGS[offer.provider_name];
+                        const cardInner = (
+                          <div className="offer-card" style={!matchesAll(offer) && !isSelected ? { opacity: 0.45 } : undefined}>
                         <div className="offer-card-body">
                           <div className="offer-card-grid">
                             {/* Col 1: Logo + Name + Description */}
@@ -3280,6 +3343,25 @@ function PlattformContent() {
                                 <div className="offer-provider-info">
                                   <div className="offer-provider-name">{offer.provider_name}</div>
                                   <div className="offer-product-name">{offer.product_name}</div>
+                                  {isInstantApply && (
+                                    <span style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                      padding: "0.125rem 0.5rem",
+                                      borderRadius: "999px",
+                                      background: "linear-gradient(135deg, #7AA0C4 0%, #507AA6 100%)",
+                                      color: "#fff",
+                                      fontSize: "0.625rem",
+                                      fontWeight: 700,
+                                      letterSpacing: "0.02em",
+                                      marginTop: "0.25rem",
+                                      width: "fit-content",
+                                      whiteSpace: "nowrap",
+                                    }}>
+                                      <Zap style={{ width: "0.625rem", height: "0.625rem" }} /> Sofort-Antrag
+                                    </span>
+                                  )}
                                   {(m.trustpilot as number) > 0 && (
                                     <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.25rem" }}>
                                       <svg width="58" height="11" viewBox="0 0 58 11" fill="none">
@@ -3751,6 +3833,14 @@ function PlattformContent() {
                           <FunnelPanel offer={selectedOffer.offer} amount={selectedOffer.amount} term={selectedOffer.term} initialPurpose={filterUseCases.length > 0 ? FILTER_TO_PURPOSE[filterUseCases[0]] : undefined} onSubmitted={(app) => setMyApplications(prev => [app, ...prev])} onEstimateChange={setFunnelEstimate} />
                         )}
                       </div>
+                        );
+                        return isInstantApply ? (
+                          <div className="offer-card-instant-wrap">
+                            <div className="offer-card-instant-spinner" />
+                            {cardInner}
+                          </div>
+                        ) : cardInner;
+                      })()}
                       </motion.div>
                     );
                   })}
