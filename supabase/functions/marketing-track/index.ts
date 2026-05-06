@@ -35,7 +35,7 @@ serve(async (req) => {
 
     // --- Create session ---
     if (action === "session") {
-      const { visitor_id, utm_source, utm_medium, utm_campaign, referrer, landing_page, device_type } = body
+      const { visitor_id, utm_source, utm_medium, utm_campaign, gclid, referrer, landing_page, device_type } = body
 
       if (!visitor_id) {
         return errorResponse("visitor_id required", origin)
@@ -56,6 +56,7 @@ serve(async (req) => {
         utm_source: utm_source || null,
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
+        gclid: gclid || null,
         referrer: referrer || null,
         landing_page: landing_page || null,
         device_type: device_type || null,

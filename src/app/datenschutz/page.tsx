@@ -206,7 +206,17 @@ export default function DatenschutzPage() {
                     <li>Herkunftsquelle (UTM-Parameter, Referrer)</li>
                     <li>Funnel-Fortschritt (welche Schritte im Antragsprozess erreicht wurden)</li>
                   </ul>
-                  <h3 className="text-lg font-semibold mt-4 mb-2">10.2 Widerruf der Einwilligung</h3>
+                  <h3 className="text-lg font-semibold mt-4 mb-2">10.2 Google-Ads-Conversion-Tracking inkl. „Enhanced Conversions"</h3>
+                  <p>
+                    Mit Ihrer Einwilligung in Marketing-Cookies setzen wir Google Ads Conversion Tracking ein (Anbieter: Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland). Damit messen wir, ob Werbekampagnen zu einer Anfrage oder Account-Anlage führen, und können diese Kampagnen besser steuern.
+                  </p>
+                  <p className="mt-2">
+                    Zusätzlich aktivieren wir das Feature <strong>„Enhanced Conversions for Leads"</strong>: Beim Absenden einer Anfrage bzw. beim Anlegen eines Accounts wird Ihre E-Mail-Adresse (und ggf. Telefonnummer) <strong>noch in Ihrem Browser per SHA-256 gehasht</strong> und nur als irreversibler Hash an Google übertragen. Klartext-Daten verlassen Ihren Browser dabei nicht. Google nutzt den Hash, um Conversions korrekter Werbeanzeigen zuzuordnen, sofern Sie bei Google angemeldet waren oder ähnliches Hash-Material aus anderen Quellen vorliegt.
+                  </p>
+                  <p className="mt-2">
+                    Empfänger der gehashten Daten ist Google. Bei Übermittlung in Drittländer (z. B. USA) stützen wir uns auf den EU-US Data Privacy Framework (Google ist zertifiziert) sowie auf Standardvertragsklauseln. Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).
+                  </p>
+                  <h3 className="text-lg font-semibold mt-4 mb-2">10.3 Widerruf der Einwilligung</h3>
                   <p>
                     Sie können Ihre Einwilligung jederzeit über den Cookie-Banner widerrufen. Der Widerruf wirkt wie folgt:
                   </p>

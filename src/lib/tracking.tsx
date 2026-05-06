@@ -8,6 +8,7 @@ const VISITOR_ID_KEY = "ln_visitor_id";
 const COOKIE_CONSENT_KEY = "cookie_consent";
 const SESSION_ID_KEY = "mkt_session_id";
 const TENANT_ID_KEY = "mkt_tenant_id";
+const GCLID_KEY = "ln_gclid";
 
 type TrackingContextValue = {
   trackEvent: (type: string, properties?: Record<string, unknown>) => void;
@@ -39,6 +40,19 @@ function getUtmParams(): Record<string, string | null> {
     utm_medium: params.get("utm_medium"),
     utm_campaign: params.get("utm_campaign"),
   };
+}
+
+/** GCLID ist Googles Click-Identifier. Wir persistieren ihn beim ersten Hit
+ * aus der URL nach localStorage; spätere Conversions können darüber dem
+ * ursprünglichen Klick zugeordnet werden (auch nach Page-Reloads). */
+function getOrCaptureGclid(): string | null {
+  if (typeof window === "undefined") return null;
+  const fromUrl = new URLSearchParams(window.location.search).get("gclid");
+  if (fromUrl) {
+    try { localStorage.setItem(GCLID_KEY, fromUrl); } catch { /* ignore */ }
+    return fromUrl;
+  }
+  try { return localStorage.getItem(GCLID_KEY); } catch { return null; }
 }
 
 function isConsentGiven(): boolean {
@@ -75,6 +89,7 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const visitorId = getOrCreateVisitorId();
       const utm = getUtmParams();
+      const gclid = getOrCaptureGclid();
 
       const { data, error } = await supabaseRef.current.functions.invoke("marketing-track", {
         body: {
@@ -83,6 +98,7 @@ export function TrackingProvider({ children }: { children: React.ReactNode }) {
           utm_source: utm.utm_source,
           utm_medium: utm.utm_medium,
           utm_campaign: utm.utm_campaign,
+          gclid,
           referrer: document.referrer || null,
           landing_page: window.location.pathname,
           device_type: getDeviceType(),
