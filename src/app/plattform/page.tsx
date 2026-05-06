@@ -2500,13 +2500,19 @@ function PlattformContent() {
 
   useEffect(() => {
     setSkeletonStartCount(22 + Math.floor(Math.random() * 6));
-    // Restore from localStorage
+    // Restore from localStorage — Werte gegen erlaubte Keys validieren,
+    // sonst stoppt ein stale-Wert (z.B. "Personengesellschaft" capitalized)
+    // den matchesFeatures-Filter und alle Produkte mit eligible_legal_forms
+    // werden disabled bis der User per Klick neu auswählt.
     try {
       const saved = JSON.parse(localStorage.getItem("company_bar") ?? "{}");
-      if (saved.companyType) setCompanyType(saved.companyType);
-      if (saved.branche) setCompanyBranche(saved.branche);
-      if (saved.revenue) setCompanyRevenue(saved.revenue);
-      if (saved.companyType && saved.branche && saved.revenue) setCompanyBarOpen(false);
+      const validType = saved.companyType === "kapitalgesellschaft" || saved.companyType === "personengesellschaft" ? saved.companyType : null;
+      const validBranche = BRANCHEN.some(b => b.id === saved.branche) ? saved.branche : null;
+      const validRevenue = typeof saved.revenue === "number" && saved.revenue > 0 ? saved.revenue : null;
+      if (validType) setCompanyType(validType);
+      if (validBranche) setCompanyBranche(validBranche);
+      if (validRevenue) setCompanyRevenue(validRevenue);
+      if (validType && validBranche && validRevenue) setCompanyBarOpen(false);
     } catch { /* keep open */ }
   }, []);
 
@@ -3328,8 +3334,11 @@ function PlattformContent() {
                       >
                       {(() => {
                         const isInstantApply = !!PROVIDER_SLUGS[offer.provider_name];
+                        const isDimmed = !matchesAll(offer) && !isSelected;
+                        // Bei Instant-Apply-Cards: Opacity auf den Gradient-Wrap statt
+                        // auf die Inner-Card, damit Border+Spinner einheitlich dimmen.
                         const cardInner = (
-                          <div className="offer-card" style={!matchesAll(offer) && !isSelected ? { opacity: 0.45 } : undefined}>
+                          <div className="offer-card" style={isDimmed && !isInstantApply ? { opacity: 0.45 } : undefined}>
                         <div className="offer-card-body">
                           <div className="offer-card-grid">
                             {/* Col 1: Logo + Name + Description */}
@@ -3862,7 +3871,7 @@ function PlattformContent() {
                       </div>
                         );
                         return isInstantApply ? (
-                          <div className="offer-card-instant-wrap">
+                          <div className="offer-card-instant-wrap" style={isDimmed ? { opacity: 0.45 } : undefined}>
                             <div className="offer-card-instant-spinner" />
                             {cardInner}
                           </div>
