@@ -10,7 +10,7 @@ import { GermanNumberInput, formatDE, parseDE } from "@/components/GermanNumberI
 import UserMenu from "@/components/UserMenu";
 import { createClient } from "@/lib/supabase";
 import { useTracking } from "@/lib/tracking";
-import { trackConversion, inquiryConversionValue } from "@/lib/google-ads";
+import { trackConversion } from "@/lib/google-ads";
 import type { User } from "@supabase/supabase-js";
 
 interface Offer {
@@ -919,8 +919,11 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       }
 
       trackEvent("funnel_submit", { product_id: offer.product_id, provider_name: offer.provider_name });
+      // Wert wird bewusst NICHT gesendet — Google Ads zieht den Default-Wert (10€)
+      // pro Conversion, damit Smart Bidding bei wenig Daten am Anfang nicht von
+      // einzelnen großen Anfragen verzerrt wird. Wenn genug Volume da ist, kann
+      // wieder auf inquiryConversionValue(bedarfVolume) umgestellt werden.
       trackConversion("inquiry", {
-        value: inquiryConversionValue(bedarfVolume),
         transactionId: applicationId as string,
         email: applicantEmail || null,
         phone: applicantPhone ? buildPhone(applicantPhone, phoneCountry) : null,
