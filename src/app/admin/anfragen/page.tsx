@@ -568,6 +568,7 @@ function AnfragenContent() {
   const [userDetail, setUserDetail] = useState<Record<string, unknown> | null>(null);
   const [companyDetail, setCompanyDetail] = useState<Record<string, unknown> | null>(null);
   const [sentEmails, setSentEmails] = useState<Array<{ id: string; recipient_email: string; subject: string; status: string; trigger_kind: string; template_slug: string | null; sent_at: string }>>([]);
+  const [marketingSessions, setMarketingSessions] = useState<Array<{ id: string; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; gclid: string | null; referrer: string | null; landing_page: string | null; device_type: string | null; created_at: string }>>([]);
   const [showSendModal, setShowSendModal] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -599,7 +600,7 @@ function AnfragenContent() {
 
   // Load documents + user + company details
   useEffect(() => {
-    if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); setSentEmails([]); return; }
+    if (!detailId || !selected) { setDocuments([]); setUserDetail(null); setCompanyDetail(null); setSentEmails([]); setMarketingSessions([]); return; }
     const supabase = createClient();
     // Load sent emails for the lead — kombiniert inquiry/users/applications
     (async () => {
@@ -654,6 +655,14 @@ function AnfragenContent() {
           .order("created_at", { ascending: false });
         if (docs) setDocuments(docs);
       }
+
+      // Load marketing sessions linked to this user (Acquisition Source)
+      const { data: sessions } = await supabase
+        .from("marketing_sessions")
+        .select("id, utm_source, utm_medium, utm_campaign, gclid, referrer, landing_page, device_type, created_at")
+        .eq("user_id", selected.user_id)
+        .order("created_at", { ascending: true });
+      if (sessions) setMarketingSessions(sessions);
     })();
   }, [detailId, selected]);
 
@@ -901,6 +910,50 @@ function AnfragenContent() {
               })}
             </div>
           </>
+        )}
+
+        {/* Marketing-Quelle: UTM, GCLID, Referrer pro Session — chronologisch */}
+        <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginTop: "2rem", marginBottom: "1rem" }}>
+          Marketing-Quelle {marketingSessions.length > 0 && `(${marketingSessions.length} ${marketingSessions.length === 1 ? "Session" : "Sessions"})`}
+        </h2>
+        {marketingSessions.length === 0 ? (
+          <div className="admin-chart-card" style={{ padding: "1.25rem", textAlign: "center", fontSize: "0.8125rem", color: "var(--color-subtle)" }}>
+            Keine verknüpfte Marketing-Session — Lead hat sich entweder direkt registriert oder Cookies abgelehnt.
+          </div>
+        ) : (
+          <div className="admin-chart-card" style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
+              <thead>
+                <tr style={{ background: "var(--color-light-bg)", textAlign: "left" }}>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>Zeitpunkt</th>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>Source / Medium / Campaign</th>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>Landing</th>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>Referrer</th>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>Device</th>
+                  <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.6875rem" }}>GCLID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {marketingSessions.map((s, i) => {
+                  const utm = [s.utm_source, s.utm_medium, s.utm_campaign].filter(Boolean).join(" / ") || "—";
+                  const isFirst = i === 0;
+                  return (
+                    <tr key={s.id} style={{ borderTop: i > 0 ? "1px solid var(--color-light-bg)" : "none", background: isFirst ? "rgba(80,122,166,0.04)" : undefined }}>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-dark)", whiteSpace: "nowrap" }}>
+                        {isFirst && <span style={{ display: "inline-block", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem", background: "var(--color-turquoise)", color: "#fff", fontSize: "0.625rem", fontWeight: 600, marginRight: "0.375rem" }}>1.</span>}
+                        {formatDate(s.created_at)}
+                      </td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-dark)", fontFamily: utm === "—" ? undefined : "ui-monospace, monospace" }}>{utm}</td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-subtle)", fontFamily: "ui-monospace, monospace", maxWidth: "12rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.landing_page ?? ""}>{s.landing_page ?? "—"}</td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-subtle)", maxWidth: "12rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.referrer ?? ""}>{s.referrer ? new URL(s.referrer).hostname : "direct"}</td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-subtle)" }}>{s.device_type ?? "—"}</td>
+                      <td style={{ padding: "0.5rem 0.75rem", color: "var(--color-subtle)", fontFamily: "ui-monospace, monospace", maxWidth: "8rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.gclid ?? ""}>{s.gclid ? "✓" : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Sent emails section — immer sichtbar, mit Empty-State und Send-Button */}
