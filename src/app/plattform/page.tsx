@@ -3584,7 +3584,7 @@ function PlattformContent() {
                                       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
                                         {([
                                           { title: "Kontoauszüge (PDF)", sub: "3 Monate (<50k € mtl. Umsatz), 6 Monate (<100k €), 12 Monate (>100k €). Alternative: Open Banking direkt verbinden — dann kein Upload nötig." },
-                                          { title: "Lieferantenrechnung (Proof of Trade)", sub: "Nur erforderlich, wenn keine Unternehmens-Website vorhanden ist (z. B. Einzelhandel)." },
+                                          ...(companyProfile?.website ? [] : [{ title: "Lieferantenrechnung (Proof of Trade)", sub: "Da keine Unternehmens-Website hinterlegt ist, brauchen wir alternativ eine aktuelle Lieferantenrechnung." }]),
                                         ]).map((d) => (
                                           <div key={d.title} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
                                             <Check style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)", flexShrink: 0, marginTop: "0.125rem" }} />
