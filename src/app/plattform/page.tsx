@@ -806,7 +806,9 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
   }
 
   const isYouLend = offer.provider_name === "YouLend";
+  const isIwoca = offer.provider_name === "iwoca";
   const [ylCompanyType, setYlCompanyType] = useState("");
+  const [applicantSalutation, setApplicantSalutation] = useState("");
 
   function handleNext() {
     if (step === 3 && companyMode === "url" && orgWebpage && !showOrgFields) {
@@ -817,8 +819,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
       trackEvent("funnel_step", { step: "unternehmen", orgName, orgCity });
       syncOrg({ withTurnover: true });
     }
-    // YouLend: skip Umsatz step (step 2), calculator already captures revenue
-    if (isYouLend && step === 1) {
+    // YouLend / iwoca: skip Umsatz step (step 2)
+    if ((isYouLend || isIwoca) && step === 1) {
       setStep(3);
       return;
     }
@@ -989,7 +991,8 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
           {/* Left: step navigation */}
           <div className="funnel-nav">
             {(() => { let visibleIdx = 0; return FUNNEL_STEPS.map((s, i) => {
-              if (isYouLend && i === 2) return null;
+              if ((isYouLend || isIwoca) && i === 2) return null;
+              if (isIwoca && i === 6) return null;
               const stepNum = ++visibleIdx;
               const isActive = i === step;
               const isDone = i < step;
@@ -1036,7 +1039,7 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
           <div className="funnel-content">
             {/* Mobile step indicator */}
             <div className="funnel-mobile-step">
-              <span className="funnel-mobile-step-num">{(() => { let n = 0; for (let j = 0; j <= step; j++) { if (isYouLend && j === 2) continue; n++; } return n; })()}</span>
+              <span className="funnel-mobile-step-num">{(() => { let n = 0; for (let j = 0; j <= step; j++) { if ((isYouLend || isIwoca) && j === 2) continue; if (isIwoca && j === 6) continue; n++; } return n; })()}</span>
               <span className="funnel-mobile-step-title">{FUNNEL_STEPS[step]?.title}</span>
             </div>
             <AnimatePresence mode="wait">
@@ -1383,8 +1386,49 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 4: Persönliche Daten + Anschrift (all providers) */}
-                          {i === 4 && !submitted && (
+                          {/* Step 4: iwoca slim form (Anrede, Name, Email, Telefon) */}
+                          {i === 4 && !submitted && isIwoca && (() => {
+                            const phoneDigits = applicantPhone.replace(/\D/g, "");
+                            const phoneValid = phoneDigits.length >= 8 && phoneDigits.length <= 15;
+                            const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(applicantEmail);
+                            const valid = applicantSalutation && firstName && lastName && emailValid && phoneValid;
+                            return (
+                              <div onKeyDown={stepKeyDown(() => { if (valid) setStep(5); })} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                                <div>
+                                  <label style={LABEL_STYLE}>Anrede<span style={{ color: "var(--color-turquoise)", marginLeft: "2px" }}>*</span></label>
+                                  <select value={applicantSalutation} onChange={e => setApplicantSalutation(e.target.value)} className="admin-input" style={{ width: "100%" }}>
+                                    <option value="">Bitte wählen…</option>
+                                    <option value="Herr">Herr</option>
+                                    <option value="Frau">Frau</option>
+                                    <option value="Divers">Divers</option>
+                                  </select>
+                                </div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                  <FunnelField label="Vorname" name="given-name" autoComplete="given-name" value={firstName} onChange={setFirstName} placeholder="Hans" required />
+                                  <FunnelField label="Nachname" name="family-name" autoComplete="family-name" value={lastName} onChange={setLastName} placeholder="Schmidt" required />
+                                </div>
+                                <div>
+                                  <FunnelField label="E-Mail" name="email" autoComplete="email" value={applicantEmail} onChange={setApplicantEmail} placeholder="hans@example.de" required />
+                                  {applicantEmail && !emailValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige E-Mail eingeben</p>}
+                                </div>
+                                <div>
+                                  <FunnelField label="Telefon" name="tel" autoComplete="tel" value={applicantPhone} onChange={setApplicantPhone} placeholder="+49 170 1234567" hint="Internationales Format mit Ländervorwahl" required />
+                                  {applicantPhone && !phoneValid && <p style={{ fontSize: "0.6875rem", color: "rgba(220,38,38,0.8)", marginTop: "0.25rem" }}>Bitte gültige Telefonnummer eingeben (8-15 Ziffern)</p>}
+                                </div>
+                                <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.5rem" }}>
+                                  <button type="button" onClick={() => setStep(3)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                    <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                  </button>
+                                  <button type="button" onClick={() => { if (valid) { trackEvent("funnel_step", { step: "persoenliche_daten" }); setStep(5); } }} disabled={!valid} className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                    Weiter <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Step 4: Persönliche Daten + Anschrift (all other providers) */}
+                          {i === 4 && !submitted && !isIwoca && (
                             <PersonalDataForm
                               key={`personal-${formKey}`}
                               defaults={{ firstName, lastName, email: applicantEmail, phone: applicantPhone, phoneCountry, dateOfBirth, street: applicantStreet, zip: applicantZip, city: applicantCity }}
@@ -1404,8 +1448,103 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             />
                           )}
 
-                          {/* Step 5: Zusammenfassung — all providers */}
-                          {i === 5 && !submitted && (
+                          {/* Step 5: Zusammenfassung — iwoca clickout */}
+                          {i === 5 && !submitted && isIwoca && (
+                            <div>
+                              <div style={{ textAlign: "center", padding: "1.25rem 1rem", background: "var(--color-light-bg)", borderRadius: "0.75rem", marginBottom: "1.25rem" }}>
+                                <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Bereit für Ihre Anfrage</p>
+                                <p style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--color-dark)", lineHeight: 1, marginBottom: "0.5rem" }}>{formatCurrency(bedarfVolume)}</p>
+                                <p style={{ fontSize: "0.8125rem", color: "var(--color-subtle)" }}>Firmenkredit für {orgName || "Ihr Unternehmen"}</p>
+                              </div>
+
+                              <div style={{ padding: "1rem", borderRadius: "0.75rem", background: "rgba(80,122,166,0.05)", marginBottom: "1.25rem" }}>
+                                <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>So geht es weiter</p>
+                                <ol style={{ display: "flex", flexDirection: "column", gap: "0.5rem", padding: 0, margin: 0, listStyle: "none" }}>
+                                  {[
+                                    "Sie werden direkt zu iwoca weitergeleitet",
+                                    "Antrag in 5 Minuten online ausfüllen",
+                                    "Kreditentscheidung in 24 Stunden",
+                                    "Auszahlung innerhalb von 48 Stunden",
+                                  ].map((s, idx) => (
+                                    <li key={idx} style={{ display: "flex", gap: "0.625rem", alignItems: "flex-start", fontSize: "0.8125rem", color: "var(--color-dark)", lineHeight: 1.5 }}>
+                                      <span style={{ width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "var(--color-turquoise)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.625rem", fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                                      <span>{s}</span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+
+                              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", cursor: "pointer", marginBottom: "1rem" }}>
+                                <input type="checkbox" checked={agbConsent} onChange={e => setAgbConsent(e.target.checked)}
+                                  style={{ marginTop: "0.125rem", accentColor: "var(--color-turquoise)" }} />
+                                <span style={{ fontSize: "0.75rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>
+                                  Ich akzeptiere die <a href="/agb" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>AGB</a> und <a href="/datenschutz" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Datenschutzerklärung</a>.
+                                </span>
+                              </label>
+
+                              {submitError && <p style={{ fontSize: "0.8125rem", color: "rgba(220,38,38,0.8)", marginBottom: "0.5rem" }}>{submitError}</p>}
+
+                              <div style={{ display: "flex", gap: "0.625rem" }}>
+                                <button type="button" onClick={() => setStep(4)} className="btn btn-secondary btn-md" style={{ gap: "0.375rem" }}>
+                                  <ArrowLeft style={{ width: "0.875rem", height: "0.875rem" }} /> Zurück
+                                </button>
+                                <button type="button"
+                                  disabled={!agbConsent || submitting}
+                                  onClick={async () => {
+                                    setSubmitting(true); setSubmitError(null);
+                                    try {
+                                      await supabase.rpc("upsert_user_profile", {
+                                        p_first_name: firstName, p_last_name: lastName,
+                                        p_phone: buildPhone(applicantPhone, phoneCountry),
+                                        p_dob: dateOfBirth, p_street: applicantStreet, p_zip: applicantZip, p_city: applicantCity,
+                                        p_applicant_email: applicantEmail,
+                                        p_salutation: applicantSalutation || null,
+                                      });
+                                      syncOrg({ withTurnover: false });
+                                      const { data: companyId } = await supabase.rpc("get_or_create_company", {
+                                        p_name: orgName, p_legal_form: ylCompanyType || null, p_crefo: orgCrefo, p_hrb: orgHrb, p_ust_id: orgUstId,
+                                        p_website: orgWebpage, p_street: orgStreet, p_zip: orgZip, p_city: orgCity,
+                                        p_monthly_revenue: orgTurnover,
+                                      });
+                                      if (companyId) {
+                                        const { data: inquiryId } = await supabase.rpc("create_inquiry", {
+                                          p_company_id: companyId, p_volume: bedarfVolume, p_purpose: "WORKING_CAPITAL",
+                                        });
+                                        if (inquiryId) {
+                                          const { data: appId } = await supabase.rpc("submit_application", {
+                                            p_inquiry_id: inquiryId, p_product_id: offer.product_id,
+                                          });
+                                          if (appId) {
+                                            await supabase.from("applications").update({
+                                              metadata: { provider_slug: "iwoca", external_url: `https://www.iwoca.de/kreditwunsch/neu?amount=${bedarfVolume}&from=liqinow`, submitted_at: new Date().toISOString() },
+                                            }).eq("id", appId);
+                                            onSubmitted?.({
+                                              id: appId as string, product_id: offer.product_id,
+                                              provider_name: offer.provider_name, product_name: offer.product_name,
+                                              volume: bedarfVolume, term_months: 0, status: "inquired",
+                                              metadata: {}, created_at: new Date().toISOString(),
+                                            });
+                                          }
+                                        }
+                                      }
+                                      window.open(`https://www.iwoca.de/kreditwunsch/neu?amount=${bedarfVolume}&from=liqinow`, "_blank");
+                                      setSubmitted(true);
+                                    } catch (err) {
+                                      console.error("[iwoca submit]", err);
+                                      setSubmitError("Fehler. Bitte versuchen Sie es erneut.");
+                                    } finally {
+                                      setSubmitting(false);
+                                    }
+                                  }}
+                                  className="btn btn-primary btn-md" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem" }}>
+                                  {submitting ? <><Loader2 className="animate-spin" style={{ width: "0.875rem", height: "0.875rem" }} /> Wird weitergeleitet…</> : <>Weiter zu iwoca <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} /></>}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step 5: Zusammenfassung — all other providers */}
+                          {i === 5 && !submitted && !isIwoca && (
                             <div>
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                                 <div style={{ padding: "0.875rem", borderRadius: "0.75rem", border: "1px solid var(--color-border)" }}>
@@ -1507,8 +1646,32 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                             </div>
                           )}
 
-                          {/* Step 6: Dokumente hochladen */}
-                          {i === 6 && (() => {
+                          {i === 5 && submitted && isIwoca && (
+                            <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                              <div style={{ width: "3rem", height: "3rem", borderRadius: "50%", background: "rgba(80,122,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                                <Check style={{ width: "1.5rem", height: "1.5rem", color: "var(--color-turquoise)" }} />
+                              </div>
+                              <p style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Fast geschafft!</p>
+                              <p style={{ fontSize: "0.875rem", color: "var(--color-subtle)", lineHeight: 1.6, marginBottom: "1.25rem", maxWidth: "380px", margin: "0 auto 1.25rem" }}>
+                                Schließen Sie Ihren Antrag direkt bei iwoca ab. Der Antrag dauert nur ca. 5 Minuten.
+                              </p>
+                              <a
+                                href={`https://www.iwoca.de/kreditwunsch/neu?amount=${bedarfVolume}&from=liqinow`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-primary btn-md"
+                                style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem" }}
+                              >
+                                Antrag bei iwoca abschließen <ArrowRight style={{ width: "0.875rem", height: "0.875rem" }} />
+                              </a>
+                              <p style={{ fontSize: "0.75rem", color: "var(--color-subtle)", marginTop: "1.25rem", lineHeight: 1.5 }}>
+                                Updates zu Ihrem Antrag finden Sie jederzeit in Ihrem <a href="/plattform" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Loginbereich</a>.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Step 6: Dokumente hochladen — skipped for iwoca */}
+                          {i === 6 && !isIwoca && (() => {
                             const isPersonen = ["Einzelunternehmen", "e.K.", "GbR", "Freiberufler"].includes(ylCompanyType);
                             const requiredDocs = DOC_TYPES.filter(d => d.required(bedarfVolume, isPersonen));
                             const providerSlug = PROVIDER_SLUGS[offer.provider_name];
