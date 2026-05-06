@@ -186,7 +186,7 @@ function RulesTab({
 
 const ENTITY_LABEL: Record<string, string> = {
   inquiries: "Anfrage",
-  applications: "Application",
+  applications: "Bank-Antrag",
   users: "User",
   companies: "Firma",
 };

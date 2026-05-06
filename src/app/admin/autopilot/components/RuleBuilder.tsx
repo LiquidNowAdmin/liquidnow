@@ -11,8 +11,8 @@ import { listEmailTemplates, type EmailTemplateListItem } from "@/lib/email-temp
 
 const ENTITY_LABELS: Record<EntityType, string> = {
   inquiries: "Anfragen",
-  applications: "Applications",
-  users: "Users",
+  applications: "Bank-Anträge",
+  users: "User",
 };
 
 const ENTITY_FIELDS: Record<EntityType, string[]> = {

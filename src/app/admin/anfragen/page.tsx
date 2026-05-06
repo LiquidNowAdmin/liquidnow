@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { User, FileText, Send, Gift, CheckCircle, XCircle, ArrowLeft, Building2, Banknote, Clock, Search, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import DateFilter from "../components/DateFilter";
+import { KanbanBoard, type KanbanColumn } from "@/components/admin/KanbanBoard";
 
 /* ── Types ── */
 
@@ -789,14 +790,14 @@ function AnfragenContent() {
         </div>
 
         <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-dark)", fontFamily: "var(--font-heading)", marginBottom: "1rem" }}>
-          Anträge bei Anbietern ({applications.length})
+          Bank-Anträge ({applications.length})
         </h2>
 
         {detailLoading ? (
           <div style={{ textAlign: "center", padding: "2rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>Laden...</div>
         ) : applications.length === 0 ? (
           <div className="admin-chart-card" style={{ textAlign: "center", padding: "2rem", color: "var(--color-subtle)", fontSize: "0.875rem" }}>
-            Noch keine Anträge an Anbieter übermittelt.
+            Noch keine Bank-Anträge übermittelt.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -1020,34 +1021,24 @@ function AnfragenContent() {
           Laden...
         </div>
       ) : (
-        <div className="kanban-board">
-          {COLUMNS.map((col) => {
-            const colCards = filtered.filter((c) => c.kanban_status === col.key);
-            const Icon = col.icon;
-            return (
-              <div key={col.key} className="kanban-column">
-                <div className="kanban-column-header">
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <Icon style={{ width: "0.875rem", height: "0.875rem", color: col.color }} />
-                    <span className="kanban-column-title">{col.label}</span>
-                  </div>
-                  <span className="kanban-column-count">{colCards.length}</span>
-                </div>
-                <div className="kanban-column-body">
-                  {colCards.length === 0 ? (
-                    <div className="kanban-empty">Keine</div>
-                  ) : (
-                    colCards.map((card) => (
-                      <div key={card.inquiry_id ?? card.user_id} onClick={() => openDetail(card)}>
-                        <KanbanCardItem card={card} />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <>
+          <KanbanBoard<KanbanCard, typeof COLUMNS[number]["key"]>
+            columns={COLUMNS as unknown as KanbanColumn<typeof COLUMNS[number]["key"]>[]}
+            cards={filtered.map((c) => ({
+              id: c.inquiry_id ?? c.user_id,
+              column: c.kanban_status as typeof COLUMNS[number]["key"],
+              data: c,
+            }))}
+            renderCard={(c) => <KanbanCardItem card={c} />}
+            onCardClick={(id) => {
+              const card = filtered.find((c) => (c.inquiry_id ?? c.user_id) === id);
+              if (card) openDetail(card);
+            }}
+          />
+          <p style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--color-subtle)" }}>
+            Hinweis: Status-Wechsel werden in der <a href="/admin/antraege" style={{ color: "var(--color-turquoise)", textDecoration: "underline" }}>Bank-Anträge-Pipeline</a> oder über Provider-Webhooks gesteuert.
+          </p>
+        </>
       )}
     </>
   );
@@ -1083,7 +1074,7 @@ function KanbanCardItem({ card }: { card: KanbanCard }) {
             <span key={p} className="kanban-card-provider">{p}</span>
           ))}
           {card.application_count > card.provider_names.length && (
-            <span className="kanban-card-provider">{card.application_count} Anträge</span>
+            <span className="kanban-card-provider">{card.application_count} Bank-Anträge</span>
           )}
         </div>
       )}

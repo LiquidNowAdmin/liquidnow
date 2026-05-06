@@ -8,8 +8,8 @@ import { listRoutes, upsertRoute, deleteRoute, type TemplateRoute } from "@/lib/
 const ENTITY_OPTIONS = [
   { value: "", label: "(statisch)" },
   { value: "inquiries", label: "Anfragen" },
-  { value: "applications", label: "Applications" },
-  { value: "users", label: "Users" },
+  { value: "applications", label: "Bank-Anträge" },
+  { value: "users", label: "User" },
 ];
 
 export default function RoutesPage() {

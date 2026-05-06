@@ -8,6 +8,7 @@ import {
   Building2,
   Package,
   FileText,
+  Banknote,
   BookOpen,
   Mail,
   Zap,
@@ -23,8 +24,9 @@ const navGroups: NavGroup[] = [
   {
     kind: "section",
     items: [
-      { href: "/admin",          label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/anfragen", label: "Anfragen",  icon: FileText },
+      { href: "/admin",          label: "Dashboard",    icon: LayoutDashboard },
+      { href: "/admin/anfragen", label: "Anfragen",     icon: FileText },
+      { href: "/admin/antraege", label: "Bank-Anträge", icon: Banknote },
     ],
   },
   {
