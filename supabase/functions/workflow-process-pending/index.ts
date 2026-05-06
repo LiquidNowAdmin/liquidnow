@@ -122,7 +122,13 @@ Deno.serve(async (req) => {
       const ctx = await loadEntityContext(row.entity_type, row.entity_id);
       ctx.routes = await loadRoutes(row.tenant_id);
       const values = resolveVariables(ctx);
-      const recipient = ctx.recipient?.email || row.recipient_email;
+      // Queue-Row ist authoritative: execute_workflow_actions hat bereits den
+      // korrekten Empfänger gesetzt (ops-User-Email für operations_team,
+      // entity-Email für entity_email, custom-Adresse für custom). ctx.recipient
+      // ist nur Fallback wenn die queued Row keine Email hat — sonst würde der
+      // operations_team-Loop ad absurdum geführt: 5 ops-User-Mails landen alle
+      // bei der Entity-Email statt bei den 5 verschiedenen Ops-Usern.
+      const recipient = row.recipient_email || ctx.recipient?.email;
 
       const subject = (tpl.subject ?? '').replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_: string, k: string) => values[k] ?? '');
       const { html, text } = renderEmail({
