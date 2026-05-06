@@ -3577,13 +3577,42 @@ function PlattformContent() {
                                   {/* 2. Dokumentenanforderungen — YouLend */}
                                   {offer.provider_name === "YouLend" && (
                                     <div style={{ marginBottom: "1.75rem" }}>
-                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.375rem" }}>Benötigte Unterlagen</p>
-                                      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
-                                        <Check style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)", flexShrink: 0, marginTop: "0.125rem" }} />
-                                        <div>
-                                          <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.125rem" }}>Geschäftskontoauszüge aller Konten der letzten 3 Monate</p>
-                                          <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>Als PDF-Upload oder direkt per Open Banking verifizieren.</p>
-                                        </div>
+                                      <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--color-dark)", marginBottom: "0.5rem" }}>Benötigte Unterlagen</p>
+
+                                      {/* Für Angebot (zwingend) */}
+                                      <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-turquoise)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.375rem" }}>Für ein Angebot</p>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
+                                        {([
+                                          { title: "Zahlungsdaten", sub: "Open Banking (empfohlen) – oder PDF-Kontoauszüge: 3 Monate (<50k € mtl. Umsatz), 6 Monate (<100k €), 12 Monate (>100k €)." },
+                                          { title: "Proof of Trade", sub: "Unternehmens-Website. Falls keine vorhanden (z. B. Einzelhandel): aktuelle Lieferantenrechnung." },
+                                          { title: "Unternehmensgrunddaten", sub: "Rechtlicher Name (Unternehmen / Partnerschaft / Einzelunternehmer) sowie Geburtsdatum und Wohnadresse aller Geschäftsführer und wirtschaftlich Berechtigten." },
+                                        ]).map((d) => (
+                                          <div key={d.title} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)" }}>
+                                            <Check style={{ width: "0.875rem", height: "0.875rem", color: "var(--color-turquoise)", flexShrink: 0, marginTop: "0.125rem" }} />
+                                            <div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.125rem" }}>{d.title}</p>
+                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{d.sub}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Für Vertrag / höhere Angebote (optional, vom Team angefragt) */}
+                                      <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--color-subtle)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.375rem" }}>Für den Vertrag (nur bei Bedarf, Team meldet sich)</p>
+                                      <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                                        {([
+                                          { title: "BWA & SuSa", sub: "Wird bei Angeboten ab 100.000 € angefragt." },
+                                          { title: "Onfido-ID-Verifizierung", sub: "Wird bei Angeboten ab 100.000 € angefragt." },
+                                          { title: "Bestätigung der Dispolinie", sub: "Wird bei höheren Angeboten gelegentlich angefragt, um den Rahmen zu erweitern." },
+                                        ]).map((d) => (
+                                          <div key={d.title} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", padding: "0.75rem", borderRadius: "0.5rem", background: "var(--color-light-bg)", opacity: 0.85 }}>
+                                            <div style={{ width: "0.875rem", height: "0.875rem", borderRadius: "50%", border: "1.5px solid var(--color-subtle)", flexShrink: 0, marginTop: "0.125rem" }} />
+                                            <div>
+                                              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--color-dark)", marginBottom: "0.125rem" }}>{d.title}</p>
+                                              <p style={{ fontSize: "0.6875rem", color: "var(--color-subtle)", lineHeight: 1.5 }}>{d.sub}</p>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
                                   )}
