@@ -1590,6 +1590,12 @@ function FunnelPanel({ offer, amount, term, initialPurpose, onSubmitted, onEstim
                                               volume: bedarfVolume, term_months: 0, status: "inquired",
                                               metadata: {}, created_at: new Date().toISOString(),
                                             });
+                                            trackEvent("funnel_submit", { product_id: offer.product_id, provider_name: offer.provider_name });
+                                            trackConversion("inquiry", {
+                                              transactionId: appId as string,
+                                              email: applicantEmail || null,
+                                              phone: applicantPhone ? buildPhone(applicantPhone, phoneCountry) : null,
+                                            });
                                           }
                                         }
                                       }
