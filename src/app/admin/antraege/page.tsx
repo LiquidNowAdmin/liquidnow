@@ -153,7 +153,7 @@ export default function BankAntragsPage() {
           renderCard={(a) => <BankCard a={a} />}
           onCardClick={(id) => {
             const row = rows.find((r) => r.application_id === id);
-            if (row?.inquiry_id) router.push(`/admin/anfragen?id=${row.inquiry_id}`);
+            if (row?.user_id) router.push(`/admin/anfragen?id=${row.user_id}`);
           }}
           onCardMove={moveApplication}
         />
