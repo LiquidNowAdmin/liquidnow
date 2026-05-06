@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { trackConversion } from "@/lib/google-ads";
 
 function CallbackContent() {
   const router = useRouter();
@@ -39,6 +40,18 @@ function CallbackContent() {
       if (sessionId) {
         try { await supabase.rpc("link_marketing_session", { p_session_id: sessionId }); } catch {};
       }
+
+      // Google Ads "Account erstellt" Conversion. Wird hier statt im
+      // onAuthStateChange-Listener gefeuert, weil window.location.href unten
+      // einen Full-Reload macht — dabei landet der User mit bestehender
+      // Session auf /plattform, kein SIGNED_IN-Event triggert mehr.
+      // transaction_id (user.id) dedupt mehrfache Logins auf Google-Ads-Seite.
+      try {
+        await trackConversion("signup", {
+          transactionId: session.user.id,
+          email: session.user.email ?? null,
+        });
+      } catch (e) { console.warn("[auth/callback] signup conversion failed", e); }
 
       window.location.href = next;
     }
